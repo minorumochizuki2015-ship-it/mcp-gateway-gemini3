@@ -3785,6 +3785,7 @@ async def get_scan_report_pdf(run_id: str, db_path: str = str(DEFAULT_DB_PATH)):
 # ---------------------------------------------------------------------------
 
 _WEB_SANDBOX_VERDICTS: deque[dict[str, Any]] = deque(maxlen=100)
+_WEB_SANDBOX_MAX_ARTIFACTS = 100
 _WEB_SANDBOX_ARTIFACTS: dict[str, dict[str, Any]] = {}
 
 
@@ -3813,6 +3814,10 @@ async def web_sandbox_scan(body: WebSandboxScanRequest) -> JSONResponse:
     result_dict = result.model_dump()
     result_dict["verdict"]["classification"] = result.verdict.classification.value
 
+    # LRU eviction: remove oldest entry when at capacity
+    if len(_WEB_SANDBOX_ARTIFACTS) >= _WEB_SANDBOX_MAX_ARTIFACTS:
+        oldest_key = next(iter(_WEB_SANDBOX_ARTIFACTS))
+        del _WEB_SANDBOX_ARTIFACTS[oldest_key]
     _WEB_SANDBOX_ARTIFACTS[result.bundle.bundle_id] = result_dict
     _WEB_SANDBOX_VERDICTS.append(
         {

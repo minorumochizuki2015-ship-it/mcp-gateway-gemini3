@@ -165,7 +165,7 @@ class A11yNode(BaseModel):
     role: str = Field(description="ARIA role or implicit role")
     name: str = Field(description="Accessible name")
     description: str = Field(default="", description="Accessible description")
-    children: list[A11yNode] = []
+    children: list[A11yNode] = Field(default_factory=list)
     suspicious: bool = Field(default=False, description="Whether node is suspicious")
     deceptive_label: bool = Field(
         default=False, description="Whether label mismatches visible content"
@@ -220,16 +220,17 @@ class CausalScanResult(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-def validate_url_ssrf(url: str) -> str:
+def validate_url_ssrf(url: str) -> tuple[str, str]:
     """Validate URL against SSRF attacks.
 
     Checks scheme, resolves hostname, validates against blocked networks/ports.
+    Returns the first safe resolved IP for DNS-pinned connections.
 
     Args:
         url: URL to validate.
 
     Returns:
-        The validated URL string.
+        Tuple of (validated URL, first safe resolved IP address).
 
     Raises:
         SSRFError: If the URL targets a blocked network or port.
@@ -252,14 +253,20 @@ def validate_url_ssrf(url: str) -> str:
     except socket.gaierror as exc:
         raise SSRFError(f"DNS resolution failed: {hostname}") from exc
 
+    first_safe_ip = ""
     for info in infos:
         addr = info[4][0]
         ip = ipaddress.ip_address(addr)
         for network in BLOCKED_NETWORKS:
             if ip in network:
                 raise SSRFError(f"Blocked IP: {addr} in {network}")
+        if not first_safe_ip:
+            first_safe_ip = addr
 
-    return url
+    if not first_safe_ip:
+        raise SSRFError(f"No addresses resolved for: {hostname}")
+
+    return url, first_safe_ip
 
 
 # ---------------------------------------------------------------------------
@@ -267,17 +274,55 @@ def validate_url_ssrf(url: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _fetch_with_ssrf_guard(url: str) -> httpx.Response:
+    """Fetch URL with SSRF validation on every redirect hop.
+
+    Disables automatic redirects and manually follows each Location header
+    with full SSRF validation including DNS re-resolution check.
+
+    Args:
+        url: Initial URL to fetch.
+
+    Returns:
+        Final httpx.Response.
+
+    Raises:
+        SSRFError: If any hop targets a blocked network.
+    """
+    current_url = url
+    for _ in range(MAX_REDIRECTS + 1):
+        validate_url_ssrf(current_url)
+        with httpx.Client(
+            timeout=FETCH_TIMEOUT_S,
+            follow_redirects=False,
+        ) as client:
+            resp = client.get(current_url)
+
+        if resp.status_code in (301, 302, 303, 307, 308):
+            location = resp.headers.get("location")
+            if not location:
+                return resp
+            current_url = urljoin(current_url, location)
+            continue
+        return resp
+
+    raise SSRFError(f"Too many redirects (max {MAX_REDIRECTS})")
+
+
 def bundle_page(url: str) -> tuple[WebBundleResult, str]:
     """Fetch a web page and create a content bundle.
 
+    Uses manual redirect following with SSRF validation at each hop
+    to prevent redirect-based SSRF bypass.
+
     Args:
-        url: URL to fetch (must pass SSRF validation).
+        url: URL to fetch (must pass SSRF validation at every hop).
 
     Returns:
         Tuple of (WebBundleResult, raw HTML string).
 
     Raises:
-        SSRFError: If URL is blocked.
+        SSRFError: If URL is blocked at any redirect hop.
         ResourceLimitError: If content exceeds size limit.
     """
     validate_url_ssrf(url)
@@ -286,12 +331,7 @@ def bundle_page(url: str) -> tuple[WebBundleResult, str]:
     timestamp = datetime.now(timezone.utc).isoformat()
 
     try:
-        with httpx.Client(
-            timeout=FETCH_TIMEOUT_S,
-            follow_redirects=True,
-            max_redirects=MAX_REDIRECTS,
-        ) as client:
-            resp = client.get(url)
+        resp = _fetch_with_ssrf_guard(url)
     except httpx.TimeoutException:
         return WebBundleResult(
             bundle_id=bundle_id,
@@ -408,6 +448,17 @@ def analyze_dom_security(html: str, url: str) -> list[DOMSecurityNode]:
         raise ResourceLimitError(
             f"DOM too large: {len(all_tags)} elements (max {MAX_DOM_ELEMENTS})"
         )
+
+    # Check DOM depth
+    max_depth = 0
+    for tag in all_tags:
+        depth = len(list(tag.parents)) - 1  # subtract [document]
+        if depth > max_depth:
+            max_depth = depth
+        if max_depth > MAX_DOM_DEPTH:
+            raise ResourceLimitError(
+                f"DOM too deep: {max_depth} levels (max {MAX_DOM_DEPTH})"
+            )
 
     # Hidden iframes
     for iframe in soup.find_all("iframe"):

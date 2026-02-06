@@ -105,8 +105,9 @@ class TestSSRFGuard:
             mock_dns.return_value = [
                 (2, 1, 6, "", ("93.184.216.34", 443)),
             ]
-            result = validate_url_ssrf("https://example.com/")
-            assert result == "https://example.com/"
+            url, resolved_ip = validate_url_ssrf("https://example.com/")
+            assert url == "https://example.com/"
+            assert resolved_ip == "93.184.216.34"
 
     def test_ssrf_blocks_bad_scheme(self) -> None:
         """Non-HTTP schemes are blocked."""
@@ -121,6 +122,34 @@ class TestSSRFGuard:
             ]
             with pytest.raises(SSRFError, match="Blocked port"):
                 validate_url_ssrf("https://example.com:6379/")
+
+    def test_ssrf_redirect_to_private_blocked(self) -> None:
+        """Redirect to private IP is blocked at each hop."""
+        from mcp_gateway.causal_sandbox import _fetch_with_ssrf_guard
+
+        redirect_resp = MagicMock()
+        redirect_resp.status_code = 302
+        redirect_resp.headers = {"location": "http://10.0.0.1/secret"}
+
+        def mock_validate(url: str) -> tuple[str, str]:
+            parsed = __import__("urllib.parse", fromlist=["urlparse"]).urlparse(url)
+            hostname = parsed.hostname or ""
+            if hostname == "10.0.0.1":
+                raise SSRFError("Blocked IP: 10.0.0.1")
+            return url, "93.184.216.34"
+
+        with (
+            patch("mcp_gateway.causal_sandbox.validate_url_ssrf", side_effect=mock_validate),
+            patch("httpx.Client") as mock_client_cls,
+        ):
+            mock_client = MagicMock()
+            mock_client.__enter__ = MagicMock(return_value=mock_client)
+            mock_client.__exit__ = MagicMock(return_value=False)
+            mock_client.get.return_value = redirect_resp
+            mock_client_cls.return_value = mock_client
+
+            with pytest.raises(SSRFError, match="Blocked IP"):
+                _fetch_with_ssrf_guard("https://evil.com/redir")
 
 
 # ---- bundle_page ----
