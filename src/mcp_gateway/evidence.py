@@ -1,14 +1,21 @@
-"""Evidence helper for appending events to ci_evidence.jsonl with atomic writes."""
+"""Evidence helper for appending events to ci_evidence.jsonl with atomic writes.
+
+Dual-write: events are written to both JSONL evidence and Memory Ledger (SSOT).
+"""
 
 from __future__ import annotations
 
 import hashlib
 import json
+import logging
+import os
 import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
+logger = logging.getLogger(__name__)
 
 SHADOW_MANIFEST = Path("observability/policy/shadow_audit/manifest.jsonl")
 SHADOW_CHAIN = Path("observability/policy/shadow_audit/manifest.sha256")
@@ -188,7 +195,58 @@ def append(
     # Atomic write
     _atomic_write(path_obj, "\n".join(lines) + "\n", validate_jsonl=True)
 
+    # Dual-write to Memory Ledger (fail-open)
+    _write_to_ledger(event)
+
     return event["run_id"]
+
+
+def _write_to_ledger(event: dict) -> None:
+    """Write event to Memory Ledger as SSOT dual-write (fail-open).
+
+    When LEDGER_PATH is set, events are also persisted to the
+    Memory Ledger with hash-based deduplication and sequence tracking.
+    """
+    ledger_path = os.getenv("LEDGER_PATH")
+    if not ledger_path:
+        return
+
+    try:
+        from .ssot.memory_ledger import (
+            LedgerSource,
+            MemoryLedgerWriter,
+            new_memory_ledger_entry,
+        )
+
+        writer = MemoryLedgerWriter(
+            path=Path(ledger_path),
+            enabled=True,
+            error_policy=os.getenv("LEDGER_ERROR_POLICY", "open"),  # type: ignore[arg-type]
+        )
+
+        event_type = event.get("event", "unknown")
+        run_id = event.get("run_id", "")
+        event_json = json.dumps(event, ensure_ascii=False, sort_keys=True)
+        event_hash = hashlib.sha256(event_json.encode("utf-8")).hexdigest()
+
+        source = LedgerSource(
+            stream_id=f"mcp-gateway:{event_type}",
+            offset=run_id,
+            event_hash=event_hash,
+        )
+
+        entry = new_memory_ledger_entry(
+            op="commit",
+            memory_kind=f"evidence:{event_type}",
+            source=source,
+            payload_normalized=event,
+            actor="mcp-gateway",
+            tags=[event_type],
+        )
+
+        writer.append(entry)
+    except Exception as exc:
+        logger.debug("Ledger dual-write failed (fail-open): %s", exc)
 
 
 def _atomic_write(path: Path, content: str, *, validate_jsonl: bool = False) -> None:

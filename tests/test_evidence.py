@@ -123,3 +123,86 @@ def test_evidence_removes_userinfo_and_redacts_sensitive_fields(tmp_path: Path) 
     assert event["Authorization"] == "{REDACTED}"
     assert event["x-api-key"] == "{REDACTED}"
     assert event["token_id"] == "token-123"
+
+
+class TestLedgerDualWrite:
+    """Memory Ledger 二重書き込みテスト。"""
+
+    def test_dual_write_creates_ledger(self, tmp_path: Path, monkeypatch):
+        """LEDGER_PATH 設定時にledgerファイルが作成される。"""
+        evidence_path = tmp_path / "evidence.jsonl"
+        ledger_path = tmp_path / "ledger.jsonl"
+        monkeypatch.setenv("LEDGER_PATH", str(ledger_path))
+
+        evidence.append(
+            {"event": "council_decision", "decision": "allow"},
+            path=evidence_path,
+        )
+
+        assert evidence_path.exists()
+        assert ledger_path.exists()
+
+        # Ledger entry has required fields
+        ledger_lines = ledger_path.read_text().strip().split("\n")
+        assert len(ledger_lines) == 1
+        entry = json.loads(ledger_lines[0])
+        assert entry["op"] == "commit"
+        assert entry["memory_kind"] == "evidence:council_decision"
+        assert entry["actor"] == "mcp-gateway"
+        assert "entry_id" in entry
+        assert "ledger_seq" in entry
+        assert entry["ledger_seq"] == 1
+
+    def test_dual_write_deduplicates(self, tmp_path: Path, monkeypatch):
+        """同一イベントの重複書き込みが抑止される。"""
+        evidence_path = tmp_path / "evidence.jsonl"
+        ledger_path = tmp_path / "ledger.jsonl"
+        monkeypatch.setenv("LEDGER_PATH", str(ledger_path))
+
+        event = {"event": "scan_run", "run_id": "fixed-id", "ts": "2026-01-01T00:00:00Z"}
+        evidence.append(dict(event), path=evidence_path)
+        evidence.append(dict(event), path=evidence_path)
+
+        # Evidence has 2 lines, but ledger should deduplicate
+        ev_lines = evidence_path.read_text().strip().split("\n")
+        assert len(ev_lines) == 2
+
+        ledger_lines = ledger_path.read_text().strip().split("\n")
+        assert len(ledger_lines) == 1  # Deduplicated
+
+    def test_no_ledger_without_env(self, tmp_path: Path, monkeypatch):
+        """LEDGER_PATH 未設定時はledgerに書き込まない。"""
+        monkeypatch.delenv("LEDGER_PATH", raising=False)
+        evidence_path = tmp_path / "evidence.jsonl"
+        ledger_path = tmp_path / "ledger.jsonl"
+
+        evidence.append({"event": "test"}, path=evidence_path)
+
+        assert evidence_path.exists()
+        assert not ledger_path.exists()
+
+    def test_ledger_fail_open(self, tmp_path: Path, monkeypatch):
+        """Ledger書き込み失敗時もevidence書き込みは成功する。"""
+        evidence_path = tmp_path / "evidence.jsonl"
+        monkeypatch.setenv("LEDGER_PATH", "/nonexistent/deep/path/ledger.jsonl")
+
+        # Should not raise - fail-open policy
+        run_id = evidence.append({"event": "test"}, path=evidence_path)
+        assert run_id
+        assert evidence_path.exists()
+
+    def test_ledger_sequence_increments(self, tmp_path: Path, monkeypatch):
+        """複数イベントでledger_seqが単調増加する。"""
+        evidence_path = tmp_path / "evidence.jsonl"
+        ledger_path = tmp_path / "ledger.jsonl"
+        monkeypatch.setenv("LEDGER_PATH", str(ledger_path))
+
+        evidence.append({"event": "event_1"}, path=evidence_path)
+        evidence.append({"event": "event_2"}, path=evidence_path)
+        evidence.append({"event": "event_3"}, path=evidence_path)
+
+        ledger_lines = ledger_path.read_text().strip().split("\n")
+        assert len(ledger_lines) == 3
+
+        seqs = [json.loads(line)["ledger_seq"] for line in ledger_lines]
+        assert seqs == [1, 2, 3]
