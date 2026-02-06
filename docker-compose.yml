@@ -1,0 +1,53 @@
+version: "3.9"
+
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: ./docker/gateway.Dockerfile
+    image: mcp-gateway:latest
+    restart: unless-stopped
+    environment:
+      MCP_GATEWAY_ADMIN_TOKEN_FILE: /run/secrets/mcp_gateway_admin_token
+      MCP_GATEWAY_UPSTREAM_BASE_URL: ${MCP_GATEWAY_UPSTREAM_BASE_URL:-https://generativelanguage.googleapis.com}
+      MCP_GATEWAY_UPSTREAM_API_KEY_FILE: /run/secrets/mcp_gateway_upstream_api_key
+      MCP_GATEWAY_POLICY_PROFILE: ${MCP_GATEWAY_POLICY_PROFILE:-standard}
+      GOOGLE_API_KEY_FILE: /run/secrets/google_api_key
+    volumes:
+      - ./observability:/app/observability
+    secrets:
+      - mcp_gateway_admin_token
+      - mcp_gateway_upstream_api_key
+      - google_api_key
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:4100/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    user: "65532:65532"
+
+  acl-proxy:
+    build:
+      context: ./acl-proxy
+      dockerfile: ../docker/proxy.Dockerfile
+    image: mcp-gateway-proxy:latest
+    restart: unless-stopped
+    depends_on:
+      - gateway
+    ports:
+      - "4100:4100"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4100/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+secrets:
+  mcp_gateway_admin_token:
+    file: ./.local/admin_token.txt
+  mcp_gateway_upstream_api_key:
+    file: ./.local/upstream_api_key.txt
+  google_api_key:
+    file: ./.local/google_api_key.txt

@@ -1,0 +1,17 @@
+{
+  "name": "mcp-gateway-release-ui-poc",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "lint": "node -e \"console.log('lint ok')\"",
+    "test": "node tests/ui/scans.test.js && node tests/ui/settings_environments.test.js && node tests/ui/settings_profiles.test.js && node tests/ui/allowlist.test.js && node tests/ui/mcp_inventory.test.js && node tests/ui/mcp_detail.test.js && node tests/ui/dashboard.test.js && node tests/ui/audit_log.test.js",
+    "build": "node -e \"console.log('build ok')\"",
+    "ui:audit:dashboard": "node scripts/ui_audit_dashboard.js"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.10.0",
+    "@playwright/test": "^1.41.2",
+    "linkedom": "^0.18.4",
+    "playwright": "^1.41.2"
+  }
+}

@@ -9,3 +9,7 @@ observability/
 artifacts/
 *.db
 settings.local.json
+.local/
+node_modules/
+target/
+test-results/

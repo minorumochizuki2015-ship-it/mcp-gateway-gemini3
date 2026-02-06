@@ -31,8 +31,13 @@ All integrations use `response_mime_type="application/json"` with Pydantic schem
                     +--------+---------+
                              |
                     +--------v---------+
-                    |   MCP Gateway    |
-                    |  (FastAPI)       |
+                    |   ACL Proxy      |  <-- Rust ACL-aware proxy
+                    |   (acl-proxy/)   |      URL policy + HTTPS MITM
+                    +--------+---------+
+                             |
+                    +--------v---------+
+                    |   MCP Gateway    |  <-- Python FastAPI
+                    |   + Dashboard UI |      Security evaluation
                     +--+----+----+-----+
                        |    |    |
           +------------+    |    +------------+
@@ -82,6 +87,29 @@ src/mcp_gateway/
   sanitizer.py     # Multi-level prompt injection defense
   evidence.py      # JSONL evidence trail for all decisions
   registry.py      # MCP server registration and management
+
+acl-proxy/           # Rust ACL-aware HTTP/HTTPS proxy
+  src/               # Policy engine, MITM, loop protection
+  tests/             # Integration tests
+  Cargo.toml         # Rust dependencies
+
+docker/              # Dockerfiles for gateway + proxy
+docker-compose.yml   # One-command full stack deployment
+
+tests/ui/            # Playwright UI tests for dashboard
+```
+
+## Full Stack Deployment (Docker)
+
+```bash
+# Create secrets
+mkdir -p .local
+echo "your-admin-token" > .local/admin_token.txt
+echo "your-upstream-key" > .local/upstream_api_key.txt
+echo "your-google-api-key" > .local/google_api_key.txt
+
+# Start all services
+docker compose up --build
 ```
 
 ## Test Suite

@@ -1,0 +1,14 @@
+:4100 {
+  handle_path /api/* {
+    reverse_proxy gateway:4100
+  }
+
+  handle_path /health {
+    reverse_proxy gateway:4100
+  }
+
+  handle {
+    root * /srv/ui
+    file_server
+  }
+}
