@@ -45,9 +45,15 @@ All integrations use `response_mime_type="application/json"` with Pydantic schem
 +---------v---+   +---------v---+   +---------v---+
 | AI Council  |   |  Scanner    |   |  RedTeam    |
 | (Gemini 3)  |   | (Gemini 3)  |   | (Gemini 3)  |
-+-------------+   +-------------+   +-------------+
-  Structured       Semantic          Dynamic Attack
-  Verdict          Analysis          Generation
++------+------+   +------+------+   +------+------+
+       |                 |                 |
+       +--------+--------+---------+-------+
+                |                  |
+       +--------v--------+ +------v--------+
+       | Evidence Trail  | | Memory Ledger |
+       | (JSONL)         | | (SSOT)        |
+       +-----------------+ +---------------+
+         Dual-write with hash-based dedup
 ```
 
 ## Quick Start
@@ -75,6 +81,8 @@ python -m uvicorn src.mcp_gateway.gateway:app --reload
 | `GEMINI_MODEL` | Gemini model name | `gemini-2.0-flash` |
 | `MCP_GATEWAY_ADMIN_TOKEN` | Admin authentication token | Required |
 | `MCP_GATEWAY_UPSTREAM_API_KEY` | Upstream LLM API key | Required for chat |
+| `LEDGER_PATH` | Memory Ledger JSONL path | Optional (enables persistent SSOT) |
+| `LEDGER_ERROR_POLICY` | Ledger error handling (`open`/`closed`) | `open` (fail-open) |
 
 ## Key Files
 
@@ -85,7 +93,8 @@ src/mcp_gateway/
   scanner.py       # Static + semantic (Gemini 3) vulnerability scanning
   redteam.py       # Dynamic attack generation + safety evaluation
   sanitizer.py     # Multi-level prompt injection defense
-  evidence.py      # JSONL evidence trail for all decisions
+  evidence.py      # JSONL evidence trail with Memory Ledger dual-write
+  ssot/            # Memory Ledger (persistent SSOT) + Durable Streams
   registry.py      # MCP server registration and management
 
 acl-proxy/           # Rust ACL-aware HTTP/HTTPS proxy
@@ -115,21 +124,26 @@ docker compose up --build
 ## Test Suite
 
 ```bash
-# Run all tests (189 tests)
+# Run all tests (194 tests)
 python -m pytest tests/ -v
 
 # Run Gemini-specific tests
 python -m pytest tests/test_council.py tests/test_scanner.py tests/test_redteam.py tests/test_sanitizer.py -v
 ```
 
-## Evidence Trail
+## Evidence Trail + Memory Ledger
 
-Every decision is recorded as JSONL evidence for auditability:
+Every decision is recorded as JSONL evidence for auditability. When `LEDGER_PATH` is set, events are also dual-written to a Memory Ledger (SSOT) with hash-based deduplication and monotonic sequence tracking:
 
 ```json
 {"event": "council_decision", "eval_method": "gemini", "verdict_confidence": 0.95, ...}
 {"event": "mcp_scan_run", "scan_type": "semantic", "gemini_model": "gemini-2.0-flash", ...}
 {"event": "redteam_gemini", "scenarios_tested": 5, "failures": 0, ...}
+```
+
+```bash
+# Enable persistent Memory Ledger
+export LEDGER_PATH="./observability/memory_ledger.jsonl"
 ```
 
 ## License
