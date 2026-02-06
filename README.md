@@ -10,6 +10,7 @@ MCP Gateway sits between AI clients (ChatGPT, Claude, Gemini CLI) and MCP server
 2. **Semantic Scanner** - Gemini 3 analyzes tool descriptions for hidden threats (data exfiltration, prompt injection, deceptive naming) that regex-based scanning would miss
 3. **Dynamic Red Team** - Gemini 3 generates attack scenarios, tests them against the gateway's defenses, and evaluates response safety
 4. **Context Sanitizer** - Multi-level prompt injection defense (MINIMAL/STANDARD/STRICT/PARANOID) with regex pattern matching and redaction
+5. **Causal Web Sandbox** - Evidence-based web security analysis inspired by FastRender's rendering pipeline internals. Produces structured evidence: page bundle with SSRF protection, DOM threat analysis, accessibility tree deceptive-label detection, network request tracing, and Gemini 3 structured classification verdict
 
 ## Gemini 3 Integration Points
 
@@ -19,6 +20,7 @@ MCP Gateway sits between AI clients (ChatGPT, Claude, Gemini CLI) and MCP server
 | Semantic Scanner (`scanner.py`) | Structured Output (`SemanticScanResult`) | Deep analysis of tool descriptions |
 | RedTeam Generator (`redteam.py`) | Structured Output (`RedTeamGeneration`) | Dynamic attack scenario creation |
 | RedTeam Evaluator (`redteam.py`) | Structured Output (`PayloadSafetyVerdict`) | AI-powered response safety assessment |
+| Causal Web Sandbox (`causal_sandbox.py`) | Structured Output (`WebSecurityVerdict`) | Evidence-based web page threat classification |
 
 All integrations use `response_mime_type="application/json"` with Pydantic schema for type-safe, deterministic outputs. Rule-based fallback is provided when the API is unavailable.
 
@@ -40,19 +42,19 @@ All integrations use `response_mime_type="application/json"` with Pydantic schem
                     |   + Dashboard UI |      Security evaluation
                     +--+----+----+-----+
                        |    |    |
-          +------------+    |    +------------+
-          |                 |                 |
-+---------v---+   +---------v---+   +---------v---+
-| AI Council  |   |  Scanner    |   |  RedTeam    |
-| (Gemini 3)  |   | (Gemini 3)  |   | (Gemini 3)  |
-+------+------+   +------+------+   +------+------+
-       |                 |                 |
-       +--------+--------+---------+-------+
-                |                  |
-       +--------v--------+ +------v--------+
-       | Evidence Trail  | | Memory Ledger |
-       | (JSONL)         | | (SSOT)        |
-       +-----------------+ +---------------+
+     +-------+    |    +-------+    +------------+
+     |              |            |            |
++----v------+ +----v------+ +---v-------+ +--v---------+
+|AI Council | | Scanner   | | RedTeam   | |Causal Web  |
+|(Gemini 3) | |(Gemini 3) | |(Gemini 3) | |Sandbox     |
++----+------+ +----+------+ +---+-------+ |(Gemini 3)  |
+     |              |            |         +--+---------+
+     +------+-------+------+----+-----+------+
+            |              |          |
+   +--------v--------+ +--v----------v---+
+   | Evidence Trail  | | Memory Ledger   |
+   | (JSONL)         | | (SSOT)          |
+   +-----------------+ +-----------------+
          Dual-write with hash-based dedup
 ```
 
@@ -88,14 +90,15 @@ python -m uvicorn src.mcp_gateway.gateway:app --reload
 
 ```
 src/mcp_gateway/
-  gateway.py       # Main FastAPI gateway with sanitizer integration
-  ai_council.py    # Gemini 3 structured output for security decisions
-  scanner.py       # Static + semantic (Gemini 3) vulnerability scanning
-  redteam.py       # Dynamic attack generation + safety evaluation
-  sanitizer.py     # Multi-level prompt injection defense
-  evidence.py      # JSONL evidence trail with Memory Ledger dual-write
-  ssot/            # Memory Ledger (persistent SSOT) + Durable Streams
-  registry.py      # MCP server registration and management
+  gateway.py          # Main FastAPI gateway with sanitizer integration
+  ai_council.py       # Gemini 3 structured output for security decisions
+  scanner.py          # Static + semantic (Gemini 3) vulnerability scanning
+  redteam.py          # Dynamic attack generation + safety evaluation
+  causal_sandbox.py   # Evidence-based web security analysis (Gemini 3)
+  sanitizer.py        # Multi-level prompt injection defense
+  evidence.py         # JSONL evidence trail with Memory Ledger dual-write
+  ssot/               # Memory Ledger (persistent SSOT) + Durable Streams
+  registry.py         # MCP server registration and management
 
 acl-proxy/           # Rust ACL-aware HTTP/HTTPS proxy
   src/               # Policy engine, MITM, loop protection
@@ -139,6 +142,7 @@ Every decision is recorded as JSONL evidence for auditability. When `LEDGER_PATH
 {"event": "council_decision", "eval_method": "gemini", "verdict_confidence": 0.95, ...}
 {"event": "mcp_scan_run", "scan_type": "semantic", "gemini_model": "gemini-2.0-flash", ...}
 {"event": "redteam_gemini", "scenarios_tested": 5, "failures": 0, ...}
+{"event": "causal_web_scan", "classification": "phishing", "confidence": 0.95, ...}
 ```
 
 ```bash

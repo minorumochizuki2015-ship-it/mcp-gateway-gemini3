@@ -3780,3 +3780,65 @@ async def get_scan_report_pdf(run_id: str, db_path: str = str(DEFAULT_DB_PATH)):
     return Response(content=buffer.read(), media_type="application/pdf")
 
 
+# ---------------------------------------------------------------------------
+# Causal Web Sandbox endpoints
+# ---------------------------------------------------------------------------
+
+_WEB_SANDBOX_VERDICTS: deque[dict[str, Any]] = deque(maxlen=100)
+_WEB_SANDBOX_ARTIFACTS: dict[str, dict[str, Any]] = {}
+
+
+class WebSandboxScanRequest(BaseModel):
+    """Request body for /api/web-sandbox/scan."""
+
+    url: str
+
+
+@app.post("/api/web-sandbox/scan")
+async def web_sandbox_scan(body: WebSandboxScanRequest) -> JSONResponse:
+    """Run a causal web sandbox scan on a URL."""
+    from . import causal_sandbox
+
+    try:
+        result = causal_sandbox.run_causal_scan(body.url)
+    except causal_sandbox.SSRFError as exc:
+        return JSONResponse(
+            {"detail": f"SSRF blocked: {exc}"}, status_code=400
+        )
+    except causal_sandbox.ResourceLimitError as exc:
+        return JSONResponse(
+            {"detail": f"Resource limit: {exc}"}, status_code=400
+        )
+
+    result_dict = result.model_dump()
+    result_dict["verdict"]["classification"] = result.verdict.classification.value
+
+    _WEB_SANDBOX_ARTIFACTS[result.bundle.bundle_id] = result_dict
+    _WEB_SANDBOX_VERDICTS.append(
+        {
+            "run_id": result.run_id,
+            "url": result.url,
+            "classification": result.verdict.classification.value,
+            "confidence": result.verdict.confidence,
+            "recommended_action": result.verdict.recommended_action,
+            "eval_method": result.eval_method,
+            "timestamp": result.timestamp,
+        }
+    )
+
+    return JSONResponse(result_dict)
+
+
+@app.get("/api/web-sandbox/artifacts/{bundle_id}")
+async def web_sandbox_artifact(bundle_id: str) -> JSONResponse:
+    """Retrieve a web sandbox scan artifact by bundle ID."""
+    artifact = _WEB_SANDBOX_ARTIFACTS.get(bundle_id)
+    if not artifact:
+        return JSONResponse({"detail": "not found"}, status_code=404)
+    return JSONResponse(artifact)
+
+
+@app.get("/api/web-sandbox/verdicts")
+async def web_sandbox_verdicts() -> JSONResponse:
+    """List recent web sandbox verdicts (in-memory, max 100)."""
+    return JSONResponse({"verdicts": list(_WEB_SANDBOX_VERDICTS)})
