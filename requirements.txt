@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+pydantic
+sqlite-utils
+pytest
+pytest-asyncio
+httpx
+pyyaml
+rq>=1.15.0
+redis>=5.0.0
+reportlab>=4.0.0
+google-genai>=1.0.0

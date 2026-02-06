@@ -1,0 +1,6 @@
+{"case_id":"drift_detect","kind":"tool_manifest_drift","input":{"tools_original":[{"name":"tool_alpha","description":"alpha","input_schema":{"type":"object"},"output_schema":{"type":"object"}}],"tools_drift":[{"name":"tool_alpha","description":"alpha_v2","input_schema":{"type":"object"},"output_schema":{"type":"object"}}]},"expected":{"detected":true}}
+{"case_id":"drift_no_detect","kind":"tool_manifest_drift","input":{"tools_original":[{"name":"tool_alpha","description":"alpha","input_schema":{"type":"object"},"output_schema":{"type":"object"}}],"tools_drift":[{"name":"tool_alpha","description":"alpha","input_schema":{"type":"object"},"output_schema":{"type":"object"}}]},"expected":{"detected":false}}
+{"case_id":"sink_deny_untrusted","kind":"source_sink_policy","input":{"entry":{"risk_level":"high","capabilities":["network_write"],"status":"active"},"tool_caps":["network_write"]},"expected":{"decision":"deny"}}
+{"case_id":"sink_allow_trusted","kind":"source_sink_policy","input":{"entry":{"risk_level":"low","capabilities":[],"status":"active"},"tool_caps":[]},"expected":{"decision":"allow"}}
+{"case_id":"dlp_detect","kind":"dlp_detect","input":{"payload":"AKIA1234567890ABCDEF leaked key"},"expected":{"detected":true}}
+{"case_id":"dlp_no_detect","kind":"dlp_detect","input":{"payload":"hello world"},"expected":{"detected":false}}
