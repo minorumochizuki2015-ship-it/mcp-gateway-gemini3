@@ -154,7 +154,11 @@
         <h1 id="pageTitle">AI Gateway Dashboard</h1>
         <p class="muted" id="pageSubtitle">Real-time decisions, evidence, and policy enforcement</p>
       </div>
-      <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <button type="button" id="demoBtn" style="padding: 8px 20px; background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s; box-shadow: 0 2px 8px rgba(109,40,217,0.3);" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(109,40,217,0.4)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 8px rgba(109,40,217,0.3)'">
+          <span style="font-size: 16px;">&#9654;</span> <span id="demoBtnText">Run Live Demo</span>
+        </button>
+        <span id="demoStatus" style="font-size: 12px; color: var(--muted); display: none;"></span>
         <span style="font-size: 13px; color: var(--muted);">Language:</span>
         <div style="display: flex; gap: 4px;">
           <button type="button" class="lang-btn" id="langJa" data-lang="ja">JA</button>
@@ -353,6 +357,7 @@
         policyVerified: 'Verified', policyPresent: 'Present', policyMissing: 'Missing', policyNA: 'N/A',
         ssotTitle: 'Evidence Chain Integrity', ssotSub: 'SSOT verification and shadow audit status',
         ssotPass: 'Verified', ssotFail: 'Not verified', ssotPresent: 'Present', ssotMissing: 'Missing', ssotSigned: 'Signed', ssotUnsigned: 'Not signed',
+        demoBtn: 'Run Live Demo',
       },
       ja: {
         pageTitle: 'AI ゲートウェイ ダッシュボード',
@@ -376,6 +381,7 @@
         policyVerified: '検証済', policyPresent: '存在', policyMissing: '未設定', policyNA: 'N/A',
         ssotTitle: '証跡チェーン完全性', ssotSub: 'SSOT検証とシャドー監査の状態',
         ssotPass: '検証済', ssotFail: '未検証', ssotPresent: '存在', ssotMissing: '未設定', ssotSigned: '署名済', ssotUnsigned: '未署名',
+        demoBtn: 'ライブデモ実行',
       }
     };
 
@@ -419,6 +425,7 @@
       var th = el('decisionsThead');
       if (th) th.innerHTML = '<tr><th>' + [d.thTime, d.thDecision, d.thConfidence, d.thFinding, d.thEvidence].map(escapeHtml).join('</th><th>') + '</th></tr>';
       if (el('decisionsEmpty')) el('decisionsEmpty').innerHTML = escapeHtml(d.decisionsEmpty) + ' <a href="web_sandbox.html">' + escapeHtml(d.decisionsEmptyLink) + '</a>' + escapeHtml(d.decisionsEmptyTail);
+      if (el('demoBtnText')) el('demoBtnText').textContent = d.demoBtn;
       // lang buttons
       var ja = el('langJa'), en = el('langEn');
       if (ja) ja.classList.toggle('active', lang === 'ja');
@@ -633,6 +640,35 @@
     var langEn = document.getElementById('langEn');
     if (langJa) langJa.addEventListener('click', function() { setLang('ja'); applyI18n('ja'); init(); });
     if (langEn) langEn.addEventListener('click', function() { setLang('en'); applyI18n('en'); init(); });
+
+    // Demo button handler
+    var demoBtn = document.getElementById('demoBtn');
+    var demoStatus = document.getElementById('demoStatus');
+    if (demoBtn) {
+      demoBtn.addEventListener('click', async function() {
+        demoBtn.disabled = true;
+        demoBtn.style.opacity = '0.6';
+        demoStatus.style.display = '';
+        demoStatus.textContent = 'Seeding security events...';
+        demoStatus.style.color = 'var(--primary)';
+        try {
+          var base = (window.apiClient && window.apiClient._base) || '';
+          var resp = await fetch(base + '/api/demo/run-scenario', { method: 'POST' });
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          var data = await resp.json();
+          demoStatus.textContent = data.events_created + ' events created — refreshing...';
+          demoStatus.style.color = 'var(--success)';
+          // Re-initialize dashboard with live data
+          setTimeout(function() { init(); demoStatus.textContent = 'Live data loaded'; }, 800);
+        } catch (err) {
+          demoStatus.textContent = 'Error: ' + (err.message || 'failed');
+          demoStatus.style.color = 'var(--danger)';
+        } finally {
+          demoBtn.disabled = false;
+          demoBtn.style.opacity = '1';
+        }
+      });
+    }
 
     applyI18n(getLang());
     init();

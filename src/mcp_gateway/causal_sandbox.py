@@ -934,16 +934,12 @@ def run_causal_scan(url: str) -> CausalScanResult:
     visible_text = extract_visible_text(html)
 
     # Step 6: Gemini verdict (or rule-based fallback)
-    api_key = os.getenv(GEMINI_API_KEY_ENV)
-    eval_method = "gemini" if api_key else "rule_based"
-
     verdict = gemini_security_verdict(
         url, visible_text, dom_threats, a11y_deceptive, network_traces
     )
 
-    # Check if Gemini actually ran (might have fallen back)
-    if not api_key:
-        eval_method = "rule_based"
+    # Detect actual eval method from verdict summary
+    eval_method = "rule_based" if verdict.summary.startswith("Rule-based") else "gemini"
 
     result = CausalScanResult(
         run_id=run_id,
