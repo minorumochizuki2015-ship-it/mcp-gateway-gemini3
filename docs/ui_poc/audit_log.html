@@ -378,7 +378,7 @@
         </thead>
         <tbody id="auditRows"></tbody>
       </table>
-      <div id="emptyBox" class="empty" hidden>監査ログはありません。</div>
+      <div id="emptyBox" class="empty" hidden>No audit logs available.</div>
     </div>
   </div>
 
@@ -404,7 +404,7 @@
     const actorInput = document.getElementById("actorFilter");
     const apiClient = window.apiClient || {};
     let items = [];
-    let emptyMessage = window.tCommon ? window.tCommon('auditLog.emptyDefault') : "監査ログはありません。";
+    let emptyMessage = window.tCommon ? window.tCommon('auditLog.emptyDefault') : "No audit logs available.";
 
     // P0-1b: Read evidence_id from URL query parameter
     const urlParams = new URLSearchParams(window.location.search);
@@ -415,7 +415,7 @@
       const d = new Date(ts);
       return isNaN(d.getTime())
         ? "-"
-        : d.toLocaleString("ja-JP", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+        : d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
     }
 
     function pillType(type) {
@@ -437,7 +437,7 @@
       if (!filtered.length) {
         rows.innerHTML = "";
         emptyBox.textContent = evidenceIdFilter
-          ? `Evidence ID "${escapeHtml(evidenceIdFilter)}" に一致するログがありません。`
+          ? `No logs matching Evidence ID "${escapeHtml(evidenceIdFilter)}".`
           : emptyMessage;
         emptyBox.hidden = false;
         return;
@@ -473,14 +473,14 @@
         emptyMessage =
           res && res.errorType === "auth"
             ? [
-              window.tCommon ? window.tCommon("auditLog.emptyNoToken") : "管理者セッションを確立してください。",
+              window.tCommon ? window.tCommon("auditLog.emptyNoToken") : "Please establish an admin session.",
               window.tCommon ? window.tCommon("auditLog.adminTokenHint") : "Environments → Start Session",
             ].join(" ")
-            : (window.tCommon ? window.tCommon("auditLog.emptyDefault") : "監査ログはありません。");
+            : (window.tCommon ? window.tCommon("auditLog.emptyDefault") : "No audit logs available.");
         render();
         return;
       }
-      emptyMessage = window.tCommon ? window.tCommon("auditLog.emptyDefault") : "監査ログはありません。";
+      emptyMessage = window.tCommon ? window.tCommon("auditLog.emptyDefault") : "No audit logs available.";
       items = Array.isArray(res.data) ? res.data : [];
       render();
     }

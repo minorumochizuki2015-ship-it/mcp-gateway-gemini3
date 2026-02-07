@@ -291,10 +291,10 @@
         </div>
         <div class="card-body">
           <div id="coreRules" class="core-rules">
-            <div class="core-rules-title">⚠️ コア不変ルール（無効化不可）</div>
-            <div class="core-rules-list" id="coreRulesList">読み込み中...</div>
+            <div class="core-rules-title">⚠️ Core Immutable Rules (cannot be disabled)</div>
+            <div class="core-rules-list" id="coreRulesList">Loading...</div>
           </div>
-          <div id="presetsList">読み込み中...</div>
+          <div id="presetsList">Loading...</div>
         </div>
       </div>
 
@@ -306,48 +306,48 @@
         <div class="card-body">
           <form id="profileForm">
             <div class="form-group">
-              <label class="form-label" for="profileName">プロファイル</label>
+              <label class="form-label" for="profileName">Profile</label>
               <select id="profileName" class="form-select" data-testid="profile-select">
-                <option value="standard">Standard（標準）</option>
-                <option value="strict">Strict（厳格）</option>
-                <option value="development">Development（開発）</option>
+                <option value="standard">Standard</option>
+                <option value="strict">Strict</option>
+                <option value="development">Development</option>
               </select>
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="additionalSinks">追加制限Sinks</label>
+              <label class="form-label" for="additionalSinks">Additional Restricted Sinks</label>
               <input type="text" id="additionalSinks" class="form-input"
-                placeholder="例: clipboard, camera" data-testid="additional-sinks" />
-              <p class="form-hint">カンマ区切りで追加のsinkを指定（任意）</p>
+                placeholder="e.g. clipboard, camera" data-testid="additional-sinks" />
+              <p class="form-hint">Comma-separated additional sinks (optional)</p>
             </div>
 
             <div class="form-group">
               <label class="form-checkbox">
                 <input type="checkbox" id="allowUntrusted" data-testid="allow-untrusted" />
-                <span>承認済みの untrusted を許可</span>
+                <span>Allow approved untrusted sources</span>
               </label>
-              <p class="form-hint">開発環境向け。本番環境では非推奨。</p>
+              <p class="form-hint">For development environments. Not recommended for production.</p>
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="changeReason">変更理由</label>
+              <label class="form-label" for="changeReason">Change Reason</label>
               <textarea id="changeReason" class="form-textarea"
-                placeholder="例: 開発テストのため一時的に緩和" data-testid="change-reason"></textarea>
+                placeholder="e.g. Temporarily relaxed for development testing" data-testid="change-reason"></textarea>
             </div>
 
             <div style="display:flex;gap:12px;">
               <button type="button" class="btn btn-secondary" id="previewBtn" data-testid="preview-btn">
-                プレビュー
+                Preview
               </button>
               <button type="submit" class="btn btn-primary" id="saveBtn" data-testid="save-btn">
-                保存
+                Save
               </button>
             </div>
           </form>
 
           <!-- Preview Panel -->
           <div id="previewPanel" class="preview-panel" data-testid="preview-panel">
-            <div class="preview-title">変更プレビュー</div>
+            <div class="preview-title">Change Preview</div>
             <div id="previewContent"></div>
           </div>
 

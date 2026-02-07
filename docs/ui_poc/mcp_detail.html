@@ -141,18 +141,18 @@
   <div class="container">
     <div class="header">
       <h1>MCP Detail</h1>
-      <p class="muted">MCP のメタ情報・最新スキャンと council 決定を閲覧（read-only）</p>
+      <p class="muted">View MCP metadata, latest scan and council decisions (read-only)</p>
       <div data-admin-session-banner-anchor="page-header"></div>
     </div>
 
     <div class="tabs">
-      <button class="tab active" id="tabOverview" type="button" aria-selected="true">概要</button>
-      <button class="tab" id="tabHistory" type="button" aria-selected="false">履歴</button>
+      <button class="tab active" id="tabOverview" type="button" aria-selected="true">Overview</button>
+      <button class="tab" id="tabHistory" type="button" aria-selected="false">History</button>
     </div>
 
     <div id="overviewSection">
     <div class="card" id="errorCard" style="display:none;">
-      <span class="error">詳細を取得できませんでした。</span>
+      <span class="error">Failed to retrieve details.</span>
     </div>
 
     <div class="grid">
@@ -177,7 +177,7 @@
 
     <div class="grid">
       <div class="card" id="scanCard">
-        <div class="section-title">最新スキャン</div>
+        <div class="section-title">Latest Scan</div>
         <div class="label">Run ID</div>
         <div class="value" id="scanRun">-</div>
         <div class="label">Status / Time</div>
@@ -186,7 +186,7 @@
         <div class="value" id="scanSev">-</div>
       </div>
       <div class="card" id="councilCard">
-        <div class="section-title">判定結果</div>
+        <div class="section-title">Council Verdict</div>
         <div class="label">Decision</div>
         <div class="value" id="councilDecision">-</div>
         <div class="label">Rationale</div>
@@ -197,18 +197,18 @@
     </div>
 
     <div class="card">
-      <div class="section-title">証跡</div>
+      <div class="section-title">Evidence Trail</div>
       <div class="label">Scan run_id</div>
       <div class="value" id="evScan">-</div>
       <div class="label">Council run_id</div>
       <div class="value" id="evCouncil">-</div>
-      <div class="small">リンクは参考表示のみ（read-only）。</div>
+      <div class="small">Links are for reference only (read-only).</div>
     </div>
     </div>
 
     <div id="historySection" style="display:none;">
       <div class="card">
-        <div class="section-title">履歴</div>
+        <div class="section-title">History</div>
         <div class="history-controls">
           <label class="small" for="historyType">Type</label>
           <select id="historyType">
@@ -291,7 +291,7 @@
     function renderHistory(items) {
       if (!historyList) return;
       if (!items || items.length === 0) {
-        historyList.innerHTML = '<li class="history-item"><span class="muted">履歴はありません。</span></li>';
+        historyList.innerHTML = '<li class="history-item"><span class="muted">No history available.</span></li>';
         historySummary.textContent = "showing 0/0";
         return;
       }
