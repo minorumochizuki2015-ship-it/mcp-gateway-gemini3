@@ -5444,58 +5444,29 @@
         <div class="wizard-step active" data-step="1">
           <div class="wizard-step-title">
             <span class="step-number">1</span>
-            <span id="wizardStep1Title">Verify Gateway Prerequisites</span>
+            <span id="wizardStep1Title">Gateway Ready</span>
           </div>
           <p class="wizard-step-desc" id="wizardStep1Desc">
-            Verify admin session and policy bundle are ready before proceeding.
+            Admin session is auto-configured for this demo.
           </p>
-          <div class="wizard-token-guide" id="wizardTokenGuide">
-            <div class="wizard-token-guide-title" id="wizardTokenSetupTitle" data-i18n="wizardTokenSetupTitle"></div>
-              <div class="wizard-token-form">
-                <label for="wizardTokenInput" class="wizard-token-form-label" data-i18n="wizardTokenFormLabel"></label>
-                <div class="wizard-token-form-actions">
-                  <input type="password" id="wizardTokenInput" placeholder="Paste admin token" autocomplete="off">
-                  <button type="button" class="btn btn-secondary" id="wizardTokenCopyBtn" data-i18n="wizardTokenCopyBtn">Copy</button>
-                </div>
-                <div class="wizard-token-help">
-                  <span data-i18n="wizardTokenHelp">Copy the command below and run it in the same shell that starts the gateway. Paste the generated token above.</span>
-                  <code id="wizardTokenCommand">export MCP_GATEWAY_ADMIN_TOKEN="<token>"</code>
-                </div>
-                <div class="wizard-token-action">
-                  <button type="button" class="btn btn-outline-secondary" id="wizardTokenStartBtn" data-i18n="wizardTokenStartBtn">Start Session</button>
-                </div>
-              </div>
-            <div class="wizard-token-note" id="wizardTokenSetupHint" data-i18n="wizardTokenSetupHint"></div>
-          </div>
-          <div id="wizardPrecheck">
-            <button type="button" class="btn btn-primary" id="wizardPrecheckBtn" style="width:100%;">
-              Run Diagnostics
-            </button>
-          </div>
-          <div class="wizard-test-result" id="wizardPrecheckResult" style="display:none;margin-top:16px;">
-            <button type="button" class="dismiss-btn" aria-label="Close">×</button>
-            <span id="wizardPrecheckMessage"></span>
-            <div class="wizard-test-actions">
-              <button type="button" class="btn btn-secondary" id="wizardPrecheckCta" style="display:none;"></button>
+          <div style="text-align:center;padding:24px 0;">
+            <div style="width:64px;height:64px;border-radius:50%;background:#10b981;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" style="width:32px;height:32px;">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
             </div>
+            <p style="font-size:16px;font-weight:600;color:var(--gray-900);margin-bottom:4px;">Admin Token: Auto-configured</p>
+            <p style="font-size:14px;color:var(--gray-600);">No manual input required. Press <strong>Next</strong> to enter your Gemini API key.</p>
           </div>
-          <div id="wizardAutostartGuide" style="display:none;margin-top:16px;padding:14px;border:1px solid var(--gray-200);border-radius:12px;background:var(--gray-50);">
-            <div style="font-weight:700;margin-bottom:6px;" id="wizardAutostartTitle">Autostart Configuration</div>
-            <p class="input-hint" id="wizardAutostartDesc">For production, running as a persistent service is safest. Run once in mcp-gateway-release.</p>
-            <ul style="margin:8px 0 0 18px;line-height:1.6;">
-              <li><span id="wizardAutostartWindowsLabel">Windows</span>:
-                <code>cd &lt;install-dir&gt;; .\scripts\step8_autostart_windows.ps1 -Action Install</code>
-              </li>
-              <li><span id="wizardAutostartMacLabel">macOS</span>:
-                <code>cd /path/to/install-dir && ./scripts/step8_autostart_macos.sh install</code>
-              </li>
-              <li><span id="wizardAutostartLinuxLabel">Linux</span>:
-                <code>cd /path/to/install-dir && ./scripts/step8_autostart_linux.sh install</code>
-              </li>
-            </ul>
-            <p class="input-hint" id="wizardAutostartNote">After setup, just open in browser (no UI launch needed).</p>
-            <p class="input-hint" id="wizardAutostartDocHint">See: docs/operations/step8_autostart.(ja|en).md</p>
-            <p class="input-hint" id="wizardAutostartDockerHint">Use Docker Compose to run Gateway + UI on the same origin.</p>
+          <!-- Hidden elements to prevent JS null errors -->
+          <div style="display:none;">
+            <input type="hidden" id="wizardTokenInput">
+            <button type="button" id="wizardTokenCopyBtn"></button>
+            <code id="wizardTokenCommand"></code>
+            <button type="button" id="wizardTokenStartBtn"></button>
+            <button type="button" id="wizardPrecheckBtn"></button>
+            <span id="wizardPrecheckMessage"></span>
+            <button type="button" id="wizardPrecheckCta"></button>
           </div>
         </div>
 
