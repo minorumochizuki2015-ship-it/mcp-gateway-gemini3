@@ -5513,12 +5513,11 @@
 	          </p>
 	          <div class="wizard-input-group">
 	            <label for="wizardModel">Gemini Model</label>
-	            <input type="text" id="wizardModel" list="wizardModelList" value="models/gemini-3-flash-preview" placeholder="models/gemini-3-flash-preview" autocomplete="off">
-	            <datalist id="wizardModelList">
-	              <option value="models/gemini-3-flash-preview">Gemini 3 Flash (Recommended)</option>
+	            <select id="wizardModel" style="width:100%;padding:10px 12px;border:1px solid var(--gray-300);border-radius:8px;font-size:14px;background:#fff;">
+	              <option value="models/gemini-3-flash-preview" selected>Gemini 3 Flash (Recommended)</option>
 	              <option value="models/gemini-2.5-flash">Gemini 2.5 Flash (Fallback)</option>
 	              <option value="models/gemini-2.0-flash">Gemini 2.0 Flash</option>
-	            </datalist>
+	            </select>
 	            <p class="input-hint">Recommended: <code>models/gemini-3-flash-preview</code> for Gemini 3 Hackathon</p>
 	          </div>
 	        </div>
@@ -5874,6 +5873,15 @@
 	            showApiTestResult("success", "✅ API key is saved");
 	          } else {
 	            showApiTestResult("success", "✅ Input looks good");
+	            // Eagerly set GOOGLE_API_KEY for Gemini features (best-effort)
+	            if (apiKey) {
+	              try {
+	                const authToken = (typeof getAdminToken === 'function') ? getAdminToken() : (window.SUITE_ADMIN_TOKEN || '');
+	                const hdrs = { 'Content-Type': 'application/json' };
+	                if (authToken) hdrs['Authorization'] = 'Bearer ' + authToken;
+	                fetch('/api/config/gemini-key', { method: 'POST', headers: hdrs, body: JSON.stringify({ api_key: apiKey }) });
+	              } catch (_) { /* best-effort */ }
+	            }
 	          }
 	          return true;
 	        }
@@ -6141,6 +6149,15 @@
 		              provider,
 		              models_allowlist: modelsAllowlist
 		            });
+		          }
+		          // Also set GOOGLE_API_KEY for Gemini-powered features (Council, Scanner, RedTeam, Web Sandbox)
+		          if (apiKey && (providerKeyForRules === 'gemini_openai' || providerKeyForRules === 'gemini' || providerKeyForRules === 'vertex')) {
+		            try {
+		              const authToken = (typeof getAdminToken === 'function') ? getAdminToken() : (window.SUITE_ADMIN_TOKEN || '');
+		              const hdrs = { 'Content-Type': 'application/json' };
+		              if (authToken) hdrs['Authorization'] = 'Bearer ' + authToken;
+		              await fetch('/api/config/gemini-key', { method: 'POST', headers: hdrs, body: JSON.stringify({ api_key: apiKey }) });
+		            } catch (_) { /* best-effort */ }
 		          }
 				          if (!saveRes || !saveRes.ok || !saveRes.data || saveRes.data.status !== 'success') {
 				            if (saveRes && saveRes.errorType === 'auth') {
