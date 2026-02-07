@@ -1336,19 +1336,19 @@
         <line x1="8" y1="12" x2="16" y2="12" />
       </svg>
       <div class="info-box-content">
-        <strong id="guideTitle" data-i18n="intro.title">初回セットアップ手順</strong>
+        <strong id="guideTitle" data-i18n="intro.title">Initial Setup Guide</strong>
         <div id="introGuideBody" class="intro-guide-body">
           <ol style="padding-left:18px; margin-top:4px; display:grid; gap:4px;">
-            <li id="guideStep1" data-i18n="intro.step1">Admin Token を入力し、上流 (LLM) を保存して疎通テスト</li>
-            <li id="guideStep2" data-i18n="intro.step2">Proxy Model IDs を確認し、必要なら追記</li>
-            <li id="guideStep3" data-i18n="intro.step3">Policy Profile を選択し、追加の Restricted Sinks があれば設定</li>
-            <li id="guideStep4" data-i18n="intro.step4">Environments テーブルに接続先を登録</li>
+            <li id="guideStep1" data-i18n="intro.step1">Enter Admin Token, save upstream (LLM), and run connectivity test</li>
+            <li id="guideStep2" data-i18n="intro.step2">Review Proxy Model IDs and add if needed</li>
+            <li id="guideStep3" data-i18n="intro.step3">Select Policy Profile and configure additional Restricted Sinks</li>
+            <li id="guideStep4" data-i18n="intro.step4">Register connections in the Environments table</li>
           </ol>
         </div>
       </div>
       <div class="info-box-actions">
-        <button type="button" class="btn btn-secondary" id="introGuideToggleBtn">導入ガイドを隠す</button>
-        <button type="button" class="btn btn-primary" id="introGuideResetBtn">初回セットアップ</button>
+        <button type="button" class="btn btn-secondary" id="introGuideToggleBtn">Hide Setup Guide</button>
+        <button type="button" class="btn btn-primary" id="introGuideResetBtn">Initial Setup</button>
       </div>
     </div>
 
@@ -1514,36 +1514,36 @@
                     <span id="dangerZoneTitleText">Danger Zone</span>
                   </div>
                   <div class="danger-zone-note" id="dangerZoneNote">
-                    Admin Token をブラウザに保存すると、端末が侵害された場合に Control Plane 操作を乗っ取られる可能性があります。
-                    推奨は「保存しない（短命セッション）」です。
+                    Storing Admin Token in the browser may allow Control Plane takeover if the device is compromised.
+                    Recommended: do not store (use short-lived sessions).
                   </div>
                   <label class="form-toggle danger-row">
                     <input type="checkbox" id="dangerEnableToggle" />
-                    <span id="dangerEnableToggleLabel">ブラウザに Admin Token を保存する（危険）</span>
+                    <span id="dangerEnableToggleLabel">Store Admin Token in browser (dangerous)</span>
                   </label>
                   <div class="danger-zone-options" id="dangerZoneOptions" style="display:none;">
                     <div class="danger-row">
-                      <label class="form-label" for="dangerDuration" id="dangerDurationLabel">許可時間</label>
+                      <label class="form-label" for="dangerDuration" id="dangerDurationLabel">Duration</label>
                       <select id="dangerDuration" class="form-select" style="max-width: 240px;">
-                        <option value="900">15分</option>
-                        <option value="3600">1時間</option>
-                        <option value="28800">8時間</option>
-                        <option value="session">ブラウザを閉じるまで</option>
+                        <option value="900">15 min</option>
+                        <option value="3600">1 hour</option>
+                        <option value="28800">8 hours</option>
+                        <option value="session">Until browser closes</option>
                       </select>
                     </div>
                     <div class="danger-row">
                       <label class="form-toggle">
                         <input type="checkbox" id="dangerPersistentToggle" />
-                        <span id="dangerPersistentLabel">ブラウザ再起動後も保持（localStorage）</span>
+                        <span id="dangerPersistentLabel">Persist after browser restart (localStorage)</span>
                       </label>
                       <label class="form-toggle" id="dangerConsentWrap" style="display:none;">
                         <input type="checkbox" id="dangerConsentToggle" />
-                        <span id="dangerConsentLabel">リスクを理解しました</span>
+                        <span id="dangerConsentLabel">I understand the risks</span>
                       </label>
                     </div>
                     <div class="danger-row">
-                      <button type="button" class="btn btn-danger" id="dangerApplyBtn">有効化</button>
-                      <button type="button" class="btn btn-secondary" id="dangerDisableBtn">無効化</button>
+                      <button type="button" class="btn btn-danger" id="dangerApplyBtn">Enable</button>
+                      <button type="button" class="btn btn-secondary" id="dangerDisableBtn">Disable</button>
                       <span class="danger-status" id="dangerStatus"></span>
                     </div>
                   </div>
@@ -5385,9 +5385,12 @@
     (function autoAdminSession() {
       var injected = window.SUITE_ADMIN_TOKEN || "";
       if (!injected) return;
+      // Fill all possible admin token inputs (adminToken, wizardAdminToken, wizardTokenInput)
       if (adminTokenInput) adminTokenInput.value = injected;
       var wizardEl = getWizardAdminToken();
       if (wizardEl) wizardEl.value = injected;
+      var wizardTokenEl = document.getElementById("wizardTokenInput");
+      if (wizardTokenEl) wizardTokenEl.value = injected;
       // Auto-start session after a short delay (let API client initialize)
       setTimeout(function () { startAdminSession(); }, 300);
     })();
@@ -5425,8 +5428,8 @@
   <div class="wizard-overlay" id="wizardOverlay">
     <div class="wizard-modal">
       <div class="wizard-header">
-        <h2 id="wizardTitle">🚀 MCP Gateway セットアップウィザード</h2>
-        <p id="wizardSubtitle">5ステップで簡単に設定を完了できます</p>
+        <h2 id="wizardTitle">🚀 MCP Gateway Setup Wizard</h2>
+        <p id="wizardSubtitle">Complete setup in 5 easy steps</p>
         <div class="wizard-progress">
           <div class="wizard-progress-step active" data-step="1"></div>
           <div class="wizard-progress-step" data-step="2"></div>
@@ -5441,10 +5444,10 @@
         <div class="wizard-step active" data-step="1">
           <div class="wizard-step-title">
             <span class="step-number">1</span>
-            <span id="wizardStep1Title">Gatewayの準備を確認</span>
+            <span id="wizardStep1Title">Verify Gateway Prerequisites</span>
           </div>
           <p class="wizard-step-desc" id="wizardStep1Desc">
-            管理者セッションとポリシーバンドルの準備を確認してから次へ進みます。
+            Verify admin session and policy bundle are ready before proceeding.
           </p>
           <div class="wizard-token-guide" id="wizardTokenGuide">
             <div class="wizard-token-guide-title" id="wizardTokenSetupTitle" data-i18n="wizardTokenSetupTitle"></div>
@@ -5466,7 +5469,7 @@
           </div>
           <div id="wizardPrecheck">
             <button type="button" class="btn btn-primary" id="wizardPrecheckBtn" style="width:100%;">
-              診断を実行
+              Run Diagnostics
             </button>
           </div>
           <div class="wizard-test-result" id="wizardPrecheckResult" style="display:none;margin-top:16px;">
@@ -5477,8 +5480,8 @@
             </div>
           </div>
           <div id="wizardAutostartGuide" style="display:none;margin-top:16px;padding:14px;border:1px solid var(--gray-200);border-radius:12px;background:var(--gray-50);">
-            <div style="font-weight:700;margin-bottom:6px;" id="wizardAutostartTitle">自動起動の設定</div>
-            <p class="input-hint" id="wizardAutostartDesc">本番運用は常駐サービス化が最も安全です。mcp-gateway-release で一度だけ実行してください。</p>
+            <div style="font-weight:700;margin-bottom:6px;" id="wizardAutostartTitle">Autostart Configuration</div>
+            <p class="input-hint" id="wizardAutostartDesc">For production, running as a persistent service is safest. Run once in mcp-gateway-release.</p>
             <ul style="margin:8px 0 0 18px;line-height:1.6;">
               <li><span id="wizardAutostartWindowsLabel">Windows</span>:
                 <code>cd &lt;install-dir&gt;; .\scripts\step8_autostart_windows.ps1 -Action Install</code>
@@ -5490,9 +5493,9 @@
                 <code>cd /path/to/install-dir && ./scripts/step8_autostart_linux.sh install</code>
               </li>
             </ul>
-            <p class="input-hint" id="wizardAutostartNote">完了後はブラウザで開くだけになります（UIから起動操作は不要）。</p>
+            <p class="input-hint" id="wizardAutostartNote">After setup, just open in browser (no UI launch needed).</p>
             <p class="input-hint" id="wizardAutostartDocHint">詳細: docs/operations/step8_autostart.(ja|en).md</p>
-            <p class="input-hint" id="wizardAutostartDockerHint">Docker Compose を使って Gateway + UI を同一オリジンで起動します。</p>
+            <p class="input-hint" id="wizardAutostartDockerHint">Use Docker Compose to run Gateway + UI on the same origin.</p>
           </div>
         </div>
 
@@ -5500,11 +5503,11 @@
 	        <div class="wizard-step" data-step="2">
 	          <div class="wizard-step-title">
 	            <span class="step-number">2</span>
-	            <span id="wizardStep2Title">上流LLMを設定</span>
+	            <span id="wizardStep2Title">Configure Upstream LLM</span>
 	          </div>
 	          <p class="wizard-step-desc" id="wizardStep2Desc">
-	            上流LLM（OpenAI互換プロキシ）を設定してください。<br>
-	            例: Gemini/Anthropic は LiteLLM 等のプロキシ経由、ローカルは Ollama などを利用できます。
+	            Configure the upstream LLM (OpenAI-compatible proxy).<br>
+	            Example: Gemini/Anthropic via LiteLLM proxy, local via Ollama, etc.
 	          </p>
 	          <div class="wizard-input-group">
 	            <label for="wizardUpstreamProvider">Provider</label>
@@ -5525,17 +5528,17 @@
 	          <div class="wizard-input-group" id="wizardUpstreamProviderCustomWrap" style="display:none;">
 	            <label for="wizardUpstreamProviderCustom">Custom provider</label>
 	            <input type="text" id="wizardUpstreamProviderCustom" placeholder="e.g., my-proxy" autocomplete="off">
-	            <p class="input-hint">表示/Evidence用の識別子です。Base URL は OpenAI互換にしてください。</p>
+	            <p class="input-hint">Display/Evidence identifier. Base URL must be OpenAI-compatible.</p>
 	          </div>
 	          <div class="wizard-input-group">
 	            <label for="wizardUpstreamBaseUrl">Upstream Base URL</label>
 	            <input type="url" id="wizardUpstreamBaseUrl" placeholder="https://upstream.example.com" autocomplete="off">
-	            <p class="input-hint">OpenAI互換の Base URL を入力してください。</p>
+	            <p class="input-hint">Enter the OpenAI-compatible Base URL.</p>
 	          </div>
 	          <div class="wizard-input-group">
 	            <label for="wizardApiKey">API Key</label>
 	            <input type="password" id="wizardApiKey" placeholder="Paste upstream API key" autocomplete="off">
-	            <p class="input-hint">🔒 APIキーは安全に保存され、外部に漏洩することはありません</p>
+	            <p class="input-hint">🔒 API key is stored securely and never exposed externally</p>
 	          </div>
           <div class="wizard-test-result" id="wizardApiTestResult" style="display:none;">
             <button type="button" class="dismiss-btn" aria-label="Close">×</button>
@@ -5547,10 +5550,10 @@
 	        <div class="wizard-step" data-step="3">
 	          <div class="wizard-step-title">
 	            <span class="step-number">3</span>
-	            <span id="wizardStep3Title">使用するモデルを選択</span>
+	            <span id="wizardStep3Title">Select Model</span>
 	          </div>
 	          <p class="wizard-step-desc" id="wizardStep3Desc">
-	            上流の Model ID を入力してください（例: <code>gpt-4o-mini</code> / <code>models/gemini-flash-latest</code> / <code>qwen2:0.5b</code>）。
+	            Enter the upstream Model ID (e.g., <code>gpt-4o-mini</code> / <code>models/gemini-flash-latest</code> / <code>qwen2:0.5b</code>).
 	          </p>
 	          <div class="wizard-input-group">
 	            <label for="wizardModel">Model</label>
@@ -5562,7 +5565,7 @@
 	              <option value="qwen2:0.5b"></option>
 	              <option value="claude-3-5-sonnet-latest"></option>
 	            </datalist>
-	            <p class="input-hint">💡 後からいつでも変更可能です</p>
+	            <p class="input-hint">💡 You can change this anytime later</p>
 	          </div>
 	        </div>
 
@@ -5570,10 +5573,10 @@
         <div class="wizard-step" data-step="4">
           <div class="wizard-step-title">
             <span class="step-number">4</span>
-            <span id="wizardStep4Title">接続テスト</span>
+            <span id="wizardStep4Title">Connection Test</span>
           </div>
           <p class="wizard-step-desc" id="wizardStep4Desc">
-            設定が正しいか確認するため、接続テストを実行します。
+            Run a connection test to verify your settings are correct.
           </p>
           <div id="wizardConnectionTest">
             <button type="button" class="btn btn-primary" id="wizardTestBtn" style="width:100%;">
@@ -5581,7 +5584,7 @@
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
                 <polyline points="22 4 12 14.01 9 11.01"/>
               </svg>
-              接続テストを実行
+              Run Connection Test
             </button>
           </div>
 	          <div class="wizard-test-result" id="wizardFinalTestResult" style="display:none;margin-top:16px;">
@@ -5597,34 +5600,34 @@
         <div class="wizard-step" data-step="5">
           <div class="wizard-step-title">
             <span class="step-number">5</span>
-            <span id="wizardStep5Title">Gateway URL とトークン発行</span>
+            <span id="wizardStep5Title">Gateway URL & Token Issuance</span>
           </div>
           <p class="wizard-step-desc" id="wizardStep5Desc">
-            Gateway URL を登録し、クライアント用トークンを発行します。
+            Register Gateway URL and issue client tokens.
           </p>
           <div class="wizard-input-group">
-            <label id="wizardGatewayModeLabel">モード</label>
+            <label id="wizardGatewayModeLabel">Mode</label>
             <div class="form-row">
               <label class="form-toggle">
                 <input type="radio" name="wizardGatewayMode" id="wizardGatewayModeAuto" value="auto" checked>
-                <span id="wizardGatewayModeAutoLabel">オート</span>
+                <span id="wizardGatewayModeAutoLabel">Auto</span>
               </label>
               <label class="form-toggle">
                 <input type="radio" name="wizardGatewayMode" id="wizardGatewayModeManual" value="manual">
-                <span id="wizardGatewayModeManualLabel">手動</span>
+                <span id="wizardGatewayModeManualLabel">Manual</span>
               </label>
             </div>
-            <p class="input-hint" id="wizardGatewayAutoHint">オートは現在の URL を Gateway として使用します。</p>
+            <p class="input-hint" id="wizardGatewayAutoHint">Auto uses the current URL as the Gateway.</p>
           </div>
           <div class="wizard-input-group">
-            <label for="wizardGatewayEnvName" id="wizardGatewayEnvNameLabel">環境名</label>
+            <label for="wizardGatewayEnvName" id="wizardGatewayEnvNameLabel">Environment Name</label>
             <input type="text" id="wizardGatewayEnvName" placeholder="gateway-local" autocomplete="off">
-            <p class="input-hint" id="wizardGatewayEnvNameHint">トークン発行時の識別名に使います。</p>
+            <p class="input-hint" id="wizardGatewayEnvNameHint">Used as identifier when issuing tokens.</p>
           </div>
           <div class="wizard-input-group">
             <label for="wizardGatewayBaseUrl" id="wizardGatewayBaseUrlLabel">Gateway Base URL</label>
             <input type="url" id="wizardGatewayBaseUrl" placeholder="https://gateway.example.com" autocomplete="off">
-            <p class="input-hint" id="wizardGatewayBaseUrlHint">OpenAI互換の Base URL を入力してください。</p>
+            <p class="input-hint" id="wizardGatewayBaseUrlHint">Enter the OpenAI-compatible Base URL.</p>
           </div>
           <div id="wizardGatewayIssue">
             <button type="button" class="btn btn-primary" id="wizardIssueTokenBtn" style="width:100%;">
@@ -5632,7 +5635,7 @@
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
                 <polyline points="22 4 12 14.01 9 11.01"/>
               </svg>
-              <span id="wizardIssueTokenLabel">環境を作成してトークン発行</span>
+              <span id="wizardIssueTokenLabel">Create Environment & Issue Token</span>
             </button>
           </div>
 	          <div class="wizard-test-result" id="wizardGatewayResult" style="display:none;margin-top:16px;">
@@ -5652,20 +5655,20 @@
                 <polyline points="20 6 9 17 4 12"/>
               </svg>
             </div>
-            <h3 style="font-size:20px;font-weight:700;margin-bottom:8px;" id="wizardCompleteTitle">セットアップ完了！ 🎉</h3>
+            <h3 style="font-size:20px;font-weight:700;margin-bottom:8px;" id="wizardCompleteTitle">Setup Complete! 🎉</h3>
             <p style="color:var(--gray-600);font-size:14px;line-height:1.6;" id="wizardCompleteDesc">
-              MCP Gateway の初期設定が完了しました。<br>
-              Dashboard で状態を確認したり、Scans でセキュリティスキャンを実行できます。
+              MCP Gateway initial setup is complete.<br>
+              Check status on the Dashboard or run security scans from Scans.
             </p>
           </div>
         </div>
       </div>
 
       <div class="wizard-footer">
-        <span class="wizard-skip" id="wizardSkip">スキップして後で設定</span>
+        <span class="wizard-skip" id="wizardSkip">Skip and configure later</span>
         <div style="display:flex;gap:8px;">
-          <button type="button" class="btn btn-secondary" id="wizardPrevBtn" style="display:none;">戻る</button>
-          <button type="button" class="btn btn-primary" id="wizardNextBtn">次へ</button>
+          <button type="button" class="btn btn-secondary" id="wizardPrevBtn" style="display:none;">Back</button>
+          <button type="button" class="btn btn-primary" id="wizardNextBtn">Next</button>
         </div>
       </div>
     </div>
@@ -5770,11 +5773,11 @@
         if (step === 4 || step === 5) {
           nextBtn.style.display = 'none';
         } else if (step === totalSteps) {
-          nextBtn.textContent = 'Dashboard へ';
+          nextBtn.textContent = 'Go to Dashboard';
           nextBtn.style.display = 'inline-flex';
           skipBtn.style.display = 'none';
         } else {
-          nextBtn.textContent = '次へ';
+          nextBtn.textContent = 'Next';
           nextBtn.style.display = 'inline-flex';
           skipBtn.style.display = '';
         }
