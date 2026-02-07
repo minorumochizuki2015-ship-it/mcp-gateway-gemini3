@@ -768,3 +768,320 @@ def schedule_retest(db: Any, server_id: int, reason: str, delay_hours: int = 24)
     )
 
     return run_id
+
+
+# ---------------------------------------------------------------------------
+# Advanced Attack Detectors (Signature Cloaking, Bait-and-Switch, Shadowing)
+# ---------------------------------------------------------------------------
+
+# Well-known MCP tool names for shadowing detection
+_WELL_KNOWN_TOOLS: frozenset[str] = frozenset(
+    {
+        "read_file",
+        "write_file",
+        "list_directory",
+        "search_files",
+        "execute_command",
+        "browser_navigate",
+        "browser_click",
+        "browser_type",
+        "browser_snapshot",
+        "browser_screenshot",
+        "create_file",
+        "delete_file",
+        "move_file",
+        "copy_file",
+        "get_file_info",
+        "run_terminal_command",
+        "edit_file",
+        "read_resource",
+        "list_tools",
+        "call_tool",
+    }
+)
+
+# Levenshtein-like similarity (simple ratio) for shadowing detection
+def _name_similarity(a: str, b: str) -> float:
+    """Return similarity ratio [0.0, 1.0] between two tool names."""
+    a_lower, b_lower = a.lower().replace("-", "_"), b.lower().replace("-", "_")
+    if a_lower == b_lower:
+        return 1.0
+    if not a_lower or not b_lower:
+        return 0.0
+    # Simple character-based similarity
+    shorter, longer = sorted([a_lower, b_lower], key=len)
+    if shorter in longer:
+        return len(shorter) / len(longer)
+    matches = sum(1 for c1, c2 in zip(shorter, longer) if c1 == c2)
+    return matches / max(len(shorter), len(longer))
+
+
+# Suspicious schema keywords that indicate capabilities beyond stated purpose
+_DANGEROUS_SCHEMA_KEYWORDS: frozenset[str] = frozenset(
+    {
+        "password",
+        "secret",
+        "token",
+        "credential",
+        "api_key",
+        "private_key",
+        "credit_card",
+        "ssn",
+        "authorization",
+        "cookie",
+        "session_id",
+    }
+)
+
+# Benign description keywords (tools claiming to be safe/read-only)
+_BENIGN_DESCRIPTION_PATTERNS: list[str] = [
+    "read-only",
+    "readonly",
+    "safe",
+    "harmless",
+    "view only",
+    "display",
+    "list",
+    "get",
+    "fetch",
+    "query",
+]
+
+
+def detect_signature_cloaking(
+    current_tools: list[dict],
+    previous_tools: list[dict],
+) -> list[dict]:
+    """Detect tools whose descriptions changed significantly between scans.
+
+    Signature cloaking: attacker initially registers a benign tool description,
+    then later changes it to something malicious while keeping the same name.
+    """
+    findings: list[dict] = []
+    prev_by_name = {t.get("name", ""): t for t in previous_tools if t.get("name")}
+
+    for tool in current_tools:
+        name = tool.get("name", "")
+        if not name or name not in prev_by_name:
+            continue
+
+        prev = prev_by_name[name]
+        old_desc = str(prev.get("description", "")).strip()
+        new_desc = str(tool.get("description", "")).strip()
+
+        if not old_desc or not new_desc:
+            continue
+
+        # Compare word sets for significant semantic drift
+        old_words = set(old_desc.lower().split())
+        new_words = set(new_desc.lower().split())
+        if not old_words:
+            continue
+
+        overlap = old_words & new_words
+        jaccard = len(overlap) / len(old_words | new_words) if (old_words | new_words) else 1.0
+
+        # Threshold: if less than 40% word overlap, flag as cloaking
+        if jaccard < 0.4:
+            findings.append(
+                {
+                    "code": "signature_cloaking",
+                    "severity": "critical",
+                    "message": (
+                        f"[{name}] Description changed significantly "
+                        f"(similarity={jaccard:.0%}): "
+                        f"'{old_desc[:80]}...' -> '{new_desc[:80]}...'"
+                    ),
+                    "confidence": min(1.0, 1.0 - jaccard),
+                    "tool_name": name,
+                    "old_description": old_desc[:200],
+                    "new_description": new_desc[:200],
+                }
+            )
+
+    return findings
+
+
+def detect_bait_and_switch(tools: list[dict]) -> list[dict]:
+    """Detect tools whose schema contradicts their stated purpose.
+
+    Bait-and-switch: a tool claims to be benign (e.g., 'list files') but its
+    input/output schema requests sensitive data like passwords or tokens.
+    """
+    findings: list[dict] = []
+
+    for tool in tools:
+        name = str(tool.get("name", ""))
+        desc = str(tool.get("description", "")).lower()
+        input_schema = tool.get("inputs_schema") or tool.get("input_schema") or {}
+        output_schema = tool.get("outputs_schema") or tool.get("output_schema") or {}
+
+        # Check if description claims benign behavior
+        is_benign_claim = any(pat in desc for pat in _BENIGN_DESCRIPTION_PATTERNS)
+
+        # Extract all property names from schemas
+        schema_fields: set[str] = set()
+        for schema in (input_schema, output_schema):
+            if isinstance(schema, dict):
+                for key in schema.get("properties", {}):
+                    schema_fields.add(key.lower())
+                # Also check nested required fields
+                for req in schema.get("required", []):
+                    schema_fields.add(str(req).lower())
+
+        # Also check schema field descriptions for sensitive patterns
+        schema_text = json.dumps(input_schema).lower() + json.dumps(output_schema).lower()
+
+        dangerous_found = schema_fields & _DANGEROUS_SCHEMA_KEYWORDS
+        dangerous_in_text = {
+            kw for kw in _DANGEROUS_SCHEMA_KEYWORDS if kw in schema_text
+        }
+        all_dangerous = dangerous_found | dangerous_in_text
+
+        if all_dangerous and is_benign_claim:
+            findings.append(
+                {
+                    "code": "bait_and_switch",
+                    "severity": "critical",
+                    "message": (
+                        f"[{name}] Claims to be benign ('{desc[:60]}') but "
+                        f"schema references sensitive fields: {sorted(all_dangerous)}"
+                    ),
+                    "confidence": 0.85,
+                    "tool_name": name,
+                    "dangerous_fields": sorted(all_dangerous),
+                }
+            )
+        elif all_dangerous and not is_benign_claim:
+            # Still suspicious if dangerous fields present, lower severity
+            findings.append(
+                {
+                    "code": "bait_and_switch",
+                    "severity": "high",
+                    "message": (
+                        f"[{name}] Schema references sensitive fields: "
+                        f"{sorted(all_dangerous)}"
+                    ),
+                    "confidence": 0.6,
+                    "tool_name": name,
+                    "dangerous_fields": sorted(all_dangerous),
+                }
+            )
+
+    return findings
+
+
+def detect_tool_shadowing(tools: list[dict]) -> list[dict]:
+    """Detect tools with names suspiciously similar to well-known MCP tools.
+
+    Tool shadowing: attacker registers 'read_fi1e' or 'read-file' to intercept
+    calls intended for the legitimate 'read_file' tool.
+    """
+    findings: list[dict] = []
+
+    for tool in tools:
+        name = str(tool.get("name", ""))
+        if not name:
+            continue
+
+        name_normalized = name.lower().replace("-", "_")
+
+        # Exact match with well-known tool is not shadowing (it IS the tool)
+        if name_normalized in _WELL_KNOWN_TOOLS:
+            continue
+
+        # Check similarity against each well-known tool
+        for known in _WELL_KNOWN_TOOLS:
+            sim = _name_similarity(name, known)
+            # High similarity but not exact: likely shadowing
+            if sim >= 0.75:
+                findings.append(
+                    {
+                        "code": "tool_shadowing",
+                        "severity": "critical",
+                        "message": (
+                            f"[{name}] Suspiciously similar to well-known tool "
+                            f"'{known}' (similarity={sim:.0%})"
+                        ),
+                        "confidence": sim,
+                        "tool_name": name,
+                        "shadows": known,
+                    }
+                )
+                break  # One match per tool
+
+    return findings
+
+
+def run_advanced_threat_scan(
+    tools: list[dict],
+    previous_tools: list[dict] | None = None,
+) -> dict:
+    """Run all advanced attack detectors on tool definitions.
+
+    Combines: signature cloaking, bait-and-switch, and tool shadowing.
+
+    Args:
+        tools: Current tool definitions
+        previous_tools: Previous scan's tool definitions (for cloaking detection)
+
+    Returns:
+        Scan result dict compatible with run_scan aggregation
+    """
+    findings: list[dict] = []
+
+    # 1. Signature Cloaking (requires previous scan data)
+    if previous_tools:
+        findings.extend(detect_signature_cloaking(tools, previous_tools))
+
+    # 2. Bait-and-Switch
+    findings.extend(detect_bait_and_switch(tools))
+
+    # 3. Tool Shadowing
+    findings.extend(detect_tool_shadowing(tools))
+
+    has_critical = any(f["severity"] == "critical" for f in findings)
+    has_high = any(f["severity"] == "high" for f in findings)
+    if has_critical:
+        status = "fail"
+    elif has_high:
+        status = "warn"
+    elif findings:
+        status = "warn"
+    else:
+        status = "pass"
+
+    # Evidence
+    try:
+        evidence_path = os.environ.get(
+            "MCP_GATEWAY_EVIDENCE_PATH",
+            "observability/policy/ci_evidence.jsonl",
+        )
+        evidence.append(
+            {
+                "event": "advanced_threat_scan",
+                "actor": "scanner",
+                "scan_type": "advanced_threats",
+                "status": status,
+                "findings_count": len(findings),
+                "cloaking_count": sum(
+                    1 for f in findings if f["code"] == "signature_cloaking"
+                ),
+                "bait_switch_count": sum(
+                    1 for f in findings if f["code"] == "bait_and_switch"
+                ),
+                "shadowing_count": sum(
+                    1 for f in findings if f["code"] == "tool_shadowing"
+                ),
+            },
+            path=evidence_path,
+        )
+    except Exception:
+        pass
+
+    return {
+        "status": status,
+        "findings": findings,
+        "scan_type": "advanced_threats",
+        "eval_method": "rule_based",
+    }

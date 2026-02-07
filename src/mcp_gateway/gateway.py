@@ -2145,7 +2145,34 @@ async def trigger_scan(req: ScanRequest, db_path: str = str(DEFAULT_DB_PATH)):
             path=_evidence_path(),
         )
 
-        return {"run_id": run_id, "server_id": req.server_id, "status": "success"}
+        # Run advanced threat detectors (signature cloaking, bait-and-switch, shadowing)
+        advanced_result: dict = {}
+        try:
+            tools_exposed = []
+            allowlist_row = next(
+                db["allowlist"].rows_where(
+                    "server_id = ?", [req.server_id]
+                ),
+                None,
+            )
+            if allowlist_row and allowlist_row.get("tools_exposed"):
+                import json as _json
+
+                raw = allowlist_row["tools_exposed"]
+                tools_exposed = (
+                    _json.loads(raw) if isinstance(raw, str) else raw
+                )
+            if tools_exposed:
+                advanced_result = scanner.run_advanced_threat_scan(tools_exposed)
+        except Exception:
+            pass
+
+        return {
+            "run_id": run_id,
+            "server_id": req.server_id,
+            "status": "success",
+            "advanced_threats": advanced_result.get("findings", []),
+        }
     except Exception as e:
         return JSONResponse({"detail": f"scan failed: {str(e)}"}, status_code=500)
 
