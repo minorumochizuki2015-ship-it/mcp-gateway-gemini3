@@ -3796,8 +3796,10 @@ class WebSandboxScanRequest(BaseModel):
 
 
 @app.post("/api/web-sandbox/scan")
-async def web_sandbox_scan(body: WebSandboxScanRequest) -> JSONResponse:
+async def web_sandbox_scan(request: Request, body: WebSandboxScanRequest) -> JSONResponse:
     """Run a causal web sandbox scan on a URL."""
+    if guard := _admin_auth_guard(request):
+        return guard
     from . import causal_sandbox
 
     try:
@@ -3847,3 +3849,42 @@ async def web_sandbox_artifact(bundle_id: str) -> JSONResponse:
 async def web_sandbox_verdicts() -> JSONResponse:
     """List recent web sandbox verdicts (in-memory, max 100)."""
     return JSONResponse({"verdicts": list(_WEB_SANDBOX_VERDICTS)})
+
+
+# ---------------------------------------------------------------------------
+# Gemini API Key configuration (hackathon demo)
+# ---------------------------------------------------------------------------
+
+
+class GeminiKeyRequest(BaseModel):
+    """Request body for /api/config/gemini-key."""
+
+    api_key: str
+
+
+@app.post("/api/config/gemini-key")
+async def set_gemini_key(request: Request, body: GeminiKeyRequest) -> JSONResponse:
+    """Set the Gemini API key at runtime (hackathon demo convenience).
+
+    Stores the key in the process environment so all Gemini-powered
+    modules (council, scanner, redteam, web sandbox) can use it.
+    """
+    if guard := _admin_auth_guard(request):
+        return guard
+    trimmed = body.api_key.strip()
+    if not trimmed:
+        return JSONResponse({"detail": "api_key is required"}, status_code=400)
+    os.environ["GOOGLE_API_KEY"] = trimmed
+    return JSONResponse({"status": "ok", "gemini_configured": True})
+
+
+@app.get("/api/config/gemini-status")
+async def gemini_status(request: Request) -> JSONResponse:
+    """Check whether Gemini API key is configured."""
+    if guard := _admin_auth_guard(request):
+        return guard
+    key = os.getenv("GOOGLE_API_KEY", "")
+    return JSONResponse({
+        "configured": bool(key),
+        "key_preview": f"{key[:4]}..." if len(key) > 4 else ("set" if key else ""),
+    })

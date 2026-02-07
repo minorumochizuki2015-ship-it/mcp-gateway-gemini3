@@ -3056,3 +3056,76 @@ def test_smoke_endpoint_run(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         assert resp.status_code in (400, 404, 500)
 
 
+class TestGeminiKeyConfig:
+    """Tests for Gemini API key configuration endpoints."""
+
+    AUTH = {"Authorization": "Bearer admin-token"}
+
+    def test_gemini_status_not_configured(self, monkeypatch):
+        """GET /api/config/gemini-status returns not configured when no key."""
+        monkeypatch.setenv("MCP_GATEWAY_ADMIN_TOKEN", "admin-token")
+        old = os.environ.pop("GOOGLE_API_KEY", None)
+        try:
+            with TestClient(app) as client:
+                resp = client.get(
+                    "/api/config/gemini-status", headers=self.AUTH
+                )
+                assert resp.status_code == 200
+                data = resp.json()
+                assert data["configured"] is False
+        finally:
+            if old is not None:
+                os.environ["GOOGLE_API_KEY"] = old
+
+    def test_set_gemini_key(self, monkeypatch):
+        """POST /api/config/gemini-key stores key in environment."""
+        monkeypatch.setenv("MCP_GATEWAY_ADMIN_TOKEN", "admin-token")
+        old = os.environ.pop("GOOGLE_API_KEY", None)
+        try:
+            with TestClient(app) as client:
+                resp = client.post(
+                    "/api/config/gemini-key",
+                    json={"api_key": "AIzaSyTestKey12345678"},
+                    headers=self.AUTH,
+                )
+                assert resp.status_code == 200
+                data = resp.json()
+                assert data["gemini_configured"] is True
+                assert os.environ.get("GOOGLE_API_KEY") == "AIzaSyTestKey12345678"
+
+                # Verify status endpoint reflects the change
+                resp2 = client.get(
+                    "/api/config/gemini-status", headers=self.AUTH
+                )
+                data2 = resp2.json()
+                assert data2["configured"] is True
+                assert "AIza" in data2["key_preview"]
+        finally:
+            os.environ.pop("GOOGLE_API_KEY", None)
+            if old is not None:
+                os.environ["GOOGLE_API_KEY"] = old
+
+    def test_set_gemini_key_empty_rejected(self, monkeypatch):
+        """POST /api/config/gemini-key rejects empty key."""
+        monkeypatch.setenv("MCP_GATEWAY_ADMIN_TOKEN", "admin-token")
+        with TestClient(app) as client:
+            resp = client.post(
+                "/api/config/gemini-key",
+                json={"api_key": "   "},
+                headers=self.AUTH,
+            )
+            assert resp.status_code == 400
+
+    def test_gemini_key_requires_auth(self, monkeypatch):
+        """Gemini key endpoints require admin authentication."""
+        monkeypatch.setenv("MCP_GATEWAY_ADMIN_TOKEN", "admin-token")
+        with TestClient(app) as client:
+            resp = client.post(
+                "/api/config/gemini-key",
+                json={"api_key": "test"},
+            )
+            assert resp.status_code == 401
+            resp2 = client.get("/api/config/gemini-status")
+            assert resp2.status_code == 401
+
+

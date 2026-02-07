@@ -371,7 +371,10 @@
 
     async function checkGeminiStatus() {
       try {
-        const res = await fetch('/api/config/gemini-status');
+        const token = (typeof getAdminToken === 'function') ? getAdminToken() : (window.SUITE_ADMIN_TOKEN || '');
+        const res = await fetch('/api/config/gemini-status', {
+          headers: token ? { 'Authorization': 'Bearer ' + token } : {},
+        });
         if (res.ok) {
           const data = await res.json();
           updateGeminiStatus(data.configured, data.key_preview);
@@ -393,9 +396,12 @@
       geminiKeyBtn.disabled = true;
       geminiKeyBtn.textContent = 'Setting...';
       try {
+        const authToken = (typeof getAdminToken === 'function') ? getAdminToken() : (window.SUITE_ADMIN_TOKEN || '');
+        const hdrs = { 'Content-Type': 'application/json' };
+        if (authToken) hdrs['Authorization'] = 'Bearer ' + authToken;
         const res = await fetch('/api/config/gemini-key', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: hdrs,
           body: JSON.stringify({ api_key: key }),
         });
         if (res.ok) {
