@@ -253,7 +253,7 @@
       if (!caps || !caps.length) return '<span class="ts-text">-</span>';
       return `<div class="cap-tags">${caps.map(c => {
         const isDangerous = DANGEROUS_CAPS.includes(c.toLowerCase());
-        return `<span class="cap-tag${isDangerous ? " dangerous" : ""}">${c}</span>`;
+        return `<span class="cap-tag${isDangerous ? " dangerous" : ""}">${escapeHtml(c)}</span>`;
       }).join("")}</div>`;
     }
 
@@ -294,15 +294,15 @@
         return;
       }
 
-      rows.innerHTML = filtered.map(s => `<tr onclick="location.href='mcp_detail.html?id=${s.server_id}'">
-        <td><strong>${s.name || "-"}</strong></td>
-        <td><span class="url-text">${s.base_url || "-"}</span></td>
+      rows.innerHTML = filtered.map(s => `<tr onclick="location.href='mcp_detail.html?id=${escapeHtml(s.server_id)}'">
+        <td><strong>${escapeHtml(s.name || "-")}</strong></td>
+        <td><span class="url-text">${escapeHtml(s.base_url || "-")}</span></td>
         <td>${statusBadge(s.status)}</td>
         <td>${riskBadge(s.risk_level)}</td>
         <td>${capTags(s.capabilities)}</td>
         <td>${formatTimestamp(s.last_scan_ts)}</td>
         <td>${formatTimestamp(s.last_decision_ts)}</td>
-        <td><a href="mcp_detail.html?id=${s.server_id}" class="action-link" onclick="event.stopPropagation()">Details</a></td>
+        <td><a href="mcp_detail.html?id=${escapeHtml(s.server_id)}" class="action-link" onclick="event.stopPropagation()">Details</a></td>
       </tr>`).join("");
     }
 

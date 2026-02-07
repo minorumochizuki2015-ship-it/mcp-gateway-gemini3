@@ -1,4 +1,16 @@
 // Lightweight API client with opt-in mock fallback for the Suite Scan UI PoC.
+
+// Global HTML escape utility for safe innerHTML rendering of API data.
+window.escapeHtml = function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
+
 (function () {
   const params = new URLSearchParams(window.location.search);
   const BASE =

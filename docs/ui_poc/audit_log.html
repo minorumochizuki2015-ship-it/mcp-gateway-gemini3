@@ -437,7 +437,7 @@
       if (!filtered.length) {
         rows.innerHTML = "";
         emptyBox.textContent = evidenceIdFilter
-          ? `Evidence ID "${evidenceIdFilter}" に一致するログがありません。`
+          ? `Evidence ID "${escapeHtml(evidenceIdFilter)}" に一致するログがありません。`
           : emptyMessage;
         emptyBox.hidden = false;
         return;
@@ -449,13 +449,13 @@
           const isMatch = evidenceIdFilter && String(e.evidence_id || "").includes(evidenceIdFilter);
           const rowClass = isMatch ? 'class="evidence-highlight"' : '';
           const evidenceCell = e.evidence_id
-            ? `<code class="evidence-id" title="Evidence ID">${e.evidence_id}</code>`
+            ? `<code class="evidence-id" title="Evidence ID">${escapeHtml(e.evidence_id)}</code>`
             : '';
           return `<tr ${rowClass}>
             <td>${formatTimestamp(e.ts)}</td>
-            <td>${pillType(e.type)}</td>
-            <td>${e.actor || "-"}</td>
-            <td><div>${e.summary || "-"}</div><div class="muted">${e.source || ""}</div>${evidenceCell}</td>
+            <td>${pillType(escapeHtml(e.type))}</td>
+            <td>${escapeHtml(e.actor || "-")}</td>
+            <td><div>${escapeHtml(e.summary || "-")}</div><div class="muted">${escapeHtml(e.source || "")}</div>${evidenceCell}</td>
           </tr>`;
         })
         .join("");

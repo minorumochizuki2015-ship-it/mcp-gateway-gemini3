@@ -207,7 +207,7 @@
 
     function renderMeta(scan) {
       if (!scan) {
-        summary.innerHTML = `<div class="empty-state"><p>Scan not found for id=${id || "N/A"}</p></div>`;
+        summary.innerHTML = `<div class="empty-state"><p>Scan not found for id=${escapeHtml(id || "N/A")}</p></div>`;
         return;
       }
       breadcrumbId.textContent = scan.id;
@@ -215,18 +215,18 @@
       summary.innerHTML = `
         <div class="page-header">
           <div>
-            <h1 class="page-title">Scan: ${scan.environment} ${statusPill(scan.status)}</h1>
-            <p class="page-subtitle">Scan ID: ${scan.id}</p>
+            <h1 class="page-title">Scan: ${escapeHtml(scan.environment)} ${statusPill(scan.status)}</h1>
+            <p class="page-subtitle">Scan ID: ${escapeHtml(scan.id)}</p>
             <div data-admin-session-banner-anchor="page-header"></div>
           </div>
         </div>
 
         <div class="meta-grid">
-          <div class="meta-card"><div class="meta-label">Environment</div><div class="meta-value">${scan.environment}</div></div>
-          <div class="meta-card"><div class="meta-label">Profile</div><div class="meta-value">${scan.profile || "-"}</div></div>
-          <div class="meta-card"><div class="meta-label">Started</div><div class="meta-value">${formatTimestamp(scan.startedAt)}</div></div>
+          <div class="meta-card"><div class="meta-label">Environment</div><div class="meta-value">${escapeHtml(scan.environment)}</div></div>
+          <div class="meta-card"><div class="meta-label">Profile</div><div class="meta-value">${escapeHtml(scan.profile || "-")}</div></div>
+          <div class="meta-card"><div class="meta-label">Started</div><div class="meta-value">${escapeHtml(formatTimestamp(scan.startedAt))}</div></div>
           <div class="meta-card"><div class="meta-label">Duration</div><div class="meta-value">${scan.durationSeconds}s</div></div>
-          <div class="meta-card"><div class="meta-label">Actor</div><div class="meta-value mono">${scan.actor || "-"}</div></div>
+          <div class="meta-card"><div class="meta-label">Actor</div><div class="meta-value mono">${escapeHtml(scan.actor || "-")}</div></div>
         </div>
 
         <div class="severity-summary">
@@ -255,12 +255,12 @@
         return;
       }
       rows.innerHTML = findings.map((f) => `<tr>
-        <td><span class="sev-badge ${sevClass(f.severity)}">${f.severity}</span></td>
-        <td>${f.category}</td>
-        <td><div class="summary-text">${f.summary}</div></td>
-        <td><code class="resource-text">${f.resource}</code></td>
-        <td><span class="owasp-tag">${f.owasp_llm_code}</span><div style="font-size:10px;color:var(--gray-600);margin-top:2px">${f.owasp_llm_title || ""}</div></td>
-        <td><span class="evidence-badge">${f.evidence_source}</span></td>
+        <td><span class="sev-badge ${sevClass(f.severity)}">${escapeHtml(f.severity)}</span></td>
+        <td>${escapeHtml(f.category)}</td>
+        <td><div class="summary-text">${escapeHtml(f.summary)}</div></td>
+        <td><code class="resource-text">${escapeHtml(f.resource)}</code></td>
+        <td><span class="owasp-tag">${escapeHtml(f.owasp_llm_code)}</span><div style="font-size:10px;color:var(--gray-600);margin-top:2px">${escapeHtml(f.owasp_llm_title || "")}</div></td>
+        <td><span class="evidence-badge">${escapeHtml(f.evidence_source)}</span></td>
       </tr>`).join("");
     }
 

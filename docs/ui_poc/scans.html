@@ -685,22 +685,22 @@
     function formatSeverity(counts) {
       const c = counts || {};
       const items = [];
-      if (c.critical > 0) items.push(`<span class="severity-badge sev-critical">C:${c.critical}</span>`);
-      if (c.high > 0) items.push(`<span class="severity-badge sev-high">H:${c.high}</span>`);
-      if (c.medium > 0) items.push(`<span class="severity-badge sev-medium">M:${c.medium}</span>`);
-      if (c.low > 0) items.push(`<span class="severity-badge sev-low">L:${c.low}</span>`);
+      if (c.critical > 0) items.push(`<span class="severity-badge sev-critical">C:${escapeHtml(c.critical)}</span>`);
+      if (c.high > 0) items.push(`<span class="severity-badge sev-high">H:${escapeHtml(c.high)}</span>`);
+      if (c.medium > 0) items.push(`<span class="severity-badge sev-medium">M:${escapeHtml(c.medium)}</span>`);
+      if (c.low > 0) items.push(`<span class="severity-badge sev-low">L:${escapeHtml(c.low)}</span>`);
       return items.length ? `<div class="severity-grid">${items.join("")}</div>` : '<span style="color:var(--gray-300)">-</span>';
     }
 
     function formatOwasp(counts) {
       const entries = Object.entries(counts || {});
       if (!entries.length) return '<span style="color:var(--gray-300)">-</span>';
-      return `<div class="owasp-tags">${entries.map(([k, v]) => `<span class="owasp-tag">${k}:${v}</span>`).join("")}</div>`;
+      return `<div class="owasp-tags">${entries.map(([k, v]) => `<span class="owasp-tag">${escapeHtml(k)}:${escapeHtml(v)}</span>`).join("")}</div>`;
     }
 
     function statusPill(status) {
       const cls = status === "passed" ? "pill-passed" : status === "warn" ? "pill-warn" : "pill-failed";
-      return `<span class="pill ${cls}">${status}</span>`;
+      return `<span class="pill ${cls}">${escapeHtml(status)}</span>`;
     }
 
     function updateStats() {
@@ -722,14 +722,14 @@
       });
       rows.innerHTML = filtered
         .map((s) => `<tr>
-          <td>${formatTimestamp(s.startedAt)}</td>
-          <td><strong>${s.environment}</strong></td>
-          <td>${s.actor || "-"}</td>
+          <td>${escapeHtml(formatTimestamp(s.startedAt))}</td>
+          <td><strong>${escapeHtml(s.environment)}</strong></td>
+          <td>${escapeHtml(s.actor || "-")}</td>
           <td>${statusPill(s.status)}</td>
           <td>${formatSeverity(s.severity_counts)}</td>
           <td>${formatOwasp(s.owasp_counts)}</td>
-          <td>${s.profile || "-"}</td>
-          <td><a href="scan_detail.html?id=${encodeURIComponent(s.id)}" class="action-link">${viewDetails} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a></td>
+          <td>${escapeHtml(s.profile || "-")}</td>
+          <td><a href="scan_detail.html?id=${encodeURIComponent(s.id)}" class="action-link">${escapeHtml(viewDetails)} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a></td>
         </tr>`)
         .join("");
     }

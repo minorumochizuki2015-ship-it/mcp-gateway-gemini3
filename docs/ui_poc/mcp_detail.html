@@ -259,7 +259,7 @@
       setText("srvName", srv.name || "-");
       setText("srvUrl", srv.base_url || "-");
       const statusWrap = document.getElementById("srvStatus");
-      if (statusWrap) statusWrap.innerHTML = pill(srv.status || "unknown", "warn");
+      if (statusWrap) statusWrap.innerHTML = pill(escapeHtml(srv.status || "unknown"), "warn");
 
       const allow = detail.allowlist || {};
       setText("allowStatus", allow.status || "-");
@@ -268,7 +268,7 @@
       const capList = document.getElementById("allowCaps");
       if (capList) {
         capList.innerHTML = caps.length
-          ? caps.map((c) => `<li>${c}</li>`).join("")
+          ? caps.map((c) => `<li>${escapeHtml(c)}</li>`).join("")
           : '<li style="background:#e5e7eb;color:#475569;">none</li>';
       }
 
@@ -302,7 +302,7 @@
             const sev = item.severity_counts || {};
             const sevText = `C:${sev.critical || 0} H:${sev.high || 0} M:${sev.medium || 0} L:${sev.low || 0}`;
             return `<li class="history-item" data-type="scan">
-              <div class="history-title">Scan ${item.run_id || ""} <span class="chip">${item.status || ""}</span></div>
+              <div class="history-title">Scan ${escapeHtml(item.run_id || "")} <span class="chip">${escapeHtml(item.status || "")}</span></div>
               <div class="history-meta">
                 <span>${ts}</span>
                 <span>Severity ${sevText}</span>
@@ -310,12 +310,12 @@
             </li>`;
           }
           return `<li class="history-item" data-type="council_decision">
-            <div class="history-title">Council: ${item.decision || ""}</div>
+            <div class="history-title">Council: ${escapeHtml(item.decision || "")}</div>
             <div class="history-meta">
               <span>${ts}</span>
               <span>${item.evaluator_count || 0} evaluators</span>
             </div>
-            <div class="small">${item.rationale || ""}</div>
+            <div class="small">${escapeHtml(item.rationale || "")}</div>
           </li>`;
         })
         .join("");

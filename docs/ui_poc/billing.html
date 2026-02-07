@@ -639,26 +639,26 @@
           <div class="subscription-status">
             <div class="status-card">
               <div class="status-label" data-i18n="billing.currentPlan">${t('billing.currentPlan')}</div>
-              <div class="status-value plan-${planId}">${planName}</div>
+              <div class="status-value plan-${escapeHtml(planId)}">${escapeHtml(planName)}</div>
             </div>
             <div class="status-card">
               <div class="status-label" data-i18n="billing.status">${t('billing.status')}</div>
-              <div class="status-badge ${getStatusClass(subscription.status)}">${getStatusLabel(subscription.status)}</div>
+              <div class="status-badge ${getStatusClass(subscription.status)}">${escapeHtml(getStatusLabel(subscription.status))}</div>
             </div>
             <div class="status-card">
               <div class="status-label" data-i18n="billing.seats">${t('billing.seats')}</div>
-              <div class="status-value">${seats.used} / ${seats.limit}</div>
+              <div class="status-value">${escapeHtml(String(seats.used))} / ${escapeHtml(String(seats.limit))}</div>
               <div class="seats-progress">
                 <div class="seats-bar">
                   <div class="seats-bar-fill ${seatsBarClass}" style="width: ${seatsPercent}%"></div>
                 </div>
-                <div class="seats-text">${seats.used} ${t('billing.seatsUsed')}, ${seats.limit} ${t('billing.seatsLimit')}</div>
+                <div class="seats-text">${escapeHtml(String(seats.used))} ${t('billing.seatsUsed')}, ${escapeHtml(String(seats.limit))} ${t('billing.seatsLimit')}</div>
               </div>
             </div>
             <div class="status-card">
               <div class="status-label">${subscription.trial_end ? t('billing.trialEnd') : t('billing.periodEnd')}</div>
               <div class="status-value" style="font-size: 18px;">
-                ${formatDate(subscription.trial_end || subscription.current_period_end)}
+                ${escapeHtml(formatDate(subscription.trial_end || subscription.current_period_end))}
               </div>
             </div>
           </div>
@@ -693,9 +693,9 @@
 
         return `
           <div class="plan-card ${isCurrent ? 'current' : ''} ${plan.recommended ? 'recommended' : ''}">
-            <div class="plan-name">${plan.name}</div>
-            <div class="plan-price">${priceText}${periodText}</div>
-            <div class="plan-seats">${seatsText}</div>
+            <div class="plan-name">${escapeHtml(plan.name)}</div>
+            <div class="plan-price">${escapeHtml(priceText)}${periodText}</div>
+            <div class="plan-seats">${escapeHtml(seatsText)}</div>
             <ul class="plan-features">
               ${plan.features.map(f => `<li>${t('billing.' + f)}</li>`).join('')}
             </ul>
@@ -703,7 +703,7 @@
               ? `<button class="btn btn-secondary btn-block" disabled>${currentLang === 'ja' ? '現在のプラン' : 'Current Plan'}</button>`
               : plan.price === null
                 ? `<a href="mailto:sales@example.com" class="btn btn-secondary btn-block">${currentLang === 'ja' ? 'お問い合わせ' : 'Contact Sales'}</a>`
-                : `<button class="btn btn-primary btn-block plan-subscribe-btn" data-plan="${plan.id}">${t('billing.subscribe')}</button>`
+                : `<button class="btn btn-primary btn-block plan-subscribe-btn" data-plan="${escapeHtml(plan.id)}">${t('billing.subscribe')}</button>`
             }
           </div>
         `;
@@ -733,7 +733,7 @@
         const container = document.getElementById('billing-content');
         container.innerHTML = `
           <div class="error-state">
-            <p>${message || t('billing.errorLoad')}</p>
+            <p>${escapeHtml(message || t('billing.errorLoad'))}</p>
             <button class="btn btn-primary" onclick="location.reload()">${currentLang === 'ja' ? '再読み込み' : 'Reload'}</button>
           </div>
         `;
