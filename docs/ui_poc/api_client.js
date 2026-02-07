@@ -1161,7 +1161,7 @@
       }
     } catch (e) {
     }
-    return runtimeLang || "ja";
+    return runtimeLang || "en";
   }
 
 	  function setLanguage(lang) {

@@ -797,7 +797,7 @@
     const langJa = document.getElementById('langJa');
     const langEn = document.getElementById('langEn');
     function updateLangButtons() {
-      const lang = window.getLanguage ? window.getLanguage() : 'ja';
+      const lang = window.getLanguage ? window.getLanguage() : 'en';
       if (langJa) langJa.classList.toggle('active', lang === 'ja');
       if (langEn) langEn.classList.toggle('active', lang === 'en');
     }
