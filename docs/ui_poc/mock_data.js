@@ -219,6 +219,16 @@ window.suiteScanData = {
       }
     ]
   },
+  allowlist_entries: [
+    { name: "code-assistant-mcp", base_url: "npx @anthropic/mcp-code-assistant", status: "allow", registered_at: "2025-12-10T14:00:00Z", last_scan_ts: "2025-12-11T08:00:00Z" },
+    { name: "filesystem-mcp", base_url: "npx @anthropic/mcp-filesystem", status: "deny", registered_at: "2025-12-10T14:05:00Z", last_scan_ts: "2025-12-11T14:22:00Z" },
+    { name: "web-search-mcp", base_url: "npx @anthropic/mcp-web-search", status: "allow", registered_at: "2025-12-10T14:10:00Z", last_scan_ts: "2025-12-11T13:50:00Z" },
+    { name: "data-scraper-mcp", base_url: "npx @custom/data-scraper", status: "quarantine", registered_at: "2025-12-10T14:15:00Z", last_scan_ts: "2025-12-11T13:40:00Z" },
+    { name: "github-mcp", base_url: "npx @anthropic/mcp-github", status: "allow", registered_at: "2025-12-10T14:20:00Z", last_scan_ts: "2025-12-11T12:00:00Z" },
+    { name: "unknown-mcp", base_url: "npx @untrusted/unknown-mcp", status: "deny", registered_at: "2025-12-11T14:00:00Z", last_scan_ts: "2025-12-11T14:18:00Z" },
+    { name: "slack-mcp", base_url: "npx @anthropic/mcp-slack", status: "allow", registered_at: "2025-12-10T14:25:00Z", last_scan_ts: null },
+    { name: "external-api-mcp", base_url: "npx @custom/external-api", status: "deny", registered_at: "2025-12-11T13:50:00Z", last_scan_ts: "2025-12-11T13:55:00Z" }
+  ],
   allowlist_status: {
     policy_bundle_present_ok: true,
     policy_bundle_signature_status: "verified_ok",

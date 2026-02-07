@@ -329,9 +329,10 @@ window.escapeHtml = function escapeHtml(str) {
 
   async function fetchScans() {
     const data = await fetchJson(`${BASE}/scans`);
-    if (data && Array.isArray(data)) return data;
-    if (DISABLE_MOCK) return [];
-    return (window.suiteScanData && window.suiteScanData.scans) || [];
+    if (data && Array.isArray(data) && data.length > 0) return data;
+    // Fallback to mock when API returns empty or fails
+    if (DISABLE_MOCK) return data || [];
+    return (window.suiteScanData && window.suiteScanData.scans) || data || [];
   }
 
   async function fetchScanDetail(id) {
@@ -353,8 +354,12 @@ window.escapeHtml = function escapeHtml(str) {
 
   async function fetchAllowlist() {
     const data = await fetchJson(`${BASE}/allowlist`);
-    if (data && Array.isArray(data)) return data;
-    return [];
+    if (data && Array.isArray(data) && data.length > 0) return data;
+    // Fallback to mock allowlist entries when API returns empty
+    if (!DISABLE_MOCK && window.suiteScanData && window.suiteScanData.allowlist_entries) {
+      return window.suiteScanData.allowlist_entries;
+    }
+    return data || [];
   }
 
   async function fetchAllowlistStatus() {
@@ -386,7 +391,17 @@ window.escapeHtml = function escapeHtml(str) {
 
   async function fetchDashboardSummary() {
     const data = await fetchJson(`${BASE}/dashboard/summary`);
-    if (data && typeof data === "object") return data;
+    if (data && typeof data === "object") {
+      // If live data has meaningful content, use it; otherwise supplement with mock
+      const al = data.allowlist || {};
+      const hasLiveData = (al.total || 0) > 0 || (data.scans && data.scans.total > 0) || (data.council && data.council.total > 0);
+      if (hasLiveData) return data;
+      // Live data is empty - merge with mock for demo richness
+      if (!DISABLE_MOCK && window.suiteScanData && window.suiteScanData.dashboard_summary) {
+        return window.suiteScanData.dashboard_summary;
+      }
+      return data;
+    }
     if (DISABLE_MOCK) return null;
     return (window.suiteScanData && window.suiteScanData.dashboard_summary) || null;
   }
@@ -574,8 +589,8 @@ window.escapeHtml = function escapeHtml(str) {
   async function fetchControlAudit(limit) {
     const query = limit ? `?limit=${encodeURIComponent(limit)}` : "";
     const res = await requestJsonWithStatus(`${CONTROL_BASE}/control/audit${query}`, { auth: true });
-    if (res && res.ok) return res;
-    // Mock fallback: return audit_log from mock_data.js
+    if (res && res.ok && Array.isArray(res.data) && res.data.length > 0) return res;
+    // Mock fallback: return audit_log from mock_data.js when API fails or returns empty
     if (!DISABLE_MOCK && window.suiteScanData && Array.isArray(window.suiteScanData.audit_log)) {
       const mockData = limit ? window.suiteScanData.audit_log.slice(0, limit) : window.suiteScanData.audit_log;
       return { ok: true, data: mockData, status: 200 };
@@ -634,12 +649,16 @@ window.escapeHtml = function escapeHtml(str) {
 
   async function fetchWebSandboxVerdicts() {
     const data = await fetchJson(`${BASE}/web-sandbox/verdicts`);
-    if (data && typeof data === "object" && Array.isArray(data.verdicts) && data.verdicts.length > 0) return data;
-    // Mock fallback: return web_sandbox_verdicts from mock_data.js
+    const liveVerdicts = (data && typeof data === "object" && Array.isArray(data.verdicts)) ? data.verdicts : [];
+    // Merge live verdicts with mock verdicts for demo richness
     if (!DISABLE_MOCK && window.suiteScanData && window.suiteScanData.web_sandbox_verdicts) {
-      return window.suiteScanData.web_sandbox_verdicts;
+      const mockVerdicts = window.suiteScanData.web_sandbox_verdicts.verdicts || [];
+      // Combine: live first, then mock (avoid duplicates by run_id)
+      const seenIds = new Set(liveVerdicts.map(v => v.run_id));
+      const merged = [...liveVerdicts, ...mockVerdicts.filter(v => !seenIds.has(v.run_id))];
+      return { verdicts: merged };
     }
-    return { verdicts: [] };
+    return { verdicts: liveVerdicts };
   }
 
   function isMockEnabled() {
