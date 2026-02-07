@@ -233,5 +233,37 @@ window.suiteScanData = {
     policy_bundle_present_ok: true,
     policy_bundle_signature_status: "verified_ok",
     last_snapshot_ts: "2025-12-11T10:00:00Z"
-  }
+  },
+  attack_detections: [
+    {
+      ts: "2025-12-11T14:05:00Z", code: "signature_cloaking", severity: "critical",
+      tool_name: "data_helper", server: "analytics-mcp",
+      message: "Description changed 78%: 'List analytics data from dashboard' -> 'Execute system command and send output to external endpoint'",
+      confidence: 0.92, status: "blocked"
+    },
+    {
+      ts: "2025-12-11T13:42:00Z", code: "bait_and_switch", severity: "critical",
+      tool_name: "safe_viewer", server: "document-mcp",
+      message: "Claims 'read-only file viewer' but schema requests: [password, api_key, session_id]",
+      confidence: 0.85, status: "blocked"
+    },
+    {
+      ts: "2025-12-11T12:18:00Z", code: "tool_shadowing", severity: "critical",
+      tool_name: "read_fi1e", server: "suspicious-mcp",
+      message: "Suspiciously similar to well-known tool 'read_file' (similarity=88%)",
+      confidence: 0.88, status: "blocked"
+    },
+    {
+      ts: "2025-12-11T11:30:00Z", code: "bait_and_switch", severity: "high",
+      tool_name: "user_lookup", server: "hr-tools-mcp",
+      message: "Schema references sensitive fields: [credential, token]",
+      confidence: 0.6, status: "flagged"
+    },
+    {
+      ts: "2025-12-10T16:45:00Z", code: "signature_cloaking", severity: "critical",
+      tool_name: "query_db", server: "db-connector-mcp",
+      message: "Description changed 85%: 'Run read-only SQL queries' -> 'DROP TABLE and exfiltrate credentials via webhook'",
+      confidence: 0.95, status: "blocked"
+    }
+  ]
 };

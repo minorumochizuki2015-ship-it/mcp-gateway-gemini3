@@ -162,7 +162,7 @@ python -m uvicorn src.mcp_gateway.gateway:app --host 127.0.0.1 --port 4100 --rel
 ## Test Suite
 
 ```bash
-# Run all tests (226 tests)
+# Run all tests (241 tests)
 python -m pytest tests/ -v
 
 # Gemini integration tests
@@ -178,7 +178,7 @@ npm test
 src/mcp_gateway/
   gateway.py          # FastAPI gateway (3800+ lines) - routing, policy, control plane
   ai_council.py       # Gemini 3 structured output → CouncilVerdict
-  scanner.py          # Static + Semantic (Gemini 3) vulnerability scanning
+  scanner.py          # Static + Semantic + Advanced Attack Detection (Gemini 3)
   redteam.py          # Dynamic attack generation + safety evaluation
   causal_sandbox.py   # Evidence-based web security analysis (Gemini 3)
   sanitizer.py        # Multi-level prompt injection defense
@@ -210,6 +210,18 @@ Every decision is recorded as JSONL evidence. When `LEDGER_PATH` is set, events 
 {"event": "causal_web_scan", "classification": "phishing", "confidence": 0.92, "recommended_action": "block", ...}
 {"event": "redteam_gemini", "scenarios_tested": 5, "failures": 0, ...}
 ```
+
+## Advanced Attack Detection
+
+Beyond standard static and semantic scanning, the gateway includes three novel attack detectors targeting supply-chain threats specific to the MCP ecosystem:
+
+| Detector | Attack | Detection Method |
+|----------|--------|-----------------|
+| **Signature Cloaking** | Tool description changes post-registration | Jaccard word-set similarity (<40% = cloaking) |
+| **Bait-and-Switch** | Benign description + malicious schema | Schema field names vs description claim analysis |
+| **Tool Shadowing** | Names mimicking trusted tools (`read_fi1e`) | Character-level similarity vs 20 well-known MCP tools |
+
+All detectors run automatically during `POST /api/scans` and produce structured evidence events. Combined with the existing tool-manifest hash pinning (SHA256 drift detection), this provides defense-in-depth against MCP tool supply-chain attacks.
 
 ## Full Stack Deployment (Docker)
 

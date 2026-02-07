@@ -266,6 +266,23 @@
       </div>
     </div>
 
+    <!-- Attack Detection Timeline -->
+    <div class="section-card" id="attackCard" style="margin-bottom: 16px;">
+      <div class="section-header">
+        <div>
+          <div class="section-title" id="attackTitle">Attack Detection</div>
+          <div class="section-sub" id="attackSub">Signature Cloaking, Bait-and-Switch, and Tool Shadowing detection</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span style="font-size:13px;font-weight:700;color:var(--danger);" id="attackCountBadge">0 threats</span>
+        </div>
+      </div>
+      <div id="attackTimeline" style="margin-top:12px;display:flex;flex-direction:column;gap:8px;"></div>
+      <div class="empty-hint" id="attackEmpty" style="display:none;">
+        No attack patterns detected. Advanced detectors are monitoring for signature cloaking, bait-and-switch, and tool shadowing.
+      </div>
+    </div>
+
     <!-- Bottom Grid: Severity + Quick Actions -->
     <div class="bottom-grid">
       <div class="section-card">
@@ -510,6 +527,46 @@
       document.getElementById('sevHighBar').style.width = ((sev.high || 0) / sevTotal * 100) + '%';
       document.getElementById('sevMediumBar').style.width = ((sev.medium || 0) / sevTotal * 100) + '%';
       document.getElementById('sevLowBar').style.width = ((sev.low || 0) / sevTotal * 100) + '%';
+
+      // Attack Detection Timeline
+      var attacks = [];
+      if (window.suiteScanData && Array.isArray(window.suiteScanData.attack_detections) && !window.SUITE_DISABLE_MOCK) {
+        attacks = window.suiteScanData.attack_detections;
+        showMockBadge();
+      }
+      var attackTimeline = document.getElementById('attackTimeline');
+      var attackEmpty = document.getElementById('attackEmpty');
+      var attackBadge = document.getElementById('attackCountBadge');
+      if (attackBadge) attackBadge.textContent = attacks.length + ' threats';
+      if (attackBadge) attackBadge.style.color = attacks.length > 0 ? 'var(--danger)' : 'var(--success)';
+      if (attacks.length > 0 && attackTimeline) {
+        var codeLabels = { signature_cloaking: 'Signature Cloaking', bait_and_switch: 'Bait & Switch', tool_shadowing: 'Tool Shadowing' };
+        var codeColors = { signature_cloaking: '#dc2626', bait_and_switch: '#ea580c', tool_shadowing: '#7c3aed' };
+        attackTimeline.innerHTML = attacks.map(function(a) {
+          var color = codeColors[a.code] || '#ef4444';
+          var label = codeLabels[a.code] || a.code;
+          var statusPill = a.status === 'blocked'
+            ? '<span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">BLOCKED</span>'
+            : '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">FLAGGED</span>';
+          return '<div style="display:flex;align-items:flex-start;gap:12px;padding:10px 14px;background:var(--gray-50);border-radius:8px;border-left:3px solid ' + color + ';">'
+            + '<div style="min-width:60px;font-size:11px;color:var(--muted);white-space:nowrap;">' + escapeHtml(formatTs(a.ts)) + '</div>'
+            + '<div style="flex:1;">'
+            + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'
+            + '<span style="background:' + color + ';color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">' + escapeHtml(label) + '</span>'
+            + statusPill
+            + '<span style="font-size:12px;font-weight:600;">' + escapeHtml(a.tool_name) + '</span>'
+            + '<span style="font-size:11px;color:var(--muted);">on ' + escapeHtml(a.server || '') + '</span>'
+            + '</div>'
+            + '<div style="font-size:12px;color:var(--gray-700);">' + escapeHtml(a.message) + '</div>'
+            + '</div>'
+            + '<div style="font-size:11px;color:var(--muted);">' + Math.round((a.confidence || 0) * 100) + '%</div>'
+            + '</div>';
+        }).join('');
+        if (attackEmpty) attackEmpty.style.display = 'none';
+      } else {
+        if (attackTimeline) attackTimeline.innerHTML = '';
+        if (attackEmpty) attackEmpty.style.display = '';
+      }
 
       // Recent Decisions - combine audit + web sandbox verdicts
       // Filter: only show security-relevant events (deny/block/scan/council), not admin management events
