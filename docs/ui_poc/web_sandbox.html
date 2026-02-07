@@ -205,6 +205,22 @@
       </div>
     </div>
 
+    <!-- Gemini API Key Setup -->
+    <div class="card" id="geminiSetupCard">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+        <div style="font-weight: 600; font-size: 15px;">Gemini API Key</div>
+        <span id="geminiStatus" style="font-size: 12px; padding: 2px 8px; border-radius: 8px; font-weight: 600;"></span>
+      </div>
+      <p class="muted" style="margin-bottom: 12px;">Enter your Google AI Studio API key to enable Gemini-powered analysis across all features (Council, Scanner, RedTeam, Web Sandbox).</p>
+      <form id="geminiKeyForm" style="display: flex; gap: 8px; align-items: flex-end;">
+        <div class="field" style="flex: 1; margin-bottom: 0;">
+          <input type="password" id="geminiKeyInput" placeholder="AIza..." autocomplete="off" style="font-family: monospace;">
+        </div>
+        <button type="submit" class="btn-primary" id="geminiKeyBtn">Set Key</button>
+      </form>
+      <div id="geminiKeyError" class="error" style="margin-top: 6px; display: none;"></div>
+    </div>
+
     <!-- Scan Form -->
     <div class="card">
       <form id="scanForm" class="scan-form">
@@ -329,6 +345,78 @@
         .replace(/'/g, '&#39;');
     }
 
+    // --- Gemini API Key Setup ---
+    const geminiKeyForm = document.getElementById('geminiKeyForm');
+    const geminiKeyInput = document.getElementById('geminiKeyInput');
+    const geminiKeyBtn = document.getElementById('geminiKeyBtn');
+    const geminiKeyError = document.getElementById('geminiKeyError');
+    const geminiStatus = document.getElementById('geminiStatus');
+    const geminiSetupCard = document.getElementById('geminiSetupCard');
+
+    function updateGeminiStatus(configured, preview) {
+      if (configured) {
+        geminiStatus.textContent = 'Configured (' + escapeHtml(preview) + ')';
+        geminiStatus.style.background = 'var(--success)';
+        geminiStatus.style.color = '#fff';
+        geminiKeyInput.placeholder = 'Key is set. Enter new key to replace.';
+        geminiKeyBtn.textContent = 'Update';
+      } else {
+        geminiStatus.textContent = 'Not configured';
+        geminiStatus.style.background = 'var(--danger)';
+        geminiStatus.style.color = '#fff';
+        geminiKeyInput.placeholder = 'AIza...';
+        geminiKeyBtn.textContent = 'Set Key';
+      }
+    }
+
+    async function checkGeminiStatus() {
+      try {
+        const res = await fetch('/api/config/gemini-status');
+        if (res.ok) {
+          const data = await res.json();
+          updateGeminiStatus(data.configured, data.key_preview);
+        }
+      } catch (e) {
+        updateGeminiStatus(false, '');
+      }
+    }
+
+    geminiKeyForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      geminiKeyError.style.display = 'none';
+      const key = geminiKeyInput.value.trim();
+      if (!key) {
+        geminiKeyError.textContent = 'Please enter a valid API key.';
+        geminiKeyError.style.display = '';
+        return;
+      }
+      geminiKeyBtn.disabled = true;
+      geminiKeyBtn.textContent = 'Setting...';
+      try {
+        const res = await fetch('/api/config/gemini-key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ api_key: key }),
+        });
+        if (res.ok) {
+          geminiKeyInput.value = '';
+          await checkGeminiStatus();
+        } else {
+          const data = await res.json().catch(() => ({}));
+          geminiKeyError.textContent = data.detail || 'Failed to set key.';
+          geminiKeyError.style.display = '';
+        }
+      } catch (err) {
+        geminiKeyError.textContent = 'Network error: ' + err.message;
+        geminiKeyError.style.display = '';
+      } finally {
+        geminiKeyBtn.disabled = false;
+      }
+    });
+
+    checkGeminiStatus();
+
+    // --- Scan Form ---
     const scanForm = document.getElementById('scanForm');
     const urlInput = document.getElementById('urlInput');
     const scanBtn = document.getElementById('scanBtn');
