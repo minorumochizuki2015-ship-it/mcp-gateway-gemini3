@@ -5526,10 +5526,10 @@
         <div class="wizard-step" data-step="4">
           <div class="wizard-step-title">
             <span class="step-number">4</span>
-            <span id="wizardStep4Title">Connection Test</span>
+            <span id="wizardStep4Title">Connection Test (Optional)</span>
           </div>
           <p class="wizard-step-desc" id="wizardStep4Desc">
-            Run a connection test to verify your settings are correct.
+            Optionally test connectivity. You can also press <strong>Next</strong> to skip.
           </p>
           <div id="wizardConnectionTest">
             <button type="button" class="btn btn-primary" id="wizardTestBtn" style="width:100%;">
@@ -6410,8 +6410,13 @@
       nextBtn.addEventListener('click', async () => {
         if (currentStep === 1) {
           // Step 1 is informational only — always allow proceeding to Step 2.
-          // Gateway prerequisites can be configured later from the main settings page.
           goToStep(2);
+          return;
+        }
+        if (currentStep === 4) {
+          // Step 4 (Connection Test) is optional — allow skipping to Step 5.
+          // The test button is available but not required for hackathon demo.
+          goToStep(5);
           return;
         }
         if (currentStep === 6) {
