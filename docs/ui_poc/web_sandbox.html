@@ -64,19 +64,6 @@
     .nav-status { margin-left: auto; display: flex; align-items: center; gap: 8px; color: var(--gray-300); font-size: 13px; }
     .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); display: inline-block; }
 
-    .gemini-badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      background: linear-gradient(135deg, #4285f4 0%, #886ef8 50%, #ea4335 100%);
-      color: #fff; font-size: 11px; font-weight: 700; letter-spacing: 0.03em;
-      padding: 3px 10px; border-radius: 12px; white-space: nowrap;
-    }
-    .gemini-tag {
-      display: inline-flex; align-items: center; gap: 4px;
-      background: linear-gradient(135deg, #4285f4, #886ef8);
-      color: #fff; font-size: 10px; font-weight: 700;
-      padding: 2px 8px; border-radius: 8px; vertical-align: middle;
-    }
-
     .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
     .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
     .muted { color: var(--muted); font-size: 14px; }
@@ -195,7 +182,6 @@
         <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
       </svg>
       MCP Gateway Suite
-      <span class="gemini-badge">Gemini 3</span>
     </div>
     <div class="nav-links">
       <a href="settings_environments.html" class="nav-link">Environments</a>
@@ -215,7 +201,7 @@
     <div class="header">
       <div>
         <h1>Causal Web Sandbox</h1>
-        <p class="muted">Evidence-based web security analysis &mdash; <span class="gemini-tag" style="font-size: 11px; padding: 3px 10px;">Gemini 3</span> Structured Output</p>
+        <p class="muted">Evidence-based web security analysis powered by Gemini structured output</p>
       </div>
     </div>
 
@@ -378,7 +364,7 @@
       methodEl.textContent = data.eval_method;
       var methodWrap = document.getElementById('verdictMethodWrap');
       if (data.eval_method === 'gemini') {
-        methodWrap.innerHTML = '<span class="gemini-tag">Gemini 3</span> Structured Output';
+        methodWrap.innerHTML = 'Gemini Structured Output';
       } else {
         methodWrap.innerHTML = 'Method: <strong>' + escapeHtml(data.eval_method) + '</strong>';
       }
@@ -477,7 +463,7 @@
         const table = document.getElementById('historyTable');
         if (verdicts.length > 0) {
           body.innerHTML = verdicts.slice().reverse().map(v =>
-            `<tr><td title="${escapeHtml(v.url)}">${escapeHtml(truncUrl(v.url, 40))}</td><td><span class="pill ${classForClassification(v.classification)}">${escapeHtml(v.classification)}</span></td><td>${((v.confidence || 0) * 100).toFixed(0)}%</td><td>${escapeHtml(v.recommended_action)}</td><td>${v.eval_method === 'gemini' ? '<span class="gemini-tag">Gemini 3</span>' : escapeHtml(v.eval_method)}</td><td style="font-size:12px;">${v.timestamp ? new Date(v.timestamp).toLocaleString() : '-'}</td></tr>`
+            `<tr><td title="${escapeHtml(v.url)}">${escapeHtml(truncUrl(v.url, 40))}</td><td><span class="pill ${classForClassification(v.classification)}">${escapeHtml(v.classification)}</span></td><td>${((v.confidence || 0) * 100).toFixed(0)}%</td><td>${escapeHtml(v.recommended_action)}</td><td>${escapeHtml(v.eval_method === 'gemini' ? 'Gemini' : v.eval_method)}</td><td style="font-size:12px;">${v.timestamp ? new Date(v.timestamp).toLocaleString() : '-'}</td></tr>`
           ).join('');
           table.style.display = '';
           empty.style.display = 'none';
