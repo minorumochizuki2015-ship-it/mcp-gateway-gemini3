@@ -713,6 +713,7 @@
 
     function render() {
       const viewDetails = window.tCommon ? window.tCommon("scans.actionViewDetails") : "View Details";
+      const lang = window.getLanguage ? window.getLanguage() : "en";
       const status = statusSelect.value;
       const env = envInput.value.trim().toLowerCase();
       const filtered = scans.filter((s) => {
@@ -720,6 +721,16 @@
         const envOk = !env || s.environment.toLowerCase().includes(env);
         return statusOk && envOk;
       });
+      if (!filtered.length) {
+        const emptyMsg = scans.length
+          ? (lang === "ja" ? "フィルタに一致するスキャンがありません" : "No scans match current filters")
+          : (lang === "ja" ? "まだスキャンが実行されていません。Web Sandbox からスキャンを開始してください。" : "No scans yet. Start a scan from the Web Sandbox page.");
+        rows.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:48px 24px;color:var(--gray-600);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;margin-bottom:12px;opacity:0.4;display:block;margin-left:auto;margin-right:auto;"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          ${emptyMsg}
+        </td></tr>`;
+        return;
+      }
       rows.innerHTML = filtered
         .map((s) => `<tr>
           <td>${escapeHtml(formatTimestamp(s.startedAt))}</td>
@@ -749,7 +760,7 @@
     const langJa = document.getElementById('langJa');
     const langEn = document.getElementById('langEn');
     function updateLangButtons() {
-      const lang = window.getLanguage ? window.getLanguage() : 'ja';
+      const lang = window.getLanguage ? window.getLanguage() : 'en';
       if (langJa) langJa.classList.toggle('active', lang === 'ja');
       if (langEn) langEn.classList.toggle('active', lang === 'en');
     }

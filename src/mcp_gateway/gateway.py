@@ -3828,6 +3828,9 @@ async def web_sandbox_scan(request: Request, body: WebSandboxScanRequest) -> JSO
             "classification": result.verdict.classification.value,
             "confidence": result.verdict.confidence,
             "recommended_action": result.verdict.recommended_action,
+            "summary": result.verdict.summary,
+            "risk_indicators": result.verdict.risk_indicators,
+            "evidence_refs": result.verdict.evidence_refs,
             "eval_method": result.eval_method,
             "timestamp": result.timestamp,
         }

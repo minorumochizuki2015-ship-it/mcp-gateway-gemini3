@@ -180,6 +180,14 @@
 
     /* Verdicts history */
     .verdicts-table { margin-top: 16px; }
+    tr.clickable { cursor: pointer; transition: background 0.1s; }
+    tr.clickable:hover { background: var(--gray-50); }
+    .detail-row td { background: var(--gray-50); padding: 12px 16px; border-bottom: 2px solid var(--border); }
+    .detail-content { font-size: 13px; }
+    .detail-label { font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .detail-summary { margin-bottom: 8px; line-height: 1.6; }
+    .indicator-tag { display: inline-block; background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin: 2px; }
+    .evidence-tag { display: inline-block; background: var(--gray-100); color: var(--gray-700); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-family: monospace; margin: 2px; }
   </style>
 </head>
 
@@ -223,10 +231,10 @@
     <!-- Gemini API Key Setup -->
     <div class="card" id="geminiSetupCard">
       <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-        <div style="font-weight: 600; font-size: 15px;">Gemini API Key</div>
+        <div style="font-weight: 600; font-size: 15px;" id="geminiKeyTitle">Gemini API Key</div>
         <span id="geminiStatus" style="font-size: 12px; padding: 2px 8px; border-radius: 8px; font-weight: 600;"></span>
       </div>
-      <p class="muted" style="margin-bottom: 12px;">Enter your Google AI Studio API key to enable Gemini-powered analysis across all features (Council, Scanner, RedTeam, Web Sandbox).</p>
+      <p class="muted" style="margin-bottom: 12px;" id="geminiKeyDesc">Enter your Google AI Studio API key to enable Gemini-powered analysis across all features (Council, Scanner, RedTeam, Web Sandbox).</p>
       <form id="geminiKeyForm" style="display: flex; gap: 8px; align-items: flex-end;">
         <div class="field" style="flex: 1; margin-bottom: 0;">
           <input type="password" id="geminiKeyInput" placeholder="AIza..." autocomplete="off" style="font-family: monospace;">
@@ -240,7 +248,7 @@
     <div class="card">
       <form id="scanForm" class="scan-form">
         <div class="field">
-          <label for="urlInput">Target URL</label>
+          <label for="urlInput" id="targetUrlLabel">Target URL</label>
           <input type="url" id="urlInput" placeholder="https://example.com" required>
         </div>
         <button type="submit" class="btn-primary" id="scanBtn">Scan</button>
@@ -248,7 +256,7 @@
       <div id="scanError" class="error" style="margin-top: 8px; display: none;"></div>
       <div id="scanLoading" style="margin-top: 12px; display: none;">
         <span class="spinner"></span>
-        <span class="muted" style="margin-left: 8px;">Scanning page...</span>
+        <span class="muted" style="margin-left: 8px;" id="scanLoadingText">Scanning page...</span>
       </div>
     </div>
 
@@ -262,11 +270,11 @@
         <div style="flex: 1;">
           <div id="verdictSummary" style="font-size: 14px;"></div>
           <div class="verdict-meta" style="margin-top: 4px;">
-            Confidence: <strong id="verdictConfidence">-</strong>
+            <span id="lblConfidence">Confidence</span>: <strong id="verdictConfidence">-</strong>
             <div class="confidence-bar" style="display: inline-block; vertical-align: middle; margin-left: 8px;">
               <div class="confidence-fill" id="confidenceFill" style="width: 0%;"></div>
             </div>
-            &nbsp;&middot;&nbsp; Action: <strong id="verdictAction">-</strong>
+            &nbsp;&middot;&nbsp; <span id="lblAction">Action</span>: <strong id="verdictAction">-</strong>
             &nbsp;&middot;&nbsp; <span id="verdictMethodWrap">Method: <strong id="verdictMethod">-</strong></span>
           </div>
         </div>
@@ -275,11 +283,11 @@
       <!-- Bundle Info + Risk Indicators -->
       <div class="grid-2" style="margin-top: 16px;">
         <div class="card">
-          <div class="section-title">Page Bundle</div>
+          <div class="section-title"><span id="pageBundleTitle">Page Bundle</span></div>
           <div class="bundle-meta" id="bundleMeta"></div>
         </div>
         <div class="card">
-          <div class="section-title">Risk Indicators <span class="count" id="indicatorCount">0</span></div>
+          <div class="section-title"><span id="riskIndicatorsTitle">Risk Indicators</span> <span class="count" id="indicatorCount">0</span></div>
           <ul class="indicators-list" id="indicatorsList"></ul>
           <div class="empty" id="indicatorsEmpty" style="display: none;">No risk indicators found</div>
         </div>
@@ -287,9 +295,9 @@
 
       <!-- DOM Threats -->
       <div class="card" style="margin-top: 16px;">
-        <div class="section-title">DOM Threats <span class="count" id="domCount">0</span></div>
+        <div class="section-title"><span id="domThreatsTitle">DOM Threats</span> <span class="count" id="domCount">0</span></div>
         <table id="domTable">
-          <thead>
+          <thead id="domThead">
             <tr><th>Tag</th><th>Threat Type</th><th>Selector</th><th>Attributes</th></tr>
           </thead>
           <tbody id="domBody"></tbody>
@@ -299,9 +307,9 @@
 
       <!-- Network Traces -->
       <div class="card" style="margin-top: 16px;">
-        <div class="section-title">Network Traces <span class="count" id="netCount">0</span></div>
+        <div class="section-title"><span id="netTracesTitle">Network Traces</span> <span class="count" id="netCount">0</span></div>
         <table id="netTable">
-          <thead>
+          <thead id="netThead">
             <tr><th>Source</th><th>URL</th><th>Method</th><th>Threat</th></tr>
           </thead>
           <tbody id="netBody"></tbody>
@@ -311,9 +319,9 @@
 
       <!-- A11y Issues -->
       <div class="card" style="margin-top: 16px;" id="a11ySection">
-        <div class="section-title">Accessibility Issues <span class="count" id="a11yCount">0</span></div>
+        <div class="section-title"><span id="a11yIssuesTitle">Accessibility Issues</span> <span class="count" id="a11yCount">0</span></div>
         <table id="a11yTable">
-          <thead>
+          <thead id="a11yThead">
             <tr><th>Role</th><th>Name</th><th>Deceptive Label</th></tr>
           </thead>
           <tbody id="a11yBody"></tbody>
@@ -324,14 +332,14 @@
 
     <!-- Recent Verdicts -->
     <div class="card" style="margin-top: 24px;">
-      <div class="section-title">Recent Verdicts <span class="count" id="historyCount">0</span></div>
+      <div class="section-title" id="historyTitle">Recent Verdicts <span class="count" id="historyCount">0</span></div>
       <table class="verdicts-table" id="historyTable">
-        <thead>
+        <thead id="historyThead">
           <tr><th>URL</th><th>Classification</th><th>Confidence</th><th>Action</th><th>Method</th><th>Time</th></tr>
         </thead>
         <tbody id="historyBody"></tbody>
       </table>
-      <div class="empty" id="historyEmpty">No scans yet</div>
+      <div class="empty" id="historyEmpty">No scans yet. Enter a URL above to start.</div>
     </div>
   </div>
 
@@ -369,18 +377,26 @@
     const geminiSetupCard = document.getElementById('geminiSetupCard');
 
     function updateGeminiStatus(configured, preview) {
+      const d = WS_I18N[getWsLang()] || WS_I18N.en;
+      _wsGeminiConfigured = configured;
       if (configured) {
-        geminiStatus.textContent = 'Configured (' + escapeHtml(preview) + ')';
+        geminiStatus.textContent = '\u2713 Configured';
         geminiStatus.style.background = 'var(--success)';
         geminiStatus.style.color = '#fff';
-        geminiKeyInput.placeholder = 'Key is set. Enter new key to replace.';
-        geminiKeyBtn.textContent = 'Update';
+        geminiKeyInput.placeholder = d.geminiKeyPlaceholderConfigured;
+        geminiKeyBtn.textContent = d.geminiUpdateBtn;
+        if (document.getElementById('geminiKeyDesc')) {
+          document.getElementById('geminiKeyDesc').textContent = d.geminiKeyDescConfigured;
+        }
       } else {
-        geminiStatus.textContent = 'Not configured';
+        geminiStatus.textContent = d.geminiNotConfigured;
         geminiStatus.style.background = 'var(--danger)';
         geminiStatus.style.color = '#fff';
-        geminiKeyInput.placeholder = 'AIza...';
-        geminiKeyBtn.textContent = 'Set Key';
+        geminiKeyInput.placeholder = d.geminiKeyPlaceholder;
+        geminiKeyBtn.textContent = d.geminiSetBtn;
+        if (document.getElementById('geminiKeyDesc')) {
+          document.getElementById('geminiKeyDesc').textContent = d.geminiKeyDesc;
+        }
       }
     }
 
@@ -409,7 +425,7 @@
         return;
       }
       geminiKeyBtn.disabled = true;
-      geminiKeyBtn.textContent = 'Setting...';
+      geminiKeyBtn.textContent = (WS_I18N[getWsLang()] || WS_I18N.en).geminiSetting;
       try {
         const authToken = (typeof getAdminToken === 'function') ? getAdminToken() : (window.SUITE_ADMIN_TOKEN || '');
         const hdrs = { 'Content-Type': 'application/json' };
@@ -459,6 +475,8 @@
     function renderVerdict(data) {
       resultSection.style.display = 'block';
       const v = data.verdict;
+      const lang = getWsLang();
+      const d = WS_I18N[lang] || WS_I18N.en;
 
       // Badge
       const badge = document.getElementById('verdictBadge');
@@ -469,13 +487,13 @@
       document.getElementById('verdictSummary').textContent = v.summary;
       document.getElementById('verdictConfidence').textContent = (v.confidence * 100).toFixed(0) + '%';
       document.getElementById('verdictAction').textContent = v.recommended_action;
-      var methodEl = document.getElementById('verdictMethod');
-      methodEl.textContent = data.eval_method;
+      document.getElementById('lblConfidence').textContent = d.lblConfidence;
+      document.getElementById('lblAction').textContent = d.lblAction;
       var methodWrap = document.getElementById('verdictMethodWrap');
       if (data.eval_method === 'gemini') {
-        methodWrap.innerHTML = 'Gemini Structured Output';
+        methodWrap.textContent = d.geminiOutput;
       } else {
-        methodWrap.innerHTML = 'Method: <strong>' + escapeHtml(data.eval_method) + '</strong>';
+        methodWrap.innerHTML = escapeHtml(d.thMethod) + ': <strong>' + escapeHtml(data.eval_method) + '</strong>';
       }
 
       // Confidence bar
@@ -483,15 +501,27 @@
       fill.style.width = (v.confidence * 100) + '%';
       fill.className = 'confidence-fill ' + (v.confidence >= 0.7 ? 'high' : v.confidence >= 0.4 ? 'medium' : 'low');
 
+      // Section titles
+      document.getElementById('pageBundleTitle').textContent = d.pageBundle;
+      document.getElementById('riskIndicatorsTitle').textContent = d.riskIndicators;
+      document.getElementById('domThreatsTitle').textContent = d.domThreats;
+      document.getElementById('netTracesTitle').textContent = d.networkTraces;
+      document.getElementById('a11yIssuesTitle').textContent = d.a11yIssues;
+
+      // Result table headers
+      document.getElementById('domThead').innerHTML = '<tr><th>' + [d.thTag, d.thThreatType, d.thSelector, d.thAttributes].map(escapeHtml).join('</th><th>') + '</th></tr>';
+      document.getElementById('netThead').innerHTML = '<tr><th>' + [d.thSource, d.thUrl, d.thNetMethod, d.thThreat].map(escapeHtml).join('</th><th>') + '</th></tr>';
+      document.getElementById('a11yThead').innerHTML = '<tr><th>' + [d.thRole, d.thName, d.thDeceptiveLabel].map(escapeHtml).join('</th><th>') + '</th></tr>';
+
       // Bundle
       const b = data.bundle;
       document.getElementById('bundleMeta').innerHTML = [
-        { label: 'SHA256', val: b.sha256 ? b.sha256.slice(0, 16) + '...' : '-' },
-        { label: 'Size', val: b.content_length ? (b.content_length / 1024).toFixed(1) + ' KB' : '-' },
-        { label: 'Status', val: b.status_code || '-' },
-        { label: 'Resources', val: b.resource_count },
-        { label: 'Blocked', val: (b.blocked_resources || []).length },
-        { label: 'Bundle ID', val: b.bundle_id ? b.bundle_id.slice(0, 8) + '...' : '-' },
+        { label: d.bundleSha, val: b.sha256 ? b.sha256.slice(0, 16) + '...' : '-' },
+        { label: d.bundleSize, val: b.content_length ? (b.content_length / 1024).toFixed(1) + ' KB' : '-' },
+        { label: d.bundleStatus, val: b.status_code || '-' },
+        { label: d.bundleResources, val: b.resource_count },
+        { label: d.bundleBlocked, val: (b.blocked_resources || []).length },
+        { label: d.bundleId, val: b.bundle_id ? b.bundle_id.slice(0, 8) + '...' : '-' },
       ].map(i => `<div class="item"><div class="label">${escapeHtml(i.label)}</div><div class="val">${escapeHtml(i.val)}</div></div>`).join('');
 
       // Risk indicators
@@ -552,7 +582,7 @@
       const a11yTable = document.getElementById('a11yTable');
       if (a11y.length > 0) {
         a11yBody.innerHTML = a11y.map(a =>
-          `<tr><td>${escapeHtml(a.role)}</td><td>${escapeHtml(a.name)}</td><td>${a.deceptive_label ? '<span class="pill warn">Deceptive</span>' : '-'}</td></tr>`
+          `<tr><td>${escapeHtml(a.role)}</td><td>${escapeHtml(a.name)}</td><td>${a.deceptive_label ? '<span class="pill warn">' + escapeHtml(d.deceptive) + '</span>' : '-'}</td></tr>`
         ).join('');
         a11yTable.style.display = '';
         a11yEmpty.style.display = 'none';
@@ -560,26 +590,65 @@
         a11yTable.style.display = 'none';
         a11yEmpty.style.display = '';
       }
+      // Empty states
+      document.getElementById('indicatorsEmpty').textContent = d.noIndicators;
+      document.getElementById('domEmpty').textContent = d.noDomThreats;
+      document.getElementById('netEmpty').textContent = d.noNetTraces;
+      document.getElementById('a11yEmpty').textContent = d.noA11y;
+    }
+
+    function renderHistoryTable(lang) {
+      var dl = WS_I18N[lang || getWsLang()] || WS_I18N.en;
+      var verdicts = _wsVerdicts || [];
+      document.getElementById('historyCount').textContent = verdicts.length;
+      var body = document.getElementById('historyBody');
+      var empty = document.getElementById('historyEmpty');
+      var table = document.getElementById('historyTable');
+      if (verdicts.length > 0) {
+        body.innerHTML = verdicts.slice().reverse().map(function(v, i) {
+          var mainRow = '<tr class="clickable" data-idx="' + i + '">'
+            + '<td title="' + escapeHtml(v.url) + '">' + escapeHtml(truncUrl(v.url, 40)) + '</td>'
+            + '<td><span class="pill ' + classForClassification(v.classification) + '">' + escapeHtml(v.classification) + '</span></td>'
+            + '<td>' + ((v.confidence || 0) * 100).toFixed(0) + '%</td>'
+            + '<td>' + escapeHtml(v.recommended_action) + '</td>'
+            + '<td>' + escapeHtml(v.eval_method === 'gemini' ? 'Gemini' : v.eval_method) + '</td>'
+            + '<td style="font-size:12px;">' + (v.timestamp ? new Date(v.timestamp).toLocaleString() : '-') + '</td>'
+            + '</tr>';
+          var summary = v.summary || '';
+          var indicators = (v.risk_indicators || []).map(function(r) { return '<span class="indicator-tag">' + escapeHtml(r) + '</span>'; }).join(' ');
+          var evidence = (v.evidence_refs || []).map(function(e) { return '<span class="evidence-tag">' + escapeHtml(e) + '</span>'; }).join(' ');
+          var hasDetail = summary || indicators || evidence;
+          var detailRow = '';
+          if (hasDetail) {
+            detailRow = '<tr class="detail-row" data-detail="' + i + '" style="display:none;"><td colspan="6"><div class="detail-content">'
+              + (summary ? '<div class="detail-label">' + escapeHtml(dl.detailSummary) + '</div><div class="detail-summary">' + escapeHtml(summary) + '</div>' : '')
+              + (indicators ? '<div class="detail-label">' + escapeHtml(dl.detailRiskIndicators) + '</div><div>' + indicators + '</div>' : '')
+              + (evidence ? '<div class="detail-label" style="margin-top:8px;">' + escapeHtml(dl.detailEvidence) + '</div><div>' + evidence + '</div>' : '')
+              + '</div></td></tr>';
+          }
+          return mainRow + detailRow;
+        }).join('');
+        // Attach click handlers for expandable detail
+        body.querySelectorAll('.clickable').forEach(function(row) {
+          row.addEventListener('click', function() {
+            var idx = row.getAttribute('data-idx');
+            var detail = body.querySelector('[data-detail="' + idx + '"]');
+            if (detail) detail.style.display = detail.style.display === 'none' ? '' : 'none';
+          });
+        });
+        table.style.display = '';
+        empty.style.display = 'none';
+      } else {
+        table.style.display = 'none';
+        empty.style.display = '';
+      }
     }
 
     async function loadHistory() {
       try {
         const data = await window.apiClient.fetchWebSandboxVerdicts();
-        const verdicts = (data && data.verdicts) || [];
-        document.getElementById('historyCount').textContent = verdicts.length;
-        const body = document.getElementById('historyBody');
-        const empty = document.getElementById('historyEmpty');
-        const table = document.getElementById('historyTable');
-        if (verdicts.length > 0) {
-          body.innerHTML = verdicts.slice().reverse().map(v =>
-            `<tr><td title="${escapeHtml(v.url)}">${escapeHtml(truncUrl(v.url, 40))}</td><td><span class="pill ${classForClassification(v.classification)}">${escapeHtml(v.classification)}</span></td><td>${((v.confidence || 0) * 100).toFixed(0)}%</td><td>${escapeHtml(v.recommended_action)}</td><td>${escapeHtml(v.eval_method === 'gemini' ? 'Gemini' : v.eval_method)}</td><td style="font-size:12px;">${v.timestamp ? new Date(v.timestamp).toLocaleString() : '-'}</td></tr>`
-          ).join('');
-          table.style.display = '';
-          empty.style.display = 'none';
-        } else {
-          table.style.display = 'none';
-          empty.style.display = '';
-        }
+        _wsVerdicts = (data && data.verdicts) || [];
+        renderHistoryTable(getWsLang());
       } catch (e) {
         // ignore
       }
@@ -618,40 +687,156 @@
         pageSubtitle: 'Evidence-based web security analysis powered by Gemini structured output',
         geminiKeyTitle: 'Gemini API Key',
         geminiKeyDesc: 'Enter your Google AI Studio API key to enable Gemini-powered analysis across all features (Council, Scanner, RedTeam, Web Sandbox).',
+        geminiKeyDescConfigured: 'Gemini API key is configured. All AI features are active.',
         geminiSetBtn: 'Set Key',
         geminiUpdateBtn: 'Update',
+        geminiKeyPlaceholder: 'AIza...',
+        geminiKeyPlaceholderConfigured: 'Key is set. Enter new key to replace.',
+        geminiNotConfigured: 'Not configured',
+        geminiSetting: 'Setting...',
         targetUrl: 'Target URL',
         scanBtn: 'Scan',
         scanning: 'Scanning page...',
-        historyTitle: 'Previous Scans',
+        historyTitle: 'Recent Verdicts',
         historyEmpty: 'No scans yet. Enter a URL above to start.',
+        // Result meta labels
+        lblConfidence: 'Confidence',
+        lblAction: 'Action',
+        geminiOutput: 'Gemini Structured Output',
+        // Section titles
+        pageBundle: 'Page Bundle',
+        riskIndicators: 'Risk Indicators',
+        domThreats: 'DOM Threats',
+        networkTraces: 'Network Traces',
+        a11yIssues: 'Accessibility Issues',
+        // Bundle meta
+        bundleSha: 'SHA256', bundleSize: 'Size', bundleStatus: 'Status',
+        bundleResources: 'Resources', bundleBlocked: 'Blocked', bundleId: 'Bundle ID',
+        // DOM table headers
+        thTag: 'Tag', thThreatType: 'Threat Type', thSelector: 'Selector', thAttributes: 'Attributes',
+        // Network table headers
+        thSource: 'Source', thUrl: 'URL', thNetMethod: 'Method', thThreat: 'Threat',
+        // A11y table headers
+        thRole: 'Role', thName: 'Name', thDeceptiveLabel: 'Deceptive Label', deceptive: 'Deceptive',
+        // History table headers
+        thClassification: 'Classification', thConfidence: 'Confidence',
+        thAction: 'Action', thMethod: 'Method', thTime: 'Time',
+        // Empty states
+        noIndicators: 'No risk indicators found',
+        noDomThreats: 'No DOM threats detected',
+        noNetTraces: 'No suspicious network requests',
+        noA11y: 'No deceptive labels detected',
+        // Detail row
+        detailSummary: 'Summary', detailRiskIndicators: 'Risk Indicators', detailEvidence: 'Evidence',
       },
       ja: {
         pageTitle: 'Causal Web Sandbox',
         pageSubtitle: 'Gemini 構造化出力を活用したエビデンスベースの Web セキュリティ分析',
         geminiKeyTitle: 'Gemini API Key',
         geminiKeyDesc: 'Google AI Studio の API キーを入力すると、全 AI 機能（Council, Scanner, RedTeam, Web Sandbox）が有効になります。',
+        geminiKeyDescConfigured: 'Gemini API キーは設定済みです。全 AI 機能が有効です。',
         geminiSetBtn: 'キーを設定',
         geminiUpdateBtn: '更新',
+        geminiKeyPlaceholder: 'AIza...',
+        geminiKeyPlaceholderConfigured: '設定済み。新しいキーで置き換え可能です。',
+        geminiNotConfigured: '未設定',
+        geminiSetting: '設定中...',
         targetUrl: '対象 URL',
         scanBtn: 'スキャン',
         scanning: 'ページをスキャン中...',
         historyTitle: 'スキャン履歴',
         historyEmpty: 'スキャン履歴がありません。上の入力欄に URL を入力してください。',
+        // Result meta labels
+        lblConfidence: '信頼度',
+        lblAction: 'アクション',
+        geminiOutput: 'Gemini 構造化出力',
+        // Section titles
+        pageBundle: 'ページバンドル',
+        riskIndicators: 'リスク指標',
+        domThreats: 'DOM 脅威',
+        networkTraces: 'ネットワーク通信',
+        a11yIssues: 'アクセシビリティ問題',
+        // Bundle meta
+        bundleSha: 'SHA256', bundleSize: 'サイズ', bundleStatus: 'ステータス',
+        bundleResources: 'リソース', bundleBlocked: 'ブロック済', bundleId: 'バンドルID',
+        // DOM table headers
+        thTag: 'タグ', thThreatType: '脅威タイプ', thSelector: 'セレクター', thAttributes: '属性',
+        // Network table headers
+        thSource: 'ソース', thUrl: 'URL', thNetMethod: 'メソッド', thThreat: '脅威',
+        // A11y table headers
+        thRole: 'ロール', thName: '名前', thDeceptiveLabel: '偽装ラベル', deceptive: '偽装',
+        // History table headers
+        thClassification: '分類', thConfidence: '信頼度',
+        thAction: 'アクション', thMethod: '手法', thTime: '時刻',
+        // Empty states
+        noIndicators: 'リスク指標なし',
+        noDomThreats: 'DOM 脅威は検出されませんでした',
+        noNetTraces: '不審なネットワーク通信はありません',
+        noA11y: '偽装ラベルは検出されませんでした',
+        // Detail row
+        detailSummary: '概要', detailRiskIndicators: 'リスク指標', detailEvidence: '証拠',
       }
     };
     const LANG_KEY = 'suite_language';
     function getWsLang() {
       try { return localStorage.getItem(LANG_KEY) || 'en'; } catch (e) { return 'en'; }
     }
+    var _wsGeminiConfigured = false;
+    var _wsVerdicts = [];
     function applyWsI18n(lang) {
       const d = WS_I18N[lang] || WS_I18N.en;
       const el = (id) => document.getElementById(id);
+      // Page header
       if (el('pageTitle')) el('pageTitle').textContent = d.pageTitle;
       if (el('pageSubtitle')) el('pageSubtitle').textContent = d.pageSubtitle;
-      const langJa = el('langJa'), langEn = el('langEn');
-      if (langJa) langJa.classList.toggle('active', lang === 'ja');
-      if (langEn) langEn.classList.toggle('active', lang === 'en');
+      // Gemini setup
+      if (el('geminiKeyTitle')) el('geminiKeyTitle').textContent = d.geminiKeyTitle;
+      if (el('geminiKeyDesc')) el('geminiKeyDesc').textContent = _wsGeminiConfigured ? d.geminiKeyDescConfigured : d.geminiKeyDesc;
+      if (el('geminiKeyBtn') && !el('geminiKeyBtn').disabled) {
+        el('geminiKeyBtn').textContent = _wsGeminiConfigured ? d.geminiUpdateBtn : d.geminiSetBtn;
+      }
+      if (el('geminiKeyInput')) {
+        el('geminiKeyInput').placeholder = _wsGeminiConfigured ? d.geminiKeyPlaceholderConfigured : d.geminiKeyPlaceholder;
+      }
+      // Scan form
+      if (el('targetUrlLabel')) el('targetUrlLabel').textContent = d.targetUrl;
+      if (el('scanBtn') && !el('scanBtn').disabled) el('scanBtn').textContent = d.scanBtn;
+      if (el('scanLoadingText')) el('scanLoadingText').textContent = d.scanning;
+      // Result meta labels
+      if (el('lblConfidence')) el('lblConfidence').textContent = d.lblConfidence;
+      if (el('lblAction')) el('lblAction').textContent = d.lblAction;
+      // Section titles
+      if (el('pageBundleTitle')) el('pageBundleTitle').textContent = d.pageBundle;
+      if (el('riskIndicatorsTitle')) el('riskIndicatorsTitle').textContent = d.riskIndicators;
+      if (el('domThreatsTitle')) el('domThreatsTitle').textContent = d.domThreats;
+      if (el('netTracesTitle')) el('netTracesTitle').textContent = d.networkTraces;
+      if (el('a11yIssuesTitle')) el('a11yIssuesTitle').textContent = d.a11yIssues;
+      // Empty states
+      if (el('indicatorsEmpty')) el('indicatorsEmpty').textContent = d.noIndicators;
+      if (el('domEmpty')) el('domEmpty').textContent = d.noDomThreats;
+      if (el('netEmpty')) el('netEmpty').textContent = d.noNetTraces;
+      if (el('a11yEmpty')) el('a11yEmpty').textContent = d.noA11y;
+      // Result table headers
+      var th = el('domThead');
+      if (th) th.innerHTML = '<tr><th>' + [d.thTag, d.thThreatType, d.thSelector, d.thAttributes].map(escapeHtml).join('</th><th>') + '</th></tr>';
+      th = el('netThead');
+      if (th) th.innerHTML = '<tr><th>' + [d.thSource, d.thUrl, d.thNetMethod, d.thThreat].map(escapeHtml).join('</th><th>') + '</th></tr>';
+      th = el('a11yThead');
+      if (th) th.innerHTML = '<tr><th>' + [d.thRole, d.thName, d.thDeceptiveLabel].map(escapeHtml).join('</th><th>') + '</th></tr>';
+      // History section
+      if (el('historyTitle')) {
+        const count = el('historyCount') ? el('historyCount').textContent : '0';
+        el('historyTitle').innerHTML = escapeHtml(d.historyTitle) + ' <span class="count" id="historyCount">' + escapeHtml(count) + '</span>';
+      }
+      if (el('historyEmpty')) el('historyEmpty').textContent = d.historyEmpty;
+      th = el('historyThead');
+      if (th) th.innerHTML = '<tr><th>URL</th><th>' + [d.thClassification, d.thConfidence, d.thAction, d.thMethod, d.thTime].map(escapeHtml).join('</th><th>') + '</th></tr>';
+      // Re-render history with new language
+      renderHistoryTable(lang);
+      // Lang button active state
+      const langJaEl = el('langJa'), langEnEl = el('langEn');
+      if (langJaEl) langJaEl.classList.toggle('active', lang === 'ja');
+      if (langEnEl) langEnEl.classList.toggle('active', lang === 'en');
     }
     const langJa = document.getElementById('langJa');
     const langEn = document.getElementById('langEn');

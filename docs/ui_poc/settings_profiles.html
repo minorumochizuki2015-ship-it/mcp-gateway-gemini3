@@ -439,8 +439,8 @@
     };
 
     function t(key) {
-      const lang = window.getLanguage ? window.getLanguage() : 'ja';
-      const dict = ProfilesI18N[lang] || ProfilesI18N.ja;
+      const lang = window.getLanguage ? window.getLanguage() : 'en';
+      const dict = ProfilesI18N[lang] || ProfilesI18N.en;
       return dict[key] || key;
     }
 

@@ -286,6 +286,24 @@
       color: var(--gray-600);
     }
 
+    tr.clickable { cursor: pointer; }
+    tr.clickable:hover { background: var(--gray-50); }
+    .detail-row { display: none; }
+    .detail-row.open { display: table-row; }
+    .detail-row td { padding: 0 16px 16px 16px; background: #fafbfc; border-bottom: 1px solid var(--gray-200); }
+    .detail-grid { display: grid; grid-template-columns: 120px 1fr; gap: 6px 12px; font-size: 13px; }
+    .detail-key { font-weight: 600; color: var(--gray-600); }
+    .detail-val { color: var(--gray-900); word-break: break-all; }
+    .detail-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin: 1px 2px; }
+    .detail-tag.cap { background: #ede9fe; color: #5b21b6; }
+    .detail-tag.reason { background: #fef3c7; color: #92400e; }
+    .decision-pill { display: inline-flex; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+    .decision-pill.allow { background: #dcfce7; color: #166534; }
+    .decision-pill.deny { background: #fee2e2; color: #991b1b; }
+    .decision-pill.warn { background: #fef3c7; color: #92400e; }
+    .expand-icon { display: inline-block; transition: transform 0.15s; font-size: 11px; margin-right: 6px; color: var(--gray-300); }
+    tr.clickable.expanded .expand-icon { transform: rotate(90deg); }
+
     .lang-btn {
       padding: 6px 12px;
       border: 1px solid var(--gray-300);
@@ -443,20 +461,48 @@
         return;
       }
       emptyBox.hidden = true;
+      const lang = window.getLanguage ? window.getLanguage() : "en";
       rows.innerHTML = filtered
-        .map((e) => {
-          // P0-1b: Highlight matching evidence_id
+        .map((e, idx) => {
           const isMatch = evidenceIdFilter && String(e.evidence_id || "").includes(evidenceIdFilter);
-          const rowClass = isMatch ? 'class="evidence-highlight"' : '';
+          const hlClass = isMatch ? ' evidence-highlight' : '';
           const evidenceCell = e.evidence_id
             ? `<code class="evidence-id" title="Evidence ID">${escapeHtml(e.evidence_id)}</code>`
             : '';
-          return `<tr ${rowClass}>
-            <td>${formatTimestamp(e.ts)}</td>
+          const detail = e.detail || {};
+          const hasDetail = Object.keys(detail).length > 0;
+          const rowId = `audit-detail-${idx}`;
+          let detailHtml = '';
+          if (hasDetail) {
+            const decisionVal = detail.decision || detail.reason || '';
+            const decisionCls = decisionVal.includes('deny') || decisionVal.includes('block') ? 'deny' : decisionVal.includes('allow') ? 'allow' : 'warn';
+            const pairs = [];
+            if (detail.decision) pairs.push(['Decision', `<span class="decision-pill ${decisionCls}">${escapeHtml(detail.decision)}</span>`]);
+            if (detail.reason) pairs.push([lang==='ja'?'理由':'Reason', `<span class="detail-tag reason">${escapeHtml(detail.reason)}</span>`]);
+            if (detail.server_id) pairs.push(['Server ID', escapeHtml(detail.server_id)]);
+            if (detail.tool_name) pairs.push([lang==='ja'?'ツール':'Tool', escapeHtml(detail.tool_name)]);
+            if (detail.path) pairs.push(['Path', `<code>${escapeHtml(detail.path)}</code>`]);
+            if (detail.model) pairs.push(['Model', escapeHtml(detail.model)]);
+            if (detail.provider) pairs.push(['Provider', escapeHtml(detail.provider)]);
+            if (detail.code) pairs.push(['Code', escapeHtml(detail.code)]);
+            if (detail.http_status) pairs.push(['HTTP', escapeHtml(detail.http_status)]);
+            if (detail.latency_ms) pairs.push(['Latency', detail.latency_ms + 'ms']);
+            if (detail.capabilities && detail.capabilities.length) {
+              pairs.push([lang==='ja'?'機能':'Capabilities', detail.capabilities.map(c => `<span class="detail-tag cap">${escapeHtml(c)}</span>`).join('')]);
+            }
+            if (detail.source_reasons && detail.source_reasons.length) {
+              pairs.push([lang==='ja'?'検出理由':'Source Reasons', detail.source_reasons.map(r => `<span class="detail-tag reason">${escapeHtml(r)}</span>`).join('')]);
+            }
+            if (detail.base_url) pairs.push(['Base URL', `<code>${escapeHtml(detail.base_url)}</code>`]);
+            if (detail.note) pairs.push([lang==='ja'?'メモ':'Note', escapeHtml(detail.note)]);
+            detailHtml = `<tr class="detail-row" id="${rowId}"><td colspan="4"><div class="detail-grid">${pairs.map(([k,v]) => `<div class="detail-key">${k}</div><div class="detail-val">${v}</div>`).join('')}</div></td></tr>`;
+          }
+          return `<tr class="${hasDetail ? 'clickable' : ''}${hlClass}" ${hasDetail ? `onclick="var d=document.getElementById('${rowId}');d.classList.toggle('open');this.classList.toggle('expanded')"` : ''}>
+            <td>${hasDetail ? '<span class="expand-icon">&#9654;</span>' : ''}${formatTimestamp(e.ts)}</td>
             <td>${pillType(escapeHtml(e.type))}</td>
             <td>${escapeHtml(e.actor || "-")}</td>
             <td><div>${escapeHtml(e.summary || "-")}</div><div class="muted">${escapeHtml(e.source || "")}</div>${evidenceCell}</td>
-          </tr>`;
+          </tr>${detailHtml}`;
         })
         .join("");
     }
@@ -498,7 +544,7 @@
     const langJa = document.getElementById('langJa');
     const langEn = document.getElementById('langEn');
     function updateLangButtons() {
-      const lang = window.getLanguage ? window.getLanguage() : 'ja';
+      const lang = window.getLanguage ? window.getLanguage() : 'en';
       if (langJa) langJa.classList.toggle('active', lang === 'ja');
       if (langEn) langEn.classList.toggle('active', lang === 'en');
     }

@@ -488,7 +488,14 @@
 
     function render(items) {
       if (!items || !items.length) {
-        rows.innerHTML = `<tr><td colspan="5" class="empty">No allowlist entries</td></tr>`;
+        const lang = window.getLanguage ? window.getLanguage() : "en";
+        const msg = lang === "ja"
+          ? "許可リストにエントリがありません。<br>Settings から環境を登録すると自動的に追加されます。"
+          : "No allowlist entries yet.<br>Register an environment in Settings to get started.";
+        rows.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:48px 24px;color:var(--muted);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;margin-bottom:12px;opacity:0.4;display:block;margin-left:auto;margin-right:auto;"><path d="M9 12l2 2 4-4"/><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/></svg>
+          ${msg}
+        </td></tr>`;
         return;
       }
       rows.innerHTML = items
@@ -627,7 +634,7 @@
     const langJa = document.getElementById('langJa');
     const langEn = document.getElementById('langEn');
     function updateLangButtons() {
-      const lang = window.getLanguage ? window.getLanguage() : 'ja';
+      const lang = window.getLanguage ? window.getLanguage() : 'en';
       if (langJa) langJa.classList.toggle('active', lang === 'ja');
       if (langEn) langEn.classList.toggle('active', lang === 'en');
     }
