@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCP Gateway Suite - Web Sandbox</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;600;700&display=swap');
+
+    html { background: #f9fafb; }
+    body { opacity: 1; transition: opacity 0.08s ease-out; }
+    body.loading { opacity: 0; }
+
+    :root {
+      --primary: #0066ff;
+      --primary-dark: #0052cc;
+      --success: #10b981;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-900: #111827;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+      --radius: 12px;
+      --bg: var(--gray-50);
+      --card: #fff;
+      --border: var(--gray-200);
+      --text: var(--gray-900);
+      --muted: var(--gray-600);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', 'Noto Sans JP', 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text); line-height: 1.5;
+      padding-top: 56px;
+    }
+    a { color: var(--primary); text-decoration: none; }
+
+    .nav {
+      background: var(--gray-900); padding: 0 24px;
+      display: flex; align-items: center; height: 56px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .nav-brand {
+      color: #fff; font-weight: 700; font-size: 18px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .nav-brand svg { width: 28px; height: 28px; }
+    .nav-links { display: flex; gap: 4px; margin-left: 40px; flex-wrap: wrap; }
+    .nav-link {
+      color: var(--gray-300); text-decoration: none; padding: 8px 16px;
+      border-radius: 6px; font-size: 14px; font-weight: 500; transition: all 0.15s;
+    }
+    .nav-link:hover { color: #fff; background: rgba(255,255,255,0.1); }
+    .nav-link:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+    .nav-link.active { color: #fff; background: var(--primary); }
+    .nav-status { margin-left: auto; display: flex; align-items: center; gap: 8px; color: var(--gray-300); font-size: 13px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); display: inline-block; }
+
+    .gemini-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: linear-gradient(135deg, #4285f4 0%, #886ef8 50%, #ea4335 100%);
+      color: #fff; font-size: 11px; font-weight: 700; letter-spacing: 0.03em;
+      padding: 3px 10px; border-radius: 12px; white-space: nowrap;
+    }
+    .gemini-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: linear-gradient(135deg, #4285f4, #886ef8);
+      color: #fff; font-size: 10px; font-weight: 700;
+      padding: 2px 8px; border-radius: 8px; vertical-align: middle;
+    }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .muted { color: var(--muted); font-size: 14px; }
+
+    .card {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 24px; box-shadow: var(--shadow-sm);
+    }
+    .card + .card { margin-top: 16px; }
+
+    .scan-form {
+      display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;
+    }
+    @media (max-width: 480px) {
+      .scan-form .field { flex: 1 1 100%; }
+      .scan-form .btn-primary { flex: 1 1 100%; }
+    }
+    .scan-form .field { flex: 1; }
+    .scan-form label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: var(--muted); }
+    .scan-form input[type="url"] {
+      width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 14px; font-family: inherit; outline: none;
+    }
+    .scan-form input[type="url"]:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,102,255,0.1); }
+
+    .btn-primary {
+      background: var(--primary); color: #fff; border: none; border-radius: 6px;
+      padding: 12px 24px; font-size: 14px; font-weight: 600; cursor: pointer;
+      transition: background 0.15s; white-space: nowrap; min-height: 44px;
+    }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-primary:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .verdict-card {
+      display: flex; align-items: center; gap: 20px; padding: 20px 24px;
+    }
+    .verdict-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 20px; border-radius: 20px; font-weight: 700; font-size: 16px;
+    }
+    .verdict-badge.benign { background: #d1fae5; color: #065f46; }
+    .verdict-badge.phishing { background: #fee2e2; color: #991b1b; }
+    .verdict-badge.malware { background: #fee2e2; color: #991b1b; }
+    .verdict-badge.clickjacking { background: #fef3c7; color: #78350f; }
+    .verdict-badge.scam { background: #fef3c7; color: #78350f; }
+    .verdict-badge.deceptive_ui { background: #fef3c7; color: #78350f; }
+
+    .verdict-meta { font-size: 13px; color: var(--muted); }
+    .verdict-meta strong { color: var(--text); }
+
+    .confidence-bar {
+      width: 120px; height: 8px; background: var(--gray-200); border-radius: 4px; overflow: hidden;
+    }
+    .confidence-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+    .confidence-fill.high { background: var(--success); }
+    .confidence-fill.medium { background: var(--warn); }
+    .confidence-fill.low { background: var(--danger); }
+
+    .section-title {
+      font-size: 15px; font-weight: 700; margin-bottom: 12px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .section-title .count {
+      background: var(--gray-100); color: var(--muted); font-size: 12px;
+      padding: 2px 8px; border-radius: 10px;
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; font-weight: 600; color: var(--muted); padding: 8px 12px; border-bottom: 2px solid var(--border); }
+    td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+
+    .pill {
+      display: inline-block; padding: 2px 10px; border-radius: 10px;
+      font-size: 12px; font-weight: 600;
+    }
+    .pill.danger { background: #fee2e2; color: #991b1b; }
+    .pill.warn { background: #fef3c7; color: #92400e; }
+    .pill.ok { background: #d1fae5; color: #065f46; }
+    .pill.info { background: #dbeafe; color: #1e40af; }
+
+    .spinner {
+      display: inline-block; width: 16px; height: 16px;
+      border: 2px solid var(--gray-200); border-top: 2px solid var(--primary);
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty { text-align: center; padding: 40px; color: var(--muted); }
+    .error { color: var(--danger); }
+
+    #resultSection { display: none; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    .bundle-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+    .bundle-meta .item { font-size: 13px; }
+    .bundle-meta .item .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .bundle-meta .item .val { font-weight: 600; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; word-break: break-all; }
+
+    .indicators-list { list-style: none; padding: 0; }
+    .indicators-list li { padding: 4px 0; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+    .indicators-list li::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--danger); flex-shrink: 0; }
+
+    /* Verdicts history */
+    .verdicts-table { margin-top: 16px; }
+  </style>
+</head>
+
+<body>
+  <nav class="nav">
+    <div class="nav-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" role="img" aria-label="MCP Gateway Suite">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+      </svg>
+      MCP Gateway Suite
+      <span class="gemini-badge">Gemini 3</span>
+    </div>
+    <div class="nav-links">
+      <a href="settings_environments.html" class="nav-link">Environments</a>
+      <a href="dashboard.html" class="nav-link">Dashboard</a>
+      <a href="scans.html" class="nav-link">Scans</a>
+      <a href="allowlist.html" class="nav-link">AllowList</a>
+      <a href="web_sandbox.html" class="nav-link">Web Sandbox</a>
+      <a href="audit_log.html" class="nav-link">Audit Log</a>
+    </div>
+    <div class="nav-status">
+      <span class="status-dot"></span>
+      Gateway Online
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>Causal Web Sandbox</h1>
+        <p class="muted">Evidence-based web security analysis &mdash; <span class="gemini-tag" style="font-size: 11px; padding: 3px 10px;">Gemini 3</span> Structured Output</p>
+      </div>
+    </div>
+
+    <!-- Scan Form -->
+    <div class="card">
+      <form id="scanForm" class="scan-form">
+        <div class="field">
+          <label for="urlInput">Target URL</label>
+          <input type="url" id="urlInput" placeholder="https://example.com" required>
+        </div>
+        <button type="submit" class="btn-primary" id="scanBtn">Scan</button>
+      </form>
+      <div id="scanError" class="error" style="margin-top: 8px; display: none;"></div>
+      <div id="scanLoading" style="margin-top: 12px; display: none;">
+        <span class="spinner"></span>
+        <span class="muted" style="margin-left: 8px;">Scanning page...</span>
+      </div>
+    </div>
+
+    <!-- Result Section -->
+    <div id="resultSection">
+      <!-- Verdict -->
+      <div class="card verdict-card" id="verdictCard" style="margin-top: 16px;">
+        <div>
+          <span class="verdict-badge" id="verdictBadge">-</span>
+        </div>
+        <div style="flex: 1;">
+          <div id="verdictSummary" style="font-size: 14px;"></div>
+          <div class="verdict-meta" style="margin-top: 4px;">
+            Confidence: <strong id="verdictConfidence">-</strong>
+            <div class="confidence-bar" style="display: inline-block; vertical-align: middle; margin-left: 8px;">
+              <div class="confidence-fill" id="confidenceFill" style="width: 0%;"></div>
+            </div>
+            &nbsp;&middot;&nbsp; Action: <strong id="verdictAction">-</strong>
+            &nbsp;&middot;&nbsp; <span id="verdictMethodWrap">Method: <strong id="verdictMethod">-</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bundle Info + Risk Indicators -->
+      <div class="grid-2" style="margin-top: 16px;">
+        <div class="card">
+          <div class="section-title">Page Bundle</div>
+          <div class="bundle-meta" id="bundleMeta"></div>
+        </div>
+        <div class="card">
+          <div class="section-title">Risk Indicators <span class="count" id="indicatorCount">0</span></div>
+          <ul class="indicators-list" id="indicatorsList"></ul>
+          <div class="empty" id="indicatorsEmpty" style="display: none;">No risk indicators found</div>
+        </div>
+      </div>
+
+      <!-- DOM Threats -->
+      <div class="card" style="margin-top: 16px;">
+        <div class="section-title">DOM Threats <span class="count" id="domCount">0</span></div>
+        <table id="domTable">
+          <thead>
+            <tr><th>Tag</th><th>Threat Type</th><th>Selector</th><th>Attributes</th></tr>
+          </thead>
+          <tbody id="domBody"></tbody>
+        </table>
+        <div class="empty" id="domEmpty" style="display: none;">No DOM threats detected</div>
+      </div>
+
+      <!-- Network Traces -->
+      <div class="card" style="margin-top: 16px;">
+        <div class="section-title">Network Traces <span class="count" id="netCount">0</span></div>
+        <table id="netTable">
+          <thead>
+            <tr><th>Source</th><th>URL</th><th>Method</th><th>Threat</th></tr>
+          </thead>
+          <tbody id="netBody"></tbody>
+        </table>
+        <div class="empty" id="netEmpty" style="display: none;">No suspicious network requests</div>
+      </div>
+
+      <!-- A11y Issues -->
+      <div class="card" style="margin-top: 16px;" id="a11ySection">
+        <div class="section-title">Accessibility Issues <span class="count" id="a11yCount">0</span></div>
+        <table id="a11yTable">
+          <thead>
+            <tr><th>Role</th><th>Name</th><th>Deceptive Label</th></tr>
+          </thead>
+          <tbody id="a11yBody"></tbody>
+        </table>
+        <div class="empty" id="a11yEmpty" style="display: none;">No deceptive labels detected</div>
+      </div>
+    </div>
+
+    <!-- Recent Verdicts -->
+    <div class="card" style="margin-top: 24px;">
+      <div class="section-title">Recent Verdicts <span class="count" id="historyCount">0</span></div>
+      <table class="verdicts-table" id="historyTable">
+        <thead>
+          <tr><th>URL</th><th>Classification</th><th>Confidence</th><th>Action</th><th>Method</th><th>Time</th></tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+      <div class="empty" id="historyEmpty">No scans yet</div>
+    </div>
+  </div>
+
+  <script src="api_client.js"></script>
+  <script>
+    // Auto-set active nav link
+    (function () {
+      if (!window.location || !window.location.pathname) return;
+      const currentFile = window.location.pathname.split('/').pop() || '';
+      document.querySelectorAll('.nav-link').forEach(link => {
+        const href = link.getAttribute('href');
+        if (href === currentFile) link.classList.add('active');
+        else link.classList.remove('active');
+      });
+    })();
+  </script>
+  <script>
+    // XSS prevention: escape all untrusted API data before innerHTML insertion
+    function escapeHtml(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    const scanForm = document.getElementById('scanForm');
+    const urlInput = document.getElementById('urlInput');
+    const scanBtn = document.getElementById('scanBtn');
+    const scanError = document.getElementById('scanError');
+    const scanLoading = document.getElementById('scanLoading');
+    const resultSection = document.getElementById('resultSection');
+
+    function classForClassification(cls) {
+      if (cls === 'benign') return 'ok';
+      if (['phishing', 'malware'].includes(cls)) return 'danger';
+      return 'warn';
+    }
+
+    function truncUrl(url, maxLen) {
+      if (!url) return '-';
+      return url.length > (maxLen || 60) ? url.slice(0, maxLen || 60) + '...' : url;
+    }
+
+    function renderVerdict(data) {
+      resultSection.style.display = 'block';
+      const v = data.verdict;
+
+      // Badge
+      const badge = document.getElementById('verdictBadge');
+      badge.textContent = v.classification.toUpperCase();
+      badge.className = 'verdict-badge ' + v.classification;
+
+      // Summary
+      document.getElementById('verdictSummary').textContent = v.summary;
+      document.getElementById('verdictConfidence').textContent = (v.confidence * 100).toFixed(0) + '%';
+      document.getElementById('verdictAction').textContent = v.recommended_action;
+      var methodEl = document.getElementById('verdictMethod');
+      methodEl.textContent = data.eval_method;
+      var methodWrap = document.getElementById('verdictMethodWrap');
+      if (data.eval_method === 'gemini') {
+        methodWrap.innerHTML = '<span class="gemini-tag">Gemini 3</span> Structured Output';
+      } else {
+        methodWrap.innerHTML = 'Method: <strong>' + escapeHtml(data.eval_method) + '</strong>';
+      }
+
+      // Confidence bar
+      const fill = document.getElementById('confidenceFill');
+      fill.style.width = (v.confidence * 100) + '%';
+      fill.className = 'confidence-fill ' + (v.confidence >= 0.7 ? 'high' : v.confidence >= 0.4 ? 'medium' : 'low');
+
+      // Bundle
+      const b = data.bundle;
+      document.getElementById('bundleMeta').innerHTML = [
+        { label: 'SHA256', val: b.sha256 ? b.sha256.slice(0, 16) + '...' : '-' },
+        { label: 'Size', val: b.content_length ? (b.content_length / 1024).toFixed(1) + ' KB' : '-' },
+        { label: 'Status', val: b.status_code || '-' },
+        { label: 'Resources', val: b.resource_count },
+        { label: 'Blocked', val: (b.blocked_resources || []).length },
+        { label: 'Bundle ID', val: b.bundle_id ? b.bundle_id.slice(0, 8) + '...' : '-' },
+      ].map(i => `<div class="item"><div class="label">${escapeHtml(i.label)}</div><div class="val">${escapeHtml(i.val)}</div></div>`).join('');
+
+      // Risk indicators
+      const indicators = v.risk_indicators || [];
+      document.getElementById('indicatorCount').textContent = indicators.length;
+      const indList = document.getElementById('indicatorsList');
+      const indEmpty = document.getElementById('indicatorsEmpty');
+      if (indicators.length > 0) {
+        indList.innerHTML = indicators.map(i => `<li>${escapeHtml(i)}</li>`).join('');
+        indList.style.display = '';
+        indEmpty.style.display = 'none';
+      } else {
+        indList.style.display = 'none';
+        indEmpty.style.display = '';
+      }
+
+      // DOM threats
+      const dom = data.dom_threats || [];
+      document.getElementById('domCount').textContent = dom.length;
+      const domBody = document.getElementById('domBody');
+      const domEmpty = document.getElementById('domEmpty');
+      const domTable = document.getElementById('domTable');
+      if (dom.length > 0) {
+        domBody.innerHTML = dom.map(d =>
+          `<tr><td><code>${escapeHtml(d.tag)}</code></td><td><span class="pill danger">${escapeHtml(d.threat_type)}</span></td><td style="font-size:12px;font-family:monospace;">${escapeHtml(d.selector)}</td><td style="font-size:12px;">${escapeHtml(JSON.stringify(d.attributes || {}))}</td></tr>`
+        ).join('');
+        domTable.style.display = '';
+        domEmpty.style.display = 'none';
+      } else {
+        domTable.style.display = 'none';
+        domEmpty.style.display = '';
+      }
+
+      // Network traces (show suspicious only, or all if few)
+      const net = data.network_traces || [];
+      const suspicious = net.filter(n => n.is_suspicious);
+      const showNet = suspicious.length > 0 ? suspicious : net.slice(0, 10);
+      document.getElementById('netCount').textContent = suspicious.length + ' / ' + net.length;
+      const netBody = document.getElementById('netBody');
+      const netEmpty = document.getElementById('netEmpty');
+      const netTable = document.getElementById('netTable');
+      if (showNet.length > 0) {
+        netBody.innerHTML = showNet.map(n =>
+          `<tr><td><span class="pill info">${escapeHtml(n.source)}</span></td><td style="font-size:12px;" title="${escapeHtml(n.url)}">${escapeHtml(truncUrl(n.url, 50))}</td><td>${escapeHtml(n.method)}</td><td>${n.is_suspicious ? '<span class="pill warn">' + escapeHtml(n.threat_type) + '</span>' : '-'}</td></tr>`
+        ).join('');
+        netTable.style.display = '';
+        netEmpty.style.display = 'none';
+      } else {
+        netTable.style.display = 'none';
+        netEmpty.style.display = '';
+      }
+
+      // A11y
+      const a11y = data.a11y_deceptive || [];
+      document.getElementById('a11yCount').textContent = a11y.length;
+      const a11yBody = document.getElementById('a11yBody');
+      const a11yEmpty = document.getElementById('a11yEmpty');
+      const a11yTable = document.getElementById('a11yTable');
+      if (a11y.length > 0) {
+        a11yBody.innerHTML = a11y.map(a =>
+          `<tr><td>${escapeHtml(a.role)}</td><td>${escapeHtml(a.name)}</td><td>${a.deceptive_label ? '<span class="pill warn">Deceptive</span>' : '-'}</td></tr>`
+        ).join('');
+        a11yTable.style.display = '';
+        a11yEmpty.style.display = 'none';
+      } else {
+        a11yTable.style.display = 'none';
+        a11yEmpty.style.display = '';
+      }
+    }
+
+    async function loadHistory() {
+      try {
+        const data = await window.apiClient.fetchWebSandboxVerdicts();
+        const verdicts = (data && data.verdicts) || [];
+        document.getElementById('historyCount').textContent = verdicts.length;
+        const body = document.getElementById('historyBody');
+        const empty = document.getElementById('historyEmpty');
+        const table = document.getElementById('historyTable');
+        if (verdicts.length > 0) {
+          body.innerHTML = verdicts.slice().reverse().map(v =>
+            `<tr><td title="${escapeHtml(v.url)}">${escapeHtml(truncUrl(v.url, 40))}</td><td><span class="pill ${classForClassification(v.classification)}">${escapeHtml(v.classification)}</span></td><td>${((v.confidence || 0) * 100).toFixed(0)}%</td><td>${escapeHtml(v.recommended_action)}</td><td>${v.eval_method === 'gemini' ? '<span class="gemini-tag">Gemini 3</span>' : escapeHtml(v.eval_method)}</td><td style="font-size:12px;">${v.timestamp ? new Date(v.timestamp).toLocaleString() : '-'}</td></tr>`
+          ).join('');
+          table.style.display = '';
+          empty.style.display = 'none';
+        } else {
+          table.style.display = 'none';
+          empty.style.display = '';
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    scanForm.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const url = urlInput.value.trim();
+      if (!url) return;
+
+      scanError.style.display = 'none';
+      scanLoading.style.display = '';
+      scanBtn.disabled = true;
+      resultSection.style.display = 'none';
+
+      try {
+        const data = await window.apiClient.scanWebSandbox(url);
+        renderVerdict(data);
+        loadHistory();
+      } catch (err) {
+        scanError.textContent = err.message || 'Scan failed';
+        scanError.style.display = '';
+      } finally {
+        scanLoading.style.display = 'none';
+        scanBtn.disabled = false;
+      }
+    });
+
+    // Load history on page load
+    loadHistory();
+  </script>
+</body>
+
+</html>

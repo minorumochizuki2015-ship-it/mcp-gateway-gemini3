@@ -1,0 +1,850 @@
+<!doctype html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCP Gateway Suite - Dashboard</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;600;700&display=swap');
+
+    /* Smooth page transition - prevent flash */
+    html {
+      background: #f9fafb;
+    }
+
+    body {
+      opacity: 1;
+      transition: opacity 0.08s ease-out;
+    }
+
+    body.loading {
+      opacity: 0;
+    }
+
+    :root {
+      --primary: #0066ff;
+      --primary-dark: #0052cc;
+      --success: #10b981;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-900: #111827;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+      --radius: 8px;
+      --bg: var(--gray-50);
+      --card: #fff;
+      --border: var(--gray-200);
+      --text: var(--gray-900);
+      --muted: var(--gray-600);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', 'Noto Sans JP', 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding-top: 56px;
+    }
+
+    a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .nav {
+      background: var(--gray-900);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      height: 56px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-brand {
+      color: #fff;
+      font-weight: 700;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-brand svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 4px;
+      margin-left: 40px;
+      flex-wrap: wrap;
+    }
+
+    .nav-link {
+      color: var(--gray-300);
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+
+    .nav-link:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .nav-link.active {
+      color: #fff;
+      background: var(--primary);
+    }
+
+    .nav-status {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--gray-300);
+      font-size: 13px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .header {
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      margin-bottom: 4px;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    @media (max-width: 1024px) {
+      .grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 640px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow-sm);
+      padding: 20px;
+      min-height: 120px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card:hover {
+      box-shadow: 0 4px 12px rgb(0 0 0 / 0.1);
+      transform: translateY(-2px);
+    }
+
+    .card-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
+
+    .card-icon svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .card-icon.blue {
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      color: white;
+    }
+
+    .card-icon.green {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+    }
+
+    .card-icon.purple {
+      background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+      color: white;
+    }
+
+    .card-icon.amber {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: white;
+    }
+
+    /* Severity Breakdown Styles */
+    .severity-card {
+      min-height: auto;
+    }
+
+    .severity-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    @media (max-width: 768px) {
+      .severity-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .severity-item {
+      background: var(--gray-50);
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+      border: 1px solid var(--border);
+    }
+
+    .severity-item.critical {
+      border-left: 4px solid #dc2626;
+    }
+
+    .severity-item.high {
+      border-left: 4px solid #ea580c;
+    }
+
+    .severity-item.medium {
+      border-left: 4px solid #f59e0b;
+    }
+
+    .severity-item.low {
+      border-left: 4px solid #22c55e;
+    }
+
+    .severity-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .severity-value {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+
+    .severity-item.critical .severity-value {
+      color: #dc2626;
+    }
+
+    .severity-item.high .severity-value {
+      color: #ea580c;
+    }
+
+    .severity-item.medium .severity-value {
+      color: #f59e0b;
+    }
+
+    .severity-item.low .severity-value {
+      color: #22c55e;
+    }
+
+    .severity-bar {
+      height: 6px;
+      background: var(--gray-200);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .severity-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.5s ease;
+      width: 0%;
+    }
+
+    .severity-item.critical .severity-fill {
+      background: linear-gradient(90deg, #dc2626 0%, #ef4444 100%);
+    }
+
+    .severity-item.high .severity-fill {
+      background: linear-gradient(90deg, #ea580c 0%, #f97316 100%);
+    }
+
+    .severity-item.medium .severity-fill {
+      background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+    }
+
+    .severity-item.low .severity-fill {
+      background: linear-gradient(90deg, #22c55e 0%, #4ade80 100%);
+    }
+
+    .label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-bottom: 6px;
+    }
+
+    .value {
+      font-size: 24px;
+      font-weight: 800;
+    }
+
+    .stack {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+
+    .pill.ok {
+      background: #e0f4ed;
+      color: #0f5132;
+      border-color: #a3e2c7;
+    }
+
+    .pill.warn {
+      background: #fef3c7;
+      color: #92400e;
+      border-color: #fde68a;
+    }
+
+    .pill.danger {
+      background: #fee2e2;
+      color: #b91c1c;
+      border-color: #fecdd3;
+    }
+
+    .list {
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .list li {
+      background: #eef2ff;
+      color: #312e81;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .error {
+      color: var(--danger);
+      font-weight: 700;
+    }
+
+    .lang-btn {
+      padding: 6px 12px;
+      border: 1px solid var(--gray-300);
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.15s;
+      color: var(--gray-700);
+    }
+
+    .lang-btn:hover {
+      background: var(--gray-50);
+    }
+
+    .lang-btn.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+  </style>
+</head>
+
+<body>
+  <nav class="nav">
+    <div class="nav-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+      </svg>
+      MCP Gateway Suite
+      <span style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#4285f4 0%,#886ef8 50%,#ea4335 100%);color:#fff;font-size:11px;font-weight:700;letter-spacing:0.03em;padding:3px 10px;border-radius:12px;white-space:nowrap;">Gemini 3</span>
+    </div>
+    <div class="nav-links">
+      <a href="settings_environments.html" class="nav-link">Environments</a>
+      <a href="dashboard.html" class="nav-link">Dashboard</a>
+      <a href="scans.html" class="nav-link">Scans</a>
+      <a href="allowlist.html" class="nav-link">AllowList</a>
+      <a href="web_sandbox.html" class="nav-link">Web Sandbox</a>
+      <a href="audit_log.html" class="nav-link">Audit Log</a>
+    </div>
+    <div class="nav-status">
+      <span class="status-dot"></span>
+      Gateway Online
+    </div>
+  </nav>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1 data-i18n="dashboard.title">Policy Dashboard</h1>
+        <p class="muted" data-i18n="dashboard.subtitle">Status and policy control overview</p>
+        <div data-admin-session-banner-anchor="page-header"></div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 13px; color: var(--muted);">Language:</span>
+        <div style="display: flex; gap: 4px;">
+          <button type="button" class="lang-btn" id="langJa" data-lang="ja">JA</button>
+          <button type="button" class="lang-btn" id="langEn" data-lang="en">EN</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="errorBox" class="card" style="display:none;">
+      <span class="error" data-i18n="dashboard.errorLoad">ダッシュボードデータの読み込みに失敗しました。管理者セッションを確立してください。</span>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="card-icon blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+          </svg>
+        </div>
+        <div>
+          <div class="label">AllowList</div>
+          <div class="value" id="allowTotal">0</div>
+          <div class="stack" id="allowBadges" style="margin-top: 8px;"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon green">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+        </div>
+        <div>
+          <div class="label">Scans <span style="display:inline-flex;align-items:center;background:linear-gradient(135deg,#4285f4,#886ef8);color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:6px;vertical-align:middle;margin-left:4px;">G3</span></div>
+          <div class="value" id="scanTotal">0</div>
+          <div class="muted" id="scanLatest" style="margin-top: 4px;">-</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon purple">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path
+              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+        </div>
+        <div>
+          <div class="label">Council <span style="display:inline-flex;align-items:center;background:linear-gradient(135deg,#4285f4,#886ef8);color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:6px;vertical-align:middle;margin-left:4px;">G3</span></div>
+          <div class="value" id="councilTotal">0</div>
+          <div class="muted" id="councilLatest" style="margin-top: 4px;">-</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon amber">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path
+              d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+        </div>
+        <div>
+          <div class="label">Shadow Audit <span style="display:inline-flex;align-items:center;background:linear-gradient(135deg,#4285f4,#886ef8);color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:6px;vertical-align:middle;margin-left:4px;">G3</span></div>
+          <div class="stack" id="shadowStatus" style="margin-top: 8px;"></div>
+        </div>
+      </div>
+      <a href="web_sandbox.html" class="card" style="cursor: pointer; text-decoration: none; color: inherit;">
+        <div class="card-icon" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+          </svg>
+        </div>
+        <div>
+          <div class="label">Web Sandbox <span style="display:inline-flex;align-items:center;background:linear-gradient(135deg,#4285f4,#886ef8);color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:6px;vertical-align:middle;margin-left:4px;">G3</span></div>
+          <div class="value" id="webSandboxTotal">-</div>
+          <div class="muted" style="margin-top: 4px;">Scan a URL</div>
+        </div>
+      </a>
+    </div>
+
+    <div class="card severity-card" style="margin-top:16px;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+        <div class="card-icon" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <div>
+          <div class="label" style="margin-bottom: 0;" data-i18n="dashboard.severityTitle">深刻度別内訳</div>
+          <div class="muted" data-i18n="dashboard.severitySubtitle">検出された問題の深刻度別内訳</div>
+        </div>
+      </div>
+      <div class="severity-grid" id="severityGrid">
+        <div class="severity-item critical">
+          <div class="severity-label" data-i18n="dashboard.severityCritical">Critical</div>
+          <div class="severity-value" id="criticalCount">0</div>
+          <div class="severity-bar">
+            <div class="severity-fill" id="criticalBar"></div>
+          </div>
+        </div>
+        <div class="severity-item high">
+          <div class="severity-label" data-i18n="dashboard.severityHigh">High</div>
+          <div class="severity-value" id="highCount">0</div>
+          <div class="severity-bar">
+            <div class="severity-fill" id="highBar"></div>
+          </div>
+        </div>
+        <div class="severity-item medium">
+          <div class="severity-label" data-i18n="dashboard.severityMedium">Medium</div>
+          <div class="severity-value" id="mediumCount">0</div>
+          <div class="severity-bar">
+            <div class="severity-fill" id="mediumBar"></div>
+          </div>
+        </div>
+        <div class="severity-item low">
+          <div class="severity-label" data-i18n="dashboard.severityLow">Low</div>
+          <div class="severity-value" id="lowCount">0</div>
+          <div class="severity-bar">
+            <div class="severity-fill" id="lowBar"></div>
+          </div>
+        </div>
+      </div>
+      <ul class="list" id="severityList" style="display: none;"></ul>
+    </div>
+  </div>
+
+  <script src="api_client.js"></script>
+  <script>
+    // Auto-set active nav link based on current page
+    (function () {
+      if (!window.location || !window.location.pathname) return; // Skip in test/linkedom env
+      const currentFile = window.location.pathname.split('/').pop() || 'dashboard.html';
+      document.querySelectorAll('.nav-link').forEach(link => {
+        const href = link.getAttribute('href');
+        if (href === currentFile || (currentFile === '' && href === 'dashboard.html')) {
+          link.classList.add('active');
+        } else {
+          link.classList.remove('active');
+        }
+      });
+    })();
+  </script>
+  <script>
+    const errorBox = document.getElementById("errorBox");
+    const allowTotal = document.getElementById("allowTotal");
+    const allowBadges = document.getElementById("allowBadges");
+    const scanTotal = document.getElementById("scanTotal");
+    const scanLatest = document.getElementById("scanLatest");
+    const councilTotal = document.getElementById("councilTotal");
+    const councilLatest = document.getElementById("councilLatest");
+    const shadowStatus = document.getElementById("shadowStatus");
+    const severityList = document.getElementById("severityList");
+
+    function pill(text, type) {
+      const cls = type === "ok" ? "ok" : type === "warn" ? "warn" : "danger";
+      return `<span class="pill ${cls}">${text}</span>`;
+    }
+
+    function t(key, fallback) {
+      return window.tCommon ? window.tCommon(key) : fallback;
+    }
+
+    function getPolicyBundlePresent(obj) {
+      if (!obj) return null;
+      if (Object.prototype.hasOwnProperty.call(obj, "policy_bundle_present_ok")) {
+        const present = obj.policy_bundle_present_ok;
+        if (present === true || present === false) return present;
+        return null;
+      }
+      const legacy = obj.policy_bundle_hash_ok;
+      if (legacy === true || legacy === false) return legacy;
+      return null;
+    }
+
+    function getSignatureKind(obj) {
+      const raw =
+        obj && typeof obj.policy_bundle_signature_status === "string"
+          ? obj.policy_bundle_signature_status
+          : "";
+      if (!raw) return "";
+      return raw.split(":")[0];
+    }
+
+    function escapeAttr(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function renderShadowStatus(shadow, allowlistStatus, showUnavailable) {
+      const unavailableText = window.tCommon ? window.tCommon("dashboard.shadowUnavailable") : "Data unavailable";
+      const chainVal =
+        shadow && typeof shadow.chain_ok === "boolean"
+          ? shadow.chain_ok
+          : allowlistStatus && typeof allowlistStatus.shadow_audit_chain_ok === "boolean"
+            ? allowlistStatus.shadow_audit_chain_ok
+            : null;
+
+      const chainPill =
+        chainVal === true
+          ? pill(t("common.shadowChainOk", "chain OK"), "ok")
+          : chainVal === false
+            ? pill(t("common.shadowChainNg", "chain NG"), "danger")
+            : pill(t("common.shadowChainNA", "chain N/A"), "warn");
+
+      const source = allowlistStatus && typeof allowlistStatus === "object" ? allowlistStatus : shadow;
+      if (!source || typeof source !== "object") {
+        const items = [
+          chainPill,
+          pill(t("common.policyBundlePresentNA", "Policy bundle: N/A"), "warn"),
+          pill(t("common.policyBundleSignatureNA", "Signature: N/A"), "warn"),
+        ];
+        if (showUnavailable) items.push(`<span class="muted">${unavailableText}</span>`);
+        shadowStatus.innerHTML = items.join("");
+        return;
+      }
+      const present = getPolicyBundlePresent(source);
+      const rawSignature =
+        typeof source.policy_bundle_signature_status === "string"
+          ? source.policy_bundle_signature_status
+          : "";
+      const signatureKind = rawSignature ? rawSignature.split(":")[0] : "";
+      const isBundleMissing = rawSignature === "skip:bundle_missing";
+      const sha =
+        typeof source.policy_bundle_sha256 === "string"
+          ? source.policy_bundle_sha256.trim()
+          : "";
+
+      const presentPill =
+        present === true
+          ? pill(t("common.policyBundlePresentPresent", "Policy bundle: Present"), "ok")
+          : present === false
+            ? pill(t("common.policyBundlePresentMissing", "Policy bundle: Missing"), "danger")
+            : pill(t("common.policyBundlePresentNA", "Policy bundle: N/A"), "warn");
+
+      const sigTitle = rawSignature ? ` title="${escapeAttr(rawSignature)}"` : "";
+      let sigText = t("common.policyBundleSignatureNA", "Signature: N/A");
+      let sigTone = "warn";
+      if (present === true) {
+        if (signatureKind === "verified") {
+          sigText = t("common.policyBundleSignatureVerified", "Signature: Verified");
+          sigTone = "ok";
+        } else if (signatureKind === "skip" && !isBundleMissing) {
+          sigText = t("common.policyBundleSignatureNotVerified", "Signature: Not verified");
+          sigTone = "warn";
+        } else if (signatureKind === "failed" || signatureKind === "error") {
+          sigText = t("common.policyBundleSignatureInvalid", "Signature: Invalid");
+          sigTone = "danger";
+        }
+      }
+      const sigPill = `<span class="pill ${sigTone}"${sigTitle}>${sigText}</span>`;
+
+      const shaPill = sha
+        ? pill(`sha: ${sha.length > 12 ? `${sha.slice(0, 8)}…${sha.slice(-4)}` : sha}`, "warn")
+        : "";
+
+      shadowStatus.innerHTML = [
+        chainPill,
+        presentPill,
+        sigPill,
+        shaPill,
+      ].filter(Boolean).join("");
+    }
+
+    function render(summary, allowlistStatus) {
+      if (!summary) {
+        errorBox.style.display = "block";
+        renderShadowStatus(null, null, true);
+        return;
+      }
+      const allow = summary.allowlist || {};
+      allowTotal.textContent = allow.total ?? 0;
+      allowBadges.innerHTML = [
+        pill(`active ${allow.active ?? 0}`, "ok"),
+        pill(`deny ${allow.deny ?? 0}`, "danger"),
+        pill(`quarantine ${allow.quarantine ?? 0}`, (allow.quarantine ?? 0) > 0 ? "warn" : "ok"),
+      ].join("");
+
+      const scans = summary.scans || {};
+      scanTotal.textContent = scans.total ?? 0;
+      scanLatest.textContent = scans.latest_ts
+        ? `${scans.latest_status || "-"} / ${scans.latest_ts}`
+        : "-";
+
+      const council = summary.council || {};
+      councilTotal.textContent = council.total ?? 0;
+      councilLatest.textContent = council.latest_ts
+        ? `${council.latest_decision || "-"} / ${council.latest_ts}`
+        : "-";
+
+      const shadow = summary.shadow_audit;
+      renderShadowStatus(shadow, allowlistStatus, false);
+
+      const sev = (scans.severity_counts || {});
+      const items = [
+        ["Critical", sev.critical || 0],
+        ["High", sev.high || 0],
+        ["Medium", sev.medium || 0],
+        ["Low", sev.low || 0],
+      ];
+
+      // Update new severity grid
+      const total = items.reduce((sum, [_, v]) => sum + v, 0) || 1;
+      document.getElementById("criticalCount").textContent = sev.critical || 0;
+      document.getElementById("highCount").textContent = sev.high || 0;
+      document.getElementById("mediumCount").textContent = sev.medium || 0;
+      document.getElementById("lowCount").textContent = sev.low || 0;
+      document.getElementById("criticalBar").style.width = `${((sev.critical || 0) / total) * 100}%`;
+      document.getElementById("highBar").style.width = `${((sev.high || 0) / total) * 100}%`;
+      document.getElementById("mediumBar").style.width = `${((sev.medium || 0) / total) * 100}%`;
+      document.getElementById("lowBar").style.width = `${((sev.low || 0) / total) * 100}%`;
+    }
+
+    async function init() {
+      const fetchAllowlistStatus =
+        window.apiClient && typeof window.apiClient.fetchAllowlistStatus === "function"
+          ? window.apiClient.fetchAllowlistStatus
+          : async () => null;
+      const [data, allowlistStatus] = await Promise.all([
+        window.apiClient.fetchDashboardSummary(),
+        fetchAllowlistStatus(),
+      ]);
+      render(data, allowlistStatus);
+    }
+    init();
+  </script>
+  <script>
+    // Language toggle
+    const langJa = document.getElementById('langJa');
+    const langEn = document.getElementById('langEn');
+    function updateLangButtons() {
+      const lang = window.getLanguage ? window.getLanguage() : 'ja';
+      if (langJa) langJa.classList.toggle('active', lang === 'ja');
+      if (langEn) langEn.classList.toggle('active', lang === 'en');
+    }
+    if (langJa) langJa.addEventListener('click', () => {
+      if (window.setLanguage) window.setLanguage('ja');
+      if (window.applyCommonI18n) window.applyCommonI18n();
+      updateLangButtons();
+      init();
+    });
+    if (langEn) langEn.addEventListener('click', () => {
+      if (window.setLanguage) window.setLanguage('en');
+      if (window.applyCommonI18n) window.applyCommonI18n();
+      updateLangButtons();
+      init();
+    });
+    if (window.applyCommonI18n) window.applyCommonI18n();
+    updateLangButtons();
+  </script>
+  <script>
+    // Auto-detect active nav link
+    (function () {
+      if (!window.location || !window.location.pathname) return;
+      const currentFile = window.location.pathname.split('/').pop() || 'index.html';
+      document.querySelectorAll('.nav-link').forEach(link => {
+        const href = link.getAttribute('href');
+        if (href === currentFile) {
+          link.classList.add('active');
+        } else {
+          link.classList.remove('active');
+        }
+      });
+    })();
+  </script>
+  <script>
+    // Smooth page transitions - fade out before navigating
+    document.querySelectorAll('.nav-link').forEach(link => {
+      link.addEventListener('click', function (e) {
+        const href = this.getAttribute('href');
+        if (href && !href.startsWith('#') && !href.startsWith('javascript')) {
+          e.preventDefault();
+          document.body.style.opacity = '0';
+          setTimeout(() => { window.location.href = href; }, 80);
+        }
+      });
+    });
+  </script>
+</body>
+
+</html>
