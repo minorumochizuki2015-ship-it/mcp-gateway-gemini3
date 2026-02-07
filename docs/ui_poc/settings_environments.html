@@ -2154,10 +2154,10 @@
         wizardSubtitle: 'Complete setup in 5 steps.',
         wizardStep1Title: 'Check Gateway prerequisites',
         wizardStep1Desc: 'Confirm admin session and policy bundle before configuring upstream.',
-        wizardStep2Title: 'Configure upstream LLM',
-        wizardStep2Desc: 'Configure the OpenAI-compatible upstream (proxy or local).',
-        wizardStep3Title: 'Select model',
-        wizardStep3Desc: 'Enter the upstream Model ID (e.g., gpt-4o-mini / models/gemini-flash-latest / qwen2:0.5b).',
+        wizardStep2Title: 'Enter Gemini API Key',
+        wizardStep2Desc: 'Paste your Gemini API key to enable AI-powered security features: AI Council, Semantic Scanner, RedTeam, and Causal Web Sandbox.',
+        wizardStep3Title: 'Select Gemini Model',
+        wizardStep3Desc: 'Choose which Gemini model to use for AI-powered analysis.',
         wizardStep4Title: 'Connection test',
         wizardStep4Desc: 'Run a test to verify the upstream connection.',
         wizardStep5Title: 'Register Gateway URL & issue token',
@@ -2464,7 +2464,7 @@
 		        upstreamTestHintNotFound: 'Base URL（OpenAI互換エンドポイント）を確認してください。',
 		        upstreamTestHintNotFoundOllama: 'Ollamaの場合: http://127.0.0.1:11434（または /v1）を指定し、`ollama serve` / `ollama list` を確認してください。',
 		        upstreamTestHintRateLimit: 'レート制限です。時間をおくかリクエスト頻度を下げてください。',
-		        upstreamTestHintServer: '上流がエラーを返しました。上流ログを確認して再試行してください。',
+		        upstreamTestHintServer: '上流がエラーを返しました。上流ログを確認してRetryしてください。',
 		        upstreamTestHintGeneric: 'Base URL とモデル設定を確認してください。',
 		        upstreamSaveBtn: '保存してテスト',
 		        upstreamSummaryStatusLabel: 'ステータス',
@@ -2494,9 +2494,9 @@
 	        policyIssueSaved: 'プロファイルを保存しました。',
 	        policyIssueSaveFailed: 'プロファイルの保存に失敗しました。',
 	        policyIssueGatewayOffline: 'Gateway に接続できません。起動してから再読み込みしてください。',
-	        policyIssueApiMissing: 'Policy Profile API を利用できません。Gateway を更新して再試行してください。',
+	        policyIssueApiMissing: 'Policy Profile API を利用できません。Gateway を更新してRetryしてください。',
 	        policyIssueInvalidInput: '入力値を確認してください（Restricted Sinks など）。',
-	        policyIssueServerError: 'Gateway がエラーを返しました。Gateway の設定（Admin Token / ポリシーバンドル）を確認し、Gateway を起動したターミナル（PowerShell/WSL）のログと Audit Log を確認して再試行してください。',
+	        policyIssueServerError: 'Gateway がエラーを返しました。Gateway の設定（Admin Token / ポリシーバンドル）を確認し、Gateway を起動したターミナル（PowerShell/WSL）のログと Audit Log を確認してRetryしてください。',
 	        policySummarySinksLabel: '有効な Restricted Sinks',
 	        policySummaryApprovalsLabel: '承認付き untrusted',
         policySummaryUpdatedLabel: '最終更新',
@@ -2511,10 +2511,10 @@
         wizardSubtitle: '5ステップで簡単に設定を完了できます。',
         wizardStep1Title: 'Gatewayの準備を確認',
         wizardStep1Desc: '管理者セッションとポリシーバンドルを確認してから次へ進みます。',
-        wizardStep2Title: '上流LLMを設定',
-        wizardStep2Desc: '上流LLM（OpenAI互換プロキシ）を設定してください。',
-        wizardStep3Title: '使用するモデルを選択',
-        wizardStep3Desc: '上流の Model ID を入力してください（例: gpt-4o-mini / models/gemini-flash-latest / qwen2:0.5b）。',
+        wizardStep2Title: 'Gemini API Key を入力',
+        wizardStep2Desc: 'Gemini API Key を貼り付けて、AI セキュリティ機能（AI Council, Semantic Scanner, RedTeam, Causal Web Sandbox）を有効化します。',
+        wizardStep3Title: 'Gemini モデルを選択',
+        wizardStep3Desc: 'AI 分析に使用する Gemini モデルを選択してください。',
         wizardStep4Title: '接続テスト',
         wizardStep4Desc: '設定が正しいか確認するため、接続テストを実行します。',
         wizardStep5Title: 'Gateway URL とトークン発行',
@@ -2523,7 +2523,7 @@
         wizardPrecheckRunning: '確認中...',
         wizardPrecheckOk: 'Gatewayの前提チェックが完了しました。',
         wizardPrecheckFailed: 'Gatewayの準備が必要です',
-        wizardPrecheckPolicyMissing: 'ポリシーバンドルが未配置です。設定してから再試行してください。',
+        wizardPrecheckPolicyMissing: 'ポリシーバンドルが未配置です。設定してからRetryしてください。',
         wizardPrecheckPolicyUnknown: 'ポリシーバンドルの状態を確認できません。診断を実行してください。',
         wizardTokenSetupTitle: 'Gateway を起動する前に Admin Token を設定',
         wizardTokenSetupStep1: 'Gateway を起動するシェルで `MCP_GATEWAY_ADMIN_TOKEN="<token>"` を環境変数に設定してください。',
@@ -2564,10 +2564,10 @@
 	        wizardModelRequired: 'モデルを入力してください。',
 	        wizardUpstreamSaveFailed: '上流設定の保存に失敗しました。',
 	        wizardUpstreamSaveInvalidInput: '入力値を確認してください（プロバイダ / Base URL / Model ID）。',
-	        wizardUpstreamSaveApiMissing: '上流設定 API を利用できません。Gateway を更新して再試行してください。',
-	        wizardUpstreamSaveServerError: 'Gateway が上流設定の保存でエラーを返しました。Gateway の設定（Admin Token / ポリシーバンドル）を確認し、Gateway を起動したターミナル（PowerShell/WSL）のログと Audit Log を確認して再試行してください。',
+	        wizardUpstreamSaveApiMissing: '上流設定 API を利用できません。Gateway を更新してRetryしてください。',
+	        wizardUpstreamSaveServerError: 'Gateway が上流設定の保存でエラーを返しました。Gateway の設定（Admin Token / ポリシーバンドル）を確認し、Gateway を起動したターミナル（PowerShell/WSL）のログと Audit Log を確認してRetryしてください。',
 	        wizardGatewayAdminRequired: '管理者セッションが必要です。Admin Token を貼り付けて「セッション開始」を実行してください。',
-	        wizardGatewayAdminTokenNotConfigured: 'Gateway が管理者トークン未設定で起動しています。`MCP_GATEWAY_ADMIN_TOKEN` を設定して Gateway を再起動し（推奨: Step8 の起動スクリプト）、管理者セッションを確立してから再試行してください。',
+	        wizardGatewayAdminTokenNotConfigured: 'Gateway が管理者トークン未設定で起動しています。`MCP_GATEWAY_ADMIN_TOKEN` を設定して Gateway を再起動し（推奨: Step8 の起動スクリプト）、管理者セッションを確立してからRetryしてください。',
 	        wizardAdminTokenHint: '画面上部と同じ管理者トークンを貼り付けてください（保存されません）。必要な場合のみ Danger Zone で保存してください。',
 	        gatewayEnvironmentLabel: '対象環境',
 	        gatewayEnvironmentHint: '環境のエンドポイントを OpenAI 互換 Base URL として利用します。',
@@ -2639,9 +2639,9 @@
 	        gatewayIssueEnvMissing: '環境がありません。先に「環境を追加」で登録してください。',
 	        gatewayIssueAdminDetail: '管理者セッションが必要です。Admin Token を貼り付けて「セッション開始」を実行してください。',
 	        gatewayIssueGatewayOffline: 'Gateway に接続できません。起動してから再読み込みしてください。',
-	        gatewayIssueApiMissing: 'トークン発行 API を利用できません。Gateway を更新して再試行してください。',
+	        gatewayIssueApiMissing: 'トークン発行 API を利用できません。Gateway を更新してRetryしてください。',
 	        gatewayIssueInvalidInput: '入力値を確認してください（有効期限など）。',
-	        gatewayIssueServerError: 'Gateway がエラーを返しました。Gateway の設定（Admin Token / ポリシーバンドル）を確認し、Gateway を起動したターミナル（PowerShell/WSL）のログと Audit Log を確認して再試行してください。',
+	        gatewayIssueServerError: 'Gateway がエラーを返しました。Gateway の設定（Admin Token / ポリシーバンドル）を確認し、Gateway を起動したターミナル（PowerShell/WSL）のログと Audit Log を確認してRetryしてください。',
 	        copyStatusAdminRequired: '管理者セッションが必要です',
 	        copyStatusIssuing: '発行中...',
 	        copyStatusIssueFailed: '発行に失敗しました',
@@ -2662,12 +2662,12 @@
 
     function t(key) {
       const lang = getPageLanguage();
-      const dict = I18N[lang] || I18N.ja;
+      const dict = I18N[lang] || I18N.en;
       return dict[key] || key;
     }
 
     function applyI18n(lang) {
-      const dict = I18N[lang] || I18N.ja;
+      const dict = I18N[lang] || I18N.en;
       document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
         const asAttr = el.getAttribute('data-i18n-attr');
@@ -5494,7 +5494,7 @@
               </li>
             </ul>
             <p class="input-hint" id="wizardAutostartNote">After setup, just open in browser (no UI launch needed).</p>
-            <p class="input-hint" id="wizardAutostartDocHint">詳細: docs/operations/step8_autostart.(ja|en).md</p>
+            <p class="input-hint" id="wizardAutostartDocHint">See: docs/operations/step8_autostart.(ja|en).md</p>
             <p class="input-hint" id="wizardAutostartDockerHint">Use Docker Compose to run Gateway + UI on the same origin.</p>
           </div>
         </div>
@@ -5503,42 +5503,27 @@
 	        <div class="wizard-step" data-step="2">
 	          <div class="wizard-step-title">
 	            <span class="step-number">2</span>
-	            <span id="wizardStep2Title">Configure Upstream LLM</span>
+	            <span id="wizardStep2Title">Enter Gemini API Key</span>
 	          </div>
 	          <p class="wizard-step-desc" id="wizardStep2Desc">
-	            Configure the upstream LLM (OpenAI-compatible proxy).<br>
-	            Example: Gemini/Anthropic via LiteLLM proxy, local via Ollama, etc.
+	            Paste your Gemini API key to enable AI-powered security features:<br>
+	            AI Council, Semantic Scanner, RedTeam, and Causal Web Sandbox.
 	          </p>
 	          <div class="wizard-input-group">
 	            <label for="wizardUpstreamProvider">Provider</label>
-		            <select id="wizardUpstreamProvider">
-		              <option value="openai_compatible" selected>OpenAI-compatible (Custom)</option>
-		              <option value="openai">OpenAI (api.openai.com)</option>
-		              <option value="gemini_openai">Gemini (AI Studio via OpenAI-compatible)</option>
-		              <option value="vertex">Vertex AI (OpenAI-compatible)</option>
-		              <option value="anthropic_openai">Anthropic (via OpenAI-compatible proxy)</option>
-		              <option value="ollama">Ollama (local)</option>
-		              <option value="custom">Custom…</option>
+		            <select id="wizardUpstreamProvider" style="display:none;">
+		              <option value="gemini_openai" selected>Gemini (AI Studio)</option>
 		            </select>
-		            <details class="provider-hint-details" id="wizardUpstreamProviderHintDetails">
-		              <summary class="hint-link" id="wizardUpstreamProviderHintSummary">💡 Hint</summary>
-		              <div class="provider-hint-body" id="wizardUpstreamProviderHintBody"></div>
-		            </details>
 		          </div>
 	          <div class="wizard-input-group" id="wizardUpstreamProviderCustomWrap" style="display:none;">
 	            <label for="wizardUpstreamProviderCustom">Custom provider</label>
 	            <input type="text" id="wizardUpstreamProviderCustom" placeholder="e.g., my-proxy" autocomplete="off">
-	            <p class="input-hint">Display/Evidence identifier. Base URL must be OpenAI-compatible.</p>
 	          </div>
+	          <input type="hidden" id="wizardUpstreamBaseUrl" value="https://generativelanguage.googleapis.com/v1beta/openai">
 	          <div class="wizard-input-group">
-	            <label for="wizardUpstreamBaseUrl">Upstream Base URL</label>
-	            <input type="url" id="wizardUpstreamBaseUrl" placeholder="https://upstream.example.com" autocomplete="off">
-	            <p class="input-hint">Enter the OpenAI-compatible Base URL.</p>
-	          </div>
-	          <div class="wizard-input-group">
-	            <label for="wizardApiKey">API Key</label>
-	            <input type="password" id="wizardApiKey" placeholder="Paste upstream API key" autocomplete="off">
-	            <p class="input-hint">🔒 API key is stored securely and never exposed externally</p>
+	            <label for="wizardApiKey">Gemini API Key</label>
+	            <input type="password" id="wizardApiKey" placeholder="Paste your Gemini API key (AIza...)" autocomplete="off">
+	            <p class="input-hint">🔒 Get your key from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>. Stored securely, never exposed externally.</p>
 	          </div>
           <div class="wizard-test-result" id="wizardApiTestResult" style="display:none;">
             <button type="button" class="dismiss-btn" aria-label="Close">×</button>
@@ -5546,26 +5531,25 @@
           </div>
         </div>
 
-        <!-- Step 3: Model Selection -->
+        <!-- Step 3: Model Selection (Gemini-only) -->
 	        <div class="wizard-step" data-step="3">
 	          <div class="wizard-step-title">
 	            <span class="step-number">3</span>
-	            <span id="wizardStep3Title">Select Model</span>
+	            <span id="wizardStep3Title">Select Gemini Model</span>
 	          </div>
 	          <p class="wizard-step-desc" id="wizardStep3Desc">
-	            Enter the upstream Model ID (e.g., <code>gpt-4o-mini</code> / <code>models/gemini-flash-latest</code> / <code>qwen2:0.5b</code>).
+	            Choose which Gemini model to use for AI-powered analysis.
 	          </p>
 	          <div class="wizard-input-group">
-	            <label for="wizardModel">Model</label>
-	            <input type="text" id="wizardModel" list="wizardModelList" placeholder="e.g., gpt-4o-mini" autocomplete="off">
+	            <label for="wizardModel">Gemini Model</label>
+	            <input type="text" id="wizardModel" list="wizardModelList" value="models/gemini-2.0-flash" placeholder="models/gemini-2.0-flash" autocomplete="off">
 	            <datalist id="wizardModelList">
-	              <option value="gpt-4o-mini"></option>
-	              <option value="models/gemini-flash-latest"></option>
-	              <option value="models/gemini-pro-latest"></option>
-	              <option value="qwen2:0.5b"></option>
-	              <option value="claude-3-5-sonnet-latest"></option>
+	              <option value="models/gemini-2.0-flash">Gemini 2.0 Flash (Recommended)</option>
+	              <option value="models/gemini-2.0-flash-lite">Gemini 2.0 Flash Lite (Faster)</option>
+	              <option value="models/gemini-2.5-pro-preview-05-06">Gemini 2.5 Pro (Most capable)</option>
+	              <option value="models/gemini-2.5-flash-preview-04-17">Gemini 2.5 Flash Preview</option>
 	            </datalist>
-	            <p class="input-hint">💡 You can change this anytime later</p>
+	            <p class="input-hint">Recommended: <code>models/gemini-2.0-flash</code> for best speed/quality balance</p>
 	          </div>
 	        </div>
 
@@ -5900,26 +5884,26 @@
 	          const baseUrl = wizardUpstreamBaseUrl ? wizardUpstreamBaseUrl.value.trim() : "";
 	          const apiKey = apiKeyInput ? apiKeyInput.value.trim() : "";
 	          if (!providerKey) {
-	            showApiTestResult("error", "⚠️ Provider を選択してください");
+	            showApiTestResult("error", "⚠️ Please select a provider");
 	            return false;
 	          }
 	          if (providerKey === "custom" && !provider) {
-	            showApiTestResult("error", "⚠️ Custom provider を入力してください");
+	            showApiTestResult("error", "⚠️ Please enter a custom provider name");
 	            return false;
 	          }
 	          if (!baseUrl) {
-	            showApiTestResult("error", "⚠️ Upstream Base URL を入力してください");
+	            showApiTestResult("error", "⚠️ Upstream Base URL is required");
 	            return false;
 	          }
 	          const allowEmptyKey = allowEmptyWizardApiKey(getWizardProviderKeyForRules(), baseUrl);
 	          if (!apiKey && !allowEmptyKey && !upstreamHasKey) {
-	            showApiTestResult("error", "⚠️ API キーを入力してください");
+	            showApiTestResult("error", "⚠️ Please enter your Gemini API key");
 	            return false;
 	          }
 	          if (!apiKey && upstreamHasKey) {
-	            showApiTestResult("success", "✅ APIキーは保存済みです");
+	            showApiTestResult("success", "✅ API key is saved");
 	          } else {
-	            showApiTestResult("success", "✅ 入力はOKです");
+	            showApiTestResult("success", "✅ Input looks good");
 	          }
 	          return true;
 	        }
@@ -5927,7 +5911,7 @@
 	          const raw = modelSelect ? modelSelect.value.trim() : "";
 	          if (!raw) {
 	            if (modelSelect && typeof modelSelect.setCustomValidity === "function") {
-	              modelSelect.setCustomValidity("モデルを入力してください");
+	              modelSelect.setCustomValidity("Please enter a model ID");
 	              modelSelect.reportValidity();
 	              modelSelect.setCustomValidity("");
 	            }
@@ -6142,30 +6126,30 @@
 	        if (!provider) {
 	          wizardResult('error', 'wizardFinalTestResult', `❌ <strong>${t('wizardConnectionFailed')}</strong> ${t('providerRequired')}`);
 	          testBtn.disabled = false;
-	          testBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:8px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>再試行';
+	          testBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:8px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Retry';
 	          return;
 	        }
 	        if (!baseUrl) {
 	          wizardResult('error', 'wizardFinalTestResult', `❌ <strong>${t('wizardConnectionFailed')}</strong> ${t('baseUrlRequired')}`);
 	          testBtn.disabled = false;
-	          testBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:8px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>再試行';
+	          testBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:8px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Retry';
 	          return;
 	        }
 	        const allowEmptyKey = allowEmptyWizardApiKey(providerKeyForRules, baseUrl);
 	        if (!apiKey && !allowEmptyKey && !upstreamHasKey) {
 	          wizardResult('error', 'wizardFinalTestResult', `❌ <strong>${t('wizardConnectionFailed')}</strong> ${t('apiKeyRequired')}`);
 	          testBtn.disabled = false;
-	          testBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:8px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>再試行';
+	          testBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:8px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Retry';
 	          return;
 	        }
 	        if (!modelsAllowlist.length) {
 	          wizardResult('error', 'wizardFinalTestResult', `❌ <strong>${t('wizardConnectionFailed')}</strong> ${t('wizardModelRequired')}`);
 	          testBtn.disabled = false;
-	          testBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:8px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>再試行';
+	          testBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:8px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Retry';
 	          return;
 	        }
 	        testBtn.disabled = true;
-	        testBtn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:8px;"><svg style="width:16px;height:16px;animation:spin 1s linear infinite;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6-8.49"/></svg>テスト中...</span>';
+	        testBtn.innerHTML = '<span style="display:inline-flex;align-items:center;gap:8px;"><svg style="width:16px;height:16px;animation:spin 1s linear infinite;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-6-8.49"/></svg>Testing...</span>';
 	        resultDiv.style.display = 'block';
 	        resultDiv.className = 'wizard-test-result';
 	        msgSpan.innerHTML = '';
@@ -6173,10 +6157,10 @@
 	        const allowLocalFallback =
 	          allowMock && window.location && window.location.protocol === 'file:';
 	        try {
-	          // 本番APIへ保存・テスト
+	          // Save & test via production API
 	          const canCallApi = window.apiClient && window.apiClient.saveControlUpstream && window.apiClient.testControlUpstream;
 	          if (!canCallApi && !allowMock) {
-            throw new Error('APIクライアントが利用できません');
+            throw new Error('API client unavailable');
           }
           // Save upstream config
           let saveRes = null;
@@ -6238,7 +6222,7 @@
 	            setUpstreamStatus('active', statusLabel('active'), statusLabelKey('active'));
 	            renderUpstreamSummary();
 	            resultDiv.className = 'wizard-test-result success';
-		            msgSpan.innerHTML = '✅ <strong>接続成功（ローカル設定）</strong> バックエンド保存に失敗したためローカルに保持しました。';
+		            msgSpan.innerHTML = '✅ <strong>Connected (local config)</strong> Backend save failed; settings stored locally.';
 		            saveWizardSettings({ base_url: baseUrl, provider, api_key: apiKey, models: modelsAllowlist.join(",") });
 		            setTimeout(() => goToStep(5), 1000);
 		            return;
@@ -6264,13 +6248,13 @@
 			            }
 			            console.warn('[wizard] upstream test failed, using local result', testRes);
 		            resultDiv.className = 'wizard-test-result success';
-			            msgSpan.innerHTML = '✅ <strong>接続成功（ローカル）</strong> バックエンド疎通に失敗したためローカル結果を使用します。';
+			            msgSpan.innerHTML = '✅ <strong>Connected (local)</strong> Backend test failed; using local result.';
 	            saveWizardSettings({ base_url: baseUrl, provider, api_key: apiKey, models: modelsAllowlist.join(",") });
 	            setTimeout(() => goToStep(5), 1000);
 	            return;
 	          }
 	          resultDiv.className = 'wizard-test-result success';
-	          msgSpan.innerHTML = `✅ <strong>接続成功！</strong> ${typeof providerLabel === 'function' ? providerLabel(provider) : 'Upstream'} と正常に通信できました。`;
+	          msgSpan.innerHTML = `✅ <strong>Connected!</strong> Successfully verified ${typeof providerLabel === 'function' ? providerLabel(provider) : 'upstream'} connection.`;
 	          saveWizardSettings({ base_url: baseUrl, provider, api_key: apiKey, models: modelsAllowlist.join(",") });
 	          setTimeout(() => goToStep(5), 1000);
 	        } catch (err) {
@@ -6278,7 +6262,7 @@
 	          msgSpan.innerHTML = `❌ <strong>${t('wizardConnectionFailed')}</strong> ` + (err && err.message ? err.message : t('upstreamTestHintGeneric'));
 	        } finally {
 	          testBtn.disabled = false;
-	          testBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:8px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>再試行';
+	          testBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;margin-right:8px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Retry';
 	        }
 	      }
 
