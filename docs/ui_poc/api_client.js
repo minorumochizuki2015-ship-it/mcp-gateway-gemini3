@@ -683,7 +683,7 @@
     const storage = getStorage();
     const isCollapsed = storage ? storage.getItem(ONBOARDING_COLLAPSED_KEY) === "1" : false;
     const currentLang = (function () {
-      try { return storage ? storage.getItem('suite_language') || 'ja' : 'ja'; } catch (e) { return 'ja'; }
+      try { return storage ? storage.getItem('suite_language') || 'en' : 'en'; } catch (e) { return 'en'; }
     })();
     const I18N = window.I18N || {};
     const dict = I18N[currentLang] || I18N.ja || {};
@@ -692,38 +692,38 @@
     card.className = "onboarding-card";
     card.innerHTML = `
       <button class="onboarding-tab" type="button" aria-expanded="${!isCollapsed}" aria-controls="onboarding-content" data-i18n="onboarding.toggleShow">
-        ${isCollapsed ? (onb.toggleShow || "導入ガイドを表示") : (onb.toggleHide || "導入ガイドを隠す")}
+        ${isCollapsed ? (onb.toggleShow || "Show Guide") : (onb.toggleHide || "Hide Guide")}
       </button>
       <div class="onboarding-content" id="onboarding-content">
         <div class="onboarding-head">
           <div>
-            <div class="onboarding-title" data-i18n="onboarding.title">はじめての導入ガイド</div>
+            <div class="onboarding-title" data-i18n="onboarding.title">Getting Started Guide</div>
             <div class="onboarding-subtitle" data-i18n="onboarding.subtitle">
-              MCP Gateway は LLM のハブです。クライアントは Gateway の URL だけを使い、上流 LLM の切替やポリシーはここで集中管理します。
+              MCP Gateway is an LLM hub. Clients only use the Gateway URL; upstream LLM switching and policies are centrally managed here.
             </div>
           </div>
-          <div class="onboarding-badge" data-i18n="onboarding.badge">初回セットアップ</div>
+          <div class="onboarding-badge" data-i18n="onboarding.badge">Initial Setup</div>
         </div>
         <ol class="onboarding-steps">
           <li class="onboarding-step">
             <span class="onboarding-step-index">1</span>
-            <span data-i18n="onboarding.step1">管理者から Admin Token を受け取り、セットアップ権限を確認します。</span>
+            <span data-i18n="onboarding.step1">Receive Admin Token from administrator and verify setup permissions.</span>
           </li>
           <li class="onboarding-step">
             <span class="onboarding-step-index">2</span>
-            <span data-i18n="onboarding.step2">Environments で上流 LLM の Base URL と API Key を保存し、Save &amp; Test で疎通確認します。</span>
+            <span data-i18n="onboarding.step2">Save upstream LLM Base URL and API Key in Environments, then verify with Save &amp; Test.</span>
           </li>
           <li class="onboarding-step">
             <span class="onboarding-step-index">3</span>
-            <span data-i18n="onboarding.step3">Gateway Connection Wizard でトークンを発行し、表示された設定をクライアントに貼り付けます。</span>
+            <span data-i18n="onboarding.step3">Issue a token in the Gateway Connection Wizard and paste the displayed settings into your client.</span>
           </li>
         </ol>
         <div class="onboarding-actions">
-          <a class="onboarding-link" href="settings_environments.html" data-i18n="onboarding.linkEnv">Environments へ</a>
-          <a class="onboarding-link" href="dashboard.html" data-i18n="onboarding.linkDashboard">Dashboard を確認</a>
-          <a class="onboarding-link" href="audit_log.html" data-i18n="onboarding.linkAudit">Audit Log を確認</a>
+          <a class="onboarding-link" href="settings_environments.html" data-i18n="onboarding.linkEnv">Environments</a>
+          <a class="onboarding-link" href="dashboard.html" data-i18n="onboarding.linkDashboard">Dashboard</a>
+          <a class="onboarding-link" href="audit_log.html" data-i18n="onboarding.linkAudit">Audit Log</a>
         </div>
-        <div class="onboarding-note" data-i18n="onboarding.note">ヒント: 上流を切り替えてもクライアント側は URL とトークンを変えずに使い続けられます。</div>
+        <div class="onboarding-note" data-i18n="onboarding.note">Tip: Even when switching upstream LLMs, clients keep the same URL and tokens.</div>
       </div>
     `;
     if (isCollapsed) {
@@ -740,12 +740,12 @@
         const collapsed = card.classList.toggle("is-collapsed");
         toggle.setAttribute("aria-expanded", String(!collapsed));
         const lang = (function () {
-          try { return window.localStorage ? window.localStorage.getItem('suite_language') || 'ja' : 'ja'; } catch (e) { return 'ja'; }
+          try { return window.localStorage ? window.localStorage.getItem('suite_language') || 'en' : 'en'; } catch (e) { return 'en'; }
         })();
         const I18N = window.I18N || {};
         const dict = I18N[lang] || I18N.ja || {};
         const onb = dict.onboarding || {};
-        toggle.textContent = collapsed ? (onb.toggleShow || "導入ガイドを表示") : (onb.toggleHide || "導入ガイドを隠す");
+        toggle.textContent = collapsed ? (onb.toggleShow || "Show Guide") : (onb.toggleHide || "Hide Guide");
         if (storage) {
           storage.setItem(ONBOARDING_COLLAPSED_KEY, collapsed ? "1" : "0");
         }
@@ -880,7 +880,7 @@
     // Apply i18n to injected onboarding card
     if (typeof window.applyI18n === 'function') {
       const lang = (function () {
-        try { return storage ? storage.getItem('suite_language') || 'ja' : 'ja'; } catch (e) { return 'ja'; }
+        try { return storage ? storage.getItem('suite_language') || 'en' : 'en'; } catch (e) { return 'en'; }
       })();
       window.applyI18n(lang);
     }
@@ -896,7 +896,7 @@
 
   // Common I18N for all pages
   const LANG_KEY = "suite_language";
-  let runtimeLang = "ja";
+  let runtimeLang = "en";
 
 	  const CommonI18N = {
 	    en: {
