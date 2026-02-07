@@ -34,6 +34,8 @@
     .nav-status { margin-left: auto; display: flex; align-items: center; gap: 8px; color: var(--gray-300); font-size: 13px; }
     .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; }
     @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+    @keyframes fadeSlideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+    .pipeline-step:hover { background: var(--gray-50); border-left-color: #8b5cf6 !important; }
 
     .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
     .header { margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
@@ -155,16 +157,28 @@
         <p class="muted" id="pageSubtitle">Real-time decisions, evidence, and policy enforcement</p>
       </div>
       <div style="display: flex; align-items: center; gap: 12px;">
-        <button type="button" id="demoBtn" style="padding: 8px 20px; background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s; box-shadow: 0 2px 8px rgba(109,40,217,0.3);" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(109,40,217,0.4)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 8px rgba(109,40,217,0.3)'">
-          <span style="font-size: 16px;">&#9654;</span> <span id="demoBtnText">Run Live Demo</span>
+        <button type="button" id="demoBtn" style="padding: 10px 24px; background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; box-shadow: 0 2px 8px rgba(109,40,217,0.3);" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(109,40,217,0.4)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 8px rgba(109,40,217,0.3)'">
+          <span style="font-size: 16px;">&#9654;</span> <span id="demoBtnText">Run Live Pipeline</span>
         </button>
-        <span id="demoStatus" style="font-size: 12px; color: var(--muted); display: none;"></span>
         <span style="font-size: 13px; color: var(--muted);">Language:</span>
         <div style="display: flex; gap: 4px;">
           <button type="button" class="lang-btn" id="langJa" data-lang="ja">JA</button>
           <button type="button" class="lang-btn" id="langEn" data-lang="en">EN</button>
         </div>
       </div>
+    </div>
+
+    <!-- Pipeline Execution Log (hidden until demo starts) -->
+    <div id="pipelineLog" class="section-card" style="display: none; margin-bottom: 24px; border-left: 3px solid #8b5cf6;">
+      <div class="section-header" style="margin-bottom: 12px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 18px;" id="pipelineIcon">&#9881;</span>
+          <span class="section-title" id="pipelineTitle">Pipeline Execution</span>
+          <span id="pipelinePhase" style="font-size: 12px; background: #ede9fe; color: #6d28d9; padding: 2px 10px; border-radius: 10px; font-weight: 600;"></span>
+        </div>
+        <span id="pipelineCounter" style="font-size: 13px; color: var(--muted); font-weight: 600;"></span>
+      </div>
+      <div id="pipelineSteps" style="max-height: 320px; overflow-y: auto; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; line-height: 1.8; padding: 8px 0;"></div>
     </div>
 
     <!-- KPI Cards -->
@@ -357,7 +371,7 @@
         policyVerified: 'Verified', policyPresent: 'Present', policyMissing: 'Missing', policyNA: 'N/A',
         ssotTitle: 'Evidence Chain Integrity', ssotSub: 'SSOT verification and shadow audit status',
         ssotPass: 'Verified', ssotFail: 'Not verified', ssotPresent: 'Present', ssotMissing: 'Missing', ssotSigned: 'Signed', ssotUnsigned: 'Not signed',
-        demoBtn: 'Run Live Demo',
+        demoBtn: 'Run Live Pipeline',
       },
       ja: {
         pageTitle: 'AI ゲートウェイ ダッシュボード',
@@ -381,7 +395,7 @@
         policyVerified: '検証済', policyPresent: '存在', policyMissing: '未設定', policyNA: 'N/A',
         ssotTitle: '証跡チェーン完全性', ssotSub: 'SSOT検証とシャドー監査の状態',
         ssotPass: '検証済', ssotFail: '未検証', ssotPresent: '存在', ssotMissing: '未設定', ssotSigned: '署名済', ssotUnsigned: '未署名',
-        demoBtn: 'ライブデモ実行',
+        demoBtn: 'ライブパイプライン実行',
       }
     };
 
@@ -641,32 +655,103 @@
     if (langJa) langJa.addEventListener('click', function() { setLang('ja'); applyI18n('ja'); init(); });
     if (langEn) langEn.addEventListener('click', function() { setLang('en'); applyI18n('en'); init(); });
 
-    // Demo button handler
+    // Pipeline icons
+    var STEP_ICONS = {
+      shield: '\u{1F6E1}', alert: '\u26A0\uFE0F', pass: '\u2705', fail: '\u274C',
+      allow: '\u2705', deny: '\u{1F6AB}', attack: '\u{1F525}', block: '\u{1F6AB}',
+      warn: '\u26A0\uFE0F', scan: '\u{1F50D}', council: '\u{1F3DB}', web: '\u{1F310}'
+    };
+    function pipelineStepHtml(d) {
+      var ts = new Date().toLocaleTimeString('en-US', {hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      var icon = STEP_ICONS[d.icon] || '\u2022';
+      var line = '';
+      if (d.phase === 'register') {
+        var trust = d.trust === 'trusted' ? '<span style="color:var(--success);font-weight:600">trusted</span>' : '<span style="color:var(--danger);font-weight:600">untrusted</span>';
+        line = icon + ' Registered <b>' + escapeHtml(d.server) + '</b> (' + trust + ', ' + d.tools_count + ' tools)';
+      } else if (d.phase === 'scan') {
+        var stcol = d.status === 'pass' ? 'var(--success)' : (d.status === 'warn' ? 'var(--warn)' : 'var(--danger)');
+        line = icon + ' Scanned <b>' + escapeHtml(d.server) + '</b> &rarr; <span style="color:' + stcol + ';font-weight:700">' + escapeHtml(String(d.status).toUpperCase()) + '</span> (' + d.findings + ' findings)';
+      } else if (d.phase === 'council') {
+        var dcol = d.decision === 'allow' ? 'var(--success)' : (d.decision === 'quarantine' ? 'var(--warn)' : 'var(--danger)');
+        var method = d.eval_method === 'gemini3' ? ' <span style="background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600">Gemini</span>' : ' <span style="background:#f3f4f6;color:#6b7280;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600">Rule-based</span>';
+        line = icon + ' Council: <b>' + escapeHtml(d.server) + '</b> &rarr; <span style="color:' + dcol + ';font-weight:700">' + escapeHtml(String(d.decision).toUpperCase()) + '</span>' + method;
+      } else if (d.phase === 'attack') {
+        line = icon + ' <span style="color:var(--danger);font-weight:700">' + escapeHtml(d.code) + '</span> on <b>' + escapeHtml(d.tool) + '</b>: ' + escapeHtml(d.message);
+      } else if (d.phase === 'web_sandbox') {
+        var cls = d.classification;
+        var ccol = cls === 'benign' ? 'var(--success)' : (cls === 'phishing' ? 'var(--danger)' : 'var(--warn)');
+        var em = d.eval_method === 'gemini' ? ' <span style="background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600">Gemini</span>' : ' <span style="background:#f3f4f6;color:#6b7280;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600">Rule-based</span>';
+        line = icon + ' <b>' + escapeHtml(d.label || d.url) + '</b> &rarr; <span style="color:' + ccol + ';font-weight:700">' + escapeHtml(String(cls).toUpperCase()) + '</span> (conf: ' + (d.confidence * 100).toFixed(0) + '%, ' + d.dom_threats + ' DOM threats)' + em;
+      }
+      return '<div style="padding: 3px 8px; animation: fadeSlideIn 0.3s ease-out; border-left: 2px solid transparent;" class="pipeline-step"><span style="color:var(--muted);margin-right:8px;">' + ts + '</span>' + line + '</div>';
+    }
+
+    // Demo button handler — SSE live pipeline
     var demoBtn = document.getElementById('demoBtn');
-    var demoStatus = document.getElementById('demoStatus');
     if (demoBtn) {
-      demoBtn.addEventListener('click', async function() {
+      demoBtn.addEventListener('click', function() {
         demoBtn.disabled = true;
         demoBtn.style.opacity = '0.6';
-        demoStatus.style.display = '';
-        demoStatus.textContent = 'Seeding security events...';
-        demoStatus.style.color = 'var(--primary)';
-        try {
-          var base = (window.apiClient && window.apiClient._base) || '';
-          var resp = await fetch(base + '/api/demo/run-scenario', { method: 'POST' });
-          if (!resp.ok) throw new Error('HTTP ' + resp.status);
-          var data = await resp.json();
-          demoStatus.textContent = data.events_created + ' events created — refreshing...';
-          demoStatus.style.color = 'var(--success)';
-          // Re-initialize dashboard with live data
-          setTimeout(function() { init(); demoStatus.textContent = 'Live data loaded'; }, 800);
-        } catch (err) {
-          demoStatus.textContent = 'Error: ' + (err.message || 'failed');
-          demoStatus.style.color = 'var(--danger)';
-        } finally {
+        demoBtn.querySelector('#demoBtnText').textContent = 'Running...';
+
+        var logPanel = document.getElementById('pipelineLog');
+        var stepsEl = document.getElementById('pipelineSteps');
+        var phaseEl = document.getElementById('pipelinePhase');
+        var counterEl = document.getElementById('pipelineCounter');
+        var iconEl = document.getElementById('pipelineIcon');
+        logPanel.style.display = '';
+        stepsEl.innerHTML = '';
+        var stepCount = 0;
+
+        var base = (window.apiClient && window.apiClient._base) || '';
+        var es = new EventSource(base + '/api/demo/run-live');
+
+        es.addEventListener('phase', function(e) {
+          var d = JSON.parse(e.data);
+          phaseEl.textContent = d.label;
+          var phaseIcons = {register: '\u{1F4E6}', scan: '\u{1F50D}', council: '\u{1F3DB}\uFE0F', attack: '\u{1F525}', web_sandbox: '\u{1F310}'};
+          iconEl.textContent = phaseIcons[d.name] || '\u2699\uFE0F';
+          // Add phase separator
+          stepsEl.innerHTML += '<div style="padding: 6px 8px; color: #8b5cf6; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; border-bottom: 1px solid #ede9fe;">' + escapeHtml(d.label) + '</div>';
+          stepsEl.scrollTop = stepsEl.scrollHeight;
+        });
+
+        es.addEventListener('step', function(e) {
+          var d = JSON.parse(e.data);
+          stepCount++;
+          counterEl.textContent = stepCount + ' events';
+          stepsEl.innerHTML += pipelineStepHtml(d);
+          stepsEl.scrollTop = stepsEl.scrollHeight;
+          // Refresh dashboard data periodically
+          if (stepCount % 5 === 0) init();
+        });
+
+        es.addEventListener('complete', function(e) {
+          es.close();
+          var d = JSON.parse(e.data);
+          counterEl.textContent = d.total_events + ' events — complete';
+          phaseEl.textContent = 'Done';
+          iconEl.textContent = '\u2705';
+          stepsEl.innerHTML += '<div style="padding: 8px; color: var(--success); font-weight: 700; border-top: 1px solid var(--border); margin-top: 8px;">\u2705 ' + escapeHtml(d.message) + '</div>';
+          stepsEl.scrollTop = stepsEl.scrollHeight;
           demoBtn.disabled = false;
           demoBtn.style.opacity = '1';
-        }
+          demoBtn.querySelector('#demoBtnText').textContent = I18N[getLang()].demoBtn;
+          // Final dashboard refresh
+          setTimeout(function() { init(); }, 500);
+        });
+
+        es.onerror = function() {
+          es.close();
+          counterEl.textContent = 'Connection lost';
+          phaseEl.textContent = 'Error';
+          iconEl.textContent = '\u274C';
+          demoBtn.disabled = false;
+          demoBtn.style.opacity = '1';
+          demoBtn.querySelector('#demoBtnText').textContent = I18N[getLang()].demoBtn;
+          // Try refreshing anyway
+          init();
+        };
       });
     }
 

