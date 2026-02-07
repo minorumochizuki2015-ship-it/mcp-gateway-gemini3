@@ -156,6 +156,14 @@
     .empty { text-align: center; padding: 40px; color: var(--muted); }
     .error { color: var(--danger); }
 
+    .lang-btn {
+      padding: 6px 12px; border: 1px solid var(--gray-300); border-radius: 6px;
+      background: #fff; cursor: pointer; font-size: 13px; font-weight: 500;
+      transition: all 0.15s; color: var(--gray-700);
+    }
+    .lang-btn:hover { background: var(--gray-50); }
+    .lang-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
     #resultSection { display: none; }
 
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -200,8 +208,15 @@
   <div class="container">
     <div class="header">
       <div>
-        <h1>Causal Web Sandbox</h1>
-        <p class="muted">Evidence-based web security analysis powered by Gemini structured output</p>
+        <h1 id="pageTitle">Causal Web Sandbox</h1>
+        <p class="muted" id="pageSubtitle">Evidence-based web security analysis powered by Gemini structured output</p>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 13px; color: var(--muted);">Language:</span>
+        <div style="display: flex; gap: 4px;">
+          <button type="button" class="lang-btn" id="langJa" data-lang="ja">JA</button>
+          <button type="button" class="lang-btn" id="langEn" data-lang="en">EN</button>
+        </div>
       </div>
     </div>
 
@@ -595,6 +610,60 @@
 
     // Load history on page load
     loadHistory();
+
+    // --- Language Toggle ---
+    const WS_I18N = {
+      en: {
+        pageTitle: 'Causal Web Sandbox',
+        pageSubtitle: 'Evidence-based web security analysis powered by Gemini structured output',
+        geminiKeyTitle: 'Gemini API Key',
+        geminiKeyDesc: 'Enter your Google AI Studio API key to enable Gemini-powered analysis across all features (Council, Scanner, RedTeam, Web Sandbox).',
+        geminiSetBtn: 'Set Key',
+        geminiUpdateBtn: 'Update',
+        targetUrl: 'Target URL',
+        scanBtn: 'Scan',
+        scanning: 'Scanning page...',
+        historyTitle: 'Previous Scans',
+        historyEmpty: 'No scans yet. Enter a URL above to start.',
+      },
+      ja: {
+        pageTitle: 'Causal Web Sandbox',
+        pageSubtitle: 'Gemini 構造化出力を活用したエビデンスベースの Web セキュリティ分析',
+        geminiKeyTitle: 'Gemini API Key',
+        geminiKeyDesc: 'Google AI Studio の API キーを入力すると、全 AI 機能（Council, Scanner, RedTeam, Web Sandbox）が有効になります。',
+        geminiSetBtn: 'キーを設定',
+        geminiUpdateBtn: '更新',
+        targetUrl: '対象 URL',
+        scanBtn: 'スキャン',
+        scanning: 'ページをスキャン中...',
+        historyTitle: 'スキャン履歴',
+        historyEmpty: 'スキャン履歴がありません。上の入力欄に URL を入力してください。',
+      }
+    };
+    const LANG_KEY = 'suite_language';
+    function getWsLang() {
+      try { return localStorage.getItem(LANG_KEY) || 'en'; } catch (e) { return 'en'; }
+    }
+    function applyWsI18n(lang) {
+      const d = WS_I18N[lang] || WS_I18N.en;
+      const el = (id) => document.getElementById(id);
+      if (el('pageTitle')) el('pageTitle').textContent = d.pageTitle;
+      if (el('pageSubtitle')) el('pageSubtitle').textContent = d.pageSubtitle;
+      const langJa = el('langJa'), langEn = el('langEn');
+      if (langJa) langJa.classList.toggle('active', lang === 'ja');
+      if (langEn) langEn.classList.toggle('active', lang === 'en');
+    }
+    const langJa = document.getElementById('langJa');
+    const langEn = document.getElementById('langEn');
+    if (langJa) langJa.addEventListener('click', () => {
+      try { localStorage.setItem(LANG_KEY, 'ja'); } catch (_) {}
+      applyWsI18n('ja');
+    });
+    if (langEn) langEn.addEventListener('click', () => {
+      try { localStorage.setItem(LANG_KEY, 'en'); } catch (_) {}
+      applyWsI18n('en');
+    });
+    applyWsI18n(getWsLang());
   </script>
 </body>
 

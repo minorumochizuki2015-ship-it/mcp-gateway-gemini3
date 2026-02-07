@@ -6414,8 +6414,33 @@
           return;
         }
         if (currentStep === 4) {
-          // Step 4 (Connection Test) is optional — allow skipping to Step 5.
-          // The test button is available but not required for hackathon demo.
+          // Step 4 (Connection Test) is optional — save config without testing.
+          try {
+            const provider = getSelectedWizardProvider();
+            const providerKeyForRules = getWizardProviderKeyForRules();
+            const baseUrl = wizardUpstreamBaseUrl ? wizardUpstreamBaseUrl.value.trim() : "";
+            const apiKey = apiKeyInput ? apiKeyInput.value.trim() : "";
+            const modelRaw = modelSelect ? modelSelect.value.trim() : "";
+            const rawModels = modelRaw.split(",").map(s => s.trim()).filter(Boolean);
+            const modelsAllowlist = normalizeWizardModelIds(rawModels, providerKeyForRules);
+            // Save upstream config (best-effort)
+            if (window.apiClient && window.apiClient.saveControlUpstream) {
+              await window.apiClient.saveControlUpstream({
+                base_url: baseUrl, api_key: apiKey, provider, models_allowlist: modelsAllowlist
+              });
+            }
+            // Set GOOGLE_API_KEY for Gemini features (Council, Scanner, RedTeam, Web Sandbox)
+            if (apiKey) {
+              const authToken = (typeof getAdminToken === 'function') ? getAdminToken() : (window.SUITE_ADMIN_TOKEN || '');
+              const hdrs = { 'Content-Type': 'application/json' };
+              if (authToken) hdrs['Authorization'] = 'Bearer ' + authToken;
+              await fetch('/api/config/gemini-key', { method: 'POST', headers: hdrs, body: JSON.stringify({ api_key: apiKey }) });
+            }
+            if (apiKey) upstreamHasKey = true;
+            saveWizardSettings({ base_url: baseUrl, provider, api_key: apiKey, models: modelsAllowlist.join(",") });
+          } catch (e) {
+            console.warn('[wizard] config save on skip failed', e);
+          }
           goToStep(5);
           return;
         }
