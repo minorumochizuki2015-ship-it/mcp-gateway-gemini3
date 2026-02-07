@@ -1,78 +1,151 @@
-# MCP Gateway + Gemini 3
+# MCP Gateway - AI-Powered Security Gateway for MCP
 
-**Gemini 3 Hackathon Submission** - An AI-powered MCP (Model Context Protocol) security gateway that uses Gemini 3 structured output for intelligent threat detection, semantic analysis, and dynamic red-teaming.
+**Gemini 3 Hackathon Submission** | [Live Demo UI](#dashboard-ui) | [Quick Start](#quick-start) | [Architecture](#architecture)
 
-## What it does
+## The Problem
 
-MCP Gateway sits between AI clients (ChatGPT, Claude, Gemini CLI) and MCP servers, providing a security layer that:
+The MCP (Model Context Protocol) ecosystem has grown to **13,000+ servers**, but security tooling hasn't kept pace. AI agents connect to MCP servers that can:
+- Exfiltrate credentials via hidden tool parameters
+- Inject prompts through deceptive tool descriptions
+- Redirect data to malicious endpoints disguised as legitimate APIs
 
-1. **AI Council** - Uses Gemini 3 structured output to evaluate scan results and make allow/deny/quarantine decisions with confidence scores and per-finding analysis
-2. **Semantic Scanner** - Gemini 3 analyzes tool descriptions for hidden threats (data exfiltration, prompt injection, deceptive naming) that regex-based scanning would miss
-3. **Dynamic Red Team** - Gemini 3 generates attack scenarios, tests them against the gateway's defenses, and evaluates response safety
-4. **Context Sanitizer** - Multi-level prompt injection defense (MINIMAL/STANDARD/STRICT/PARANOID) with regex pattern matching and redaction
-5. **Causal Web Sandbox** - Evidence-based web security analysis inspired by FastRender's rendering pipeline internals. Produces structured evidence: page bundle with SSRF protection, DOM threat analysis, accessibility tree deceptive-label detection, network request tracing, and Gemini 3 structured classification verdict
+There is no standard way to **inspect, evaluate, and enforce security** at the MCP connection layer.
 
-## Gemini 3 Integration Points
+## What MCP Gateway Does
 
-| Component | Gemini Feature | Purpose |
-|-----------|---------------|---------|
-| AI Council (`ai_council.py`) | Structured Output (`CouncilVerdict`) | Security evaluation with typed decisions |
-| Semantic Scanner (`scanner.py`) | Structured Output (`SemanticScanResult`) | Deep analysis of tool descriptions |
-| RedTeam Generator (`redteam.py`) | Structured Output (`RedTeamGeneration`) | Dynamic attack scenario creation |
-| RedTeam Evaluator (`redteam.py`) | Structured Output (`PayloadSafetyVerdict`) | AI-powered response safety assessment |
-| Causal Web Sandbox (`causal_sandbox.py`) | Structured Output (`WebSecurityVerdict`) | Evidence-based web page threat classification |
+MCP Gateway is a **security-first proxy** that sits between AI clients (ChatGPT, Claude, Gemini CLI) and MCP servers. Every tool call passes through a multi-layer inspection pipeline powered by **Gemini 3 structured output**:
 
-All integrations use `response_mime_type="application/json"` with Pydantic schema for type-safe, deterministic outputs. Rule-based fallback is provided when the API is unavailable.
+```
+AI Client ──► MCP Gateway ──► MCP Servers
+               │
+               ├── Scan (static + semantic)
+               ├── AI Council verdict
+               ├── Source/Sink policy check
+               ├── Prompt sanitization
+               └── Evidence trail (every decision logged)
+```
+
+**Key insight**: Instead of binary allow/deny, the gateway produces **structured evidence** — the _why_ behind every decision — making security auditable and explainable.
+
+## 5 Gemini 3 Integration Points
+
+Every AI-powered component uses `response_mime_type="application/json"` with Pydantic schemas for type-safe, deterministic outputs. Rule-based fallback activates automatically when the API is unavailable.
+
+| # | Component | Gemini Schema | What It Does |
+|---|-----------|--------------|--------------|
+| 1 | **AI Council** | `CouncilVerdict` | Multi-criteria security evaluation → allow / deny / quarantine with confidence scores and per-finding analysis |
+| 2 | **Semantic Scanner** | `SemanticScanResult` | Deep analysis of tool descriptions for hidden threats (data exfiltration, prompt injection, deceptive naming) that regex cannot detect |
+| 3 | **RedTeam Generator** | `RedTeamGeneration` | Dynamic attack scenario generation tailored to each tool's capabilities |
+| 4 | **RedTeam Evaluator** | `PayloadSafetyVerdict` | AI-powered safety assessment of tool responses against generated attack scenarios |
+| 5 | **Causal Web Sandbox** | `WebSecurityVerdict` | Evidence-based web page threat classification with DOM analysis, network tracing, and a11y deceptive-label detection |
+
+## Dashboard UI
+
+A full-featured management UI with **bilingual support (English / Japanese)** for real-time monitoring and investigation.
+
+### Pages
+
+| Page | Purpose | Key Features |
+|------|---------|-------------|
+| **Dashboard** | Decision-centric overview | KPI cards (requests, block rate, AI Council status), Gateway Flow diagram, Recent Decisions table with confidence bars and evidence links |
+| **Environments** | Gateway configuration | Setup wizard (admin token → upstream LLM → policy profile), system diagnostics, environment registration |
+| **Scans** | Security scan history | Severity breakdown (Critical/High/Medium/Low), OWASP LLM mapping, filter by status/environment |
+| **AllowList** | Approved MCP servers | Registration status, last scan timestamp, endpoint verification |
+| **Web Sandbox** | Live URL security analysis | SSRF-protected fetch → DOM threat detection → a11y deceptive label check → network trace → Gemini verdict with expandable evidence details |
+| **Audit Log** | Decision evidence trail | Expandable detail rows showing decision/reason/capabilities/source_reasons, evidence ID linking, type/actor filtering |
+| **Billing** | Usage tracking | Token consumption, API call counts, cost estimation |
+| **Settings** | Policy profiles | OWASP LLM top-10 rule configuration, custom restricted sinks, severity thresholds |
+
+### How Decisions Are Shown
+
+Every security decision in the UI includes:
+- **Decision** — ALLOW / DENY / QUARANTINE pill with color coding
+- **Confidence** — Percentage with visual bar (e.g., 95%)
+- **Finding** — What was detected (e.g., "untrusted source to restricted sink")
+- **Evidence** — Clickable link to the full audit trail entry with expandable details
+
+This makes the gateway's behavior **transparent and auditable** — not a black box.
 
 ## Architecture
 
 ```
                     +------------------+
                     |   AI Clients     |
-                    | (ChatGPT/Claude) |
+                    | (ChatGPT/Claude  |
+                    |  /Gemini CLI)    |
                     +--------+---------+
                              |
                     +--------v---------+
-                    |   ACL Proxy      |  <-- Rust ACL-aware proxy
-                    |   (acl-proxy/)   |      URL policy + HTTPS MITM
+                    |   ACL Proxy      |  ← Rust ACL-aware proxy
+                    |   (acl-proxy/)   |    URL policy + HTTPS MITM
                     +--------+---------+
                              |
                     +--------v---------+
-                    |   MCP Gateway    |  <-- Python FastAPI
-                    |   + Dashboard UI |      Security evaluation
-                    +--+----+----+-----+
-                       |    |    |
-     +-------+    |    +-------+    +------------+
-     |              |            |            |
-+----v------+ +----v------+ +---v-------+ +--v---------+
-|AI Council | | Scanner   | | RedTeam   | |Causal Web  |
-|(Gemini 3) | |(Gemini 3) | |(Gemini 3) | |Sandbox     |
-+----+------+ +----+------+ +---+-------+ |(Gemini 3)  |
-     |              |            |         +--+---------+
-     +------+-------+------+----+-----+------+
-            |              |          |
-   +--------v--------+ +--v----------v---+
-   | Evidence Trail  | | Memory Ledger   |
-   | (JSONL)         | | (SSOT)          |
-   +-----------------+ +-----------------+
-         Dual-write with hash-based dedup
+                    |   MCP Gateway    |  ← Python FastAPI
+                    |  + Dashboard UI  |    Security pipeline
+                    +--+--+--+--+-----+
+                       |  |  |  |
+          +------------+  |  |  +------------+
+          |               |  |               |
+   +------v------+ +-----v------+ +----v-----+ +------v------+
+   | AI Council  | | Semantic   | | RedTeam  | | Causal Web  |
+   | (Gemini 3)  | | Scanner    | | Gen+Eval | | Sandbox     |
+   |             | | (Gemini 3) | |(Gemini 3)| | (Gemini 3)  |
+   +------+------+ +-----+------+ +----+-----+ +------+------+
+          |               |             |              |
+          +-------+-------+------+------+------+-------+
+                  |              |              |
+         +--------v-------+ +---v--------------v---+
+         | Evidence Trail  | | Memory Ledger (SSOT) |
+         | (JSONL)         | | Hash-based dedup     |
+         +-----------------+ +---------------------+
 ```
+
+### Security Layers
+
+| Layer | Mechanism | Description |
+|-------|-----------|-------------|
+| **L1: Source/Sink Policy** | Deterministic | Untrusted sources cannot access restricted sinks (filesystem, network, credentials) |
+| **L2: Static Scan** | Pattern matching | Known vulnerability patterns, OWASP LLM Top 10 mapping |
+| **L3: Semantic Scan** | Gemini 3 | Deep analysis of tool descriptions for hidden intent |
+| **L4: AI Council** | Gemini 3 | Multi-criteria evaluation with confidence scoring |
+| **L5: Prompt Sanitization** | Multi-level | MINIMAL / STANDARD / STRICT / PARANOID modes with regex + Unicode defense |
+| **L6: Web Sandbox** | Gemini 3 + DOM analysis | Evidence-based classification of web content (phishing, malware, clickjacking, scam) |
+
+### Causal Web Sandbox Security
+
+The Web Sandbox implements three P0 security controls:
+
+| Threat | Control | Implementation |
+|--------|---------|---------------|
+| **SSRF** | IP validation | Blocks private networks (RFC 1918), metadata endpoints (169.254.x.x), dangerous ports |
+| **Prompt Injection** | Content isolation | Strips hidden elements, zero-width Unicode, applies `<analysis_boundary>` envelope |
+| **Resource Exhaustion** | Hard limits | 2MB HTML, 15s timeout, 3 redirects, 50K DOM elements, 256 depth |
 
 ## Quick Start
 
 ```bash
-# Install dependencies
+# Clone and setup
+git clone <repo-url> && cd mcp-gateway
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-# Set Gemini API key
+# Set Gemini API key (required for AI features)
 export GOOGLE_API_KEY="your-api-key"
 
-# Run tests
-python -m pytest tests/ -v
-
 # Start the gateway
-python -m uvicorn src.mcp_gateway.gateway:app --reload
+python -m uvicorn src.mcp_gateway.gateway:app --host 127.0.0.1 --port 4100 --reload
+
+# Open Dashboard UI
+# http://127.0.0.1:4100/docs/ui_poc/dashboard.html
+```
+
+### UI Quick Start (Static Serve)
+
+```bash
+# Serve UI pages with a simple HTTP server
+./scripts/serve_suite_ui.sh
+# → http://127.0.0.1:3000/dashboard.html
 ```
 
 ## Configuration
@@ -82,73 +155,76 @@ python -m uvicorn src.mcp_gateway.gateway:app --reload
 | `GOOGLE_API_KEY` | Gemini API key | Required for AI features |
 | `GEMINI_MODEL` | Gemini model name | `gemini-2.0-flash` |
 | `MCP_GATEWAY_ADMIN_TOKEN` | Admin authentication token | Required |
-| `MCP_GATEWAY_UPSTREAM_API_KEY` | Upstream LLM API key | Required for chat |
-| `LEDGER_PATH` | Memory Ledger JSONL path | Optional (enables persistent SSOT) |
-| `LEDGER_ERROR_POLICY` | Ledger error handling (`open`/`closed`) | `open` (fail-open) |
+| `MCP_GATEWAY_UPSTREAM_API_KEY` | Upstream LLM API key | Required for proxy |
+| `LEDGER_PATH` | Memory Ledger JSONL path | Optional (enables SSOT) |
+| `LEDGER_ERROR_POLICY` | Ledger error handling | `open` (fail-open) |
+
+## Test Suite
+
+```bash
+# Run all tests (226 tests)
+python -m pytest tests/ -v
+
+# Gemini integration tests
+python -m pytest tests/test_council.py tests/test_scanner.py tests/test_redteam.py tests/test_causal_sandbox.py -v
+
+# UI DOM tests (linkedom)
+npm test
+```
 
 ## Key Files
 
 ```
 src/mcp_gateway/
-  gateway.py          # Main FastAPI gateway with sanitizer integration
-  ai_council.py       # Gemini 3 structured output for security decisions
-  scanner.py          # Static + semantic (Gemini 3) vulnerability scanning
+  gateway.py          # FastAPI gateway (3800+ lines) - routing, policy, control plane
+  ai_council.py       # Gemini 3 structured output → CouncilVerdict
+  scanner.py          # Static + Semantic (Gemini 3) vulnerability scanning
   redteam.py          # Dynamic attack generation + safety evaluation
   causal_sandbox.py   # Evidence-based web security analysis (Gemini 3)
   sanitizer.py        # Multi-level prompt injection defense
-  evidence.py         # JSONL evidence trail with Memory Ledger dual-write
+  evidence.py         # JSONL evidence trail + Memory Ledger dual-write
   ssot/               # Memory Ledger (persistent SSOT) + Durable Streams
   registry.py         # MCP server registration and management
 
-acl-proxy/           # Rust ACL-aware HTTP/HTTPS proxy
-  src/               # Policy engine, MITM, loop protection
-  tests/             # Integration tests
-  Cargo.toml         # Rust dependencies
+docs/ui_poc/          # Dashboard UI (9 pages, bilingual EN/JA)
+  dashboard.html      # Decision-centric KPI + flow + decisions table
+  settings_environments.html  # Setup wizard + diagnostics + env registration
+  web_sandbox.html    # Live URL security scanner with evidence details
+  audit_log.html      # Expandable decision evidence trail
+  scans.html          # Security scan results with severity/OWASP
+  allowlist.html      # Approved MCP server list
+  api_client.js       # Shared API client (auto admin-token, auth retry)
+  ...
 
-docker/              # Dockerfiles for gateway + proxy
-docker-compose.yml   # One-command full stack deployment
+acl-proxy/            # Rust ACL-aware HTTP/HTTPS proxy
+docker-compose.yml    # One-command full stack deployment
+```
 
-tests/ui/            # Playwright UI tests for dashboard
+## Evidence Trail + Memory Ledger
+
+Every decision is recorded as JSONL evidence. When `LEDGER_PATH` is set, events are dual-written to a Memory Ledger (SSOT) with hash-based deduplication:
+
+```json
+{"event": "source_sink_check", "decision": "deny", "server_id": "evil-mcp", "reason": "untrusted_to_restricted_sink", ...}
+{"event": "council_decision", "eval_method": "gemini", "verdict_confidence": 0.95, ...}
+{"event": "causal_web_scan", "classification": "phishing", "confidence": 0.92, "recommended_action": "block", ...}
+{"event": "redteam_gemini", "scenarios_tested": 5, "failures": 0, ...}
 ```
 
 ## Full Stack Deployment (Docker)
 
 ```bash
-# Create secrets
 mkdir -p .local
 echo "your-admin-token" > .local/admin_token.txt
 echo "your-upstream-key" > .local/upstream_api_key.txt
 echo "your-google-api-key" > .local/google_api_key.txt
 
-# Start all services
 docker compose up --build
 ```
 
-## Test Suite
+## Security Notice
 
-```bash
-# Run all tests (194 tests)
-python -m pytest tests/ -v
-
-# Run Gemini-specific tests
-python -m pytest tests/test_council.py tests/test_scanner.py tests/test_redteam.py tests/test_sanitizer.py -v
-```
-
-## Evidence Trail + Memory Ledger
-
-Every decision is recorded as JSONL evidence for auditability. When `LEDGER_PATH` is set, events are also dual-written to a Memory Ledger (SSOT) with hash-based deduplication and monotonic sequence tracking:
-
-```json
-{"event": "council_decision", "eval_method": "gemini", "verdict_confidence": 0.95, ...}
-{"event": "mcp_scan_run", "scan_type": "semantic", "gemini_model": "gemini-2.0-flash", ...}
-{"event": "redteam_gemini", "scenarios_tested": 5, "failures": 0, ...}
-{"event": "causal_web_scan", "classification": "phishing", "confidence": 0.95, ...}
-```
-
-```bash
-# Enable persistent Memory Ledger
-export LEDGER_PATH="./observability/memory_ledger.jsonl"
-```
+This gateway is designed for **local / internal network use**. Do not expose it directly to the public internet. Always place an authenticating proxy (e.g., `acl-proxy/`) in front, and keep the gateway bound to `127.0.0.1`.
 
 ## License
 
