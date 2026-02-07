@@ -22,7 +22,7 @@ from . import evidence, registry
 
 logger = logging.getLogger(__name__)
 
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
 GEMINI_API_KEY_ENV = "GOOGLE_API_KEY"
 
 

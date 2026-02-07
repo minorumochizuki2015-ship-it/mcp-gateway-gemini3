@@ -153,11 +153,11 @@ python -m uvicorn src.mcp_gateway.gateway:app --host 127.0.0.1 --port 4100 --rel
 | Environment Variable | Description | Default |
 |---------------------|-------------|---------|
 | `GOOGLE_API_KEY` | Gemini API key | Required for AI features |
-| `GEMINI_MODEL` | Gemini model name | `gemini-2.0-flash` |
+| `GEMINI_MODEL` | Gemini model name | `gemini-3-flash-preview` |
 | `MCP_GATEWAY_ADMIN_TOKEN` | Admin authentication token | Required |
 | `MCP_GATEWAY_UPSTREAM_API_KEY` | Upstream LLM API key | Required for proxy |
 | `LEDGER_PATH` | Memory Ledger JSONL path | Optional (enables SSOT) |
-| `LEDGER_ERROR_POLICY` | Ledger error handling | `open` (fail-open) |
+| `LEDGER_ERROR_POLICY` | Ledger error handling | `closed` (fail-closed) |
 
 ## Test Suite
 

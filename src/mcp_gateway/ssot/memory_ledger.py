@@ -118,7 +118,7 @@ class MemoryLedgerWriter:
 
     path: Path
     enabled: bool = True
-    error_policy: LedgerErrorPolicy = "open"
+    error_policy: LedgerErrorPolicy = "closed"
 
     def _resolve_entry_id(self, entry: MemoryLedgerEntry) -> str:
         """payload_normalized の memory_id を優先して entry_id を生成する。"""

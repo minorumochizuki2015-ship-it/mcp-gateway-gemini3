@@ -221,7 +221,7 @@ def _write_to_ledger(event: dict) -> None:
         writer = MemoryLedgerWriter(
             path=Path(ledger_path),
             enabled=True,
-            error_policy=os.getenv("LEDGER_ERROR_POLICY", "open"),  # type: ignore[arg-type]
+            error_policy=os.getenv("LEDGER_ERROR_POLICY", "closed"),  # type: ignore[arg-type]
         )
 
         event_type = event.get("event", "unknown")
