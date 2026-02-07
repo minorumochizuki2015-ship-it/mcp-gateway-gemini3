@@ -6438,13 +6438,9 @@
       // Event listeners
       nextBtn.addEventListener('click', async () => {
         if (currentStep === 1) {
-          // Auto-skip precheck when admin token is already injected (e.g. dev_app.py)
-          if (window.SUITE_ADMIN_TOKEN) {
-            goToStep(2);
-            return;
-          }
-          const ok = await runWizardGatewayPrecheck();
-          if (ok) goToStep(2);
+          // Step 1 is informational only — always allow proceeding to Step 2.
+          // Gateway prerequisites can be configured later from the main settings page.
+          goToStep(2);
           return;
         }
         if (currentStep === 6) {
@@ -6471,13 +6467,8 @@
       testBtn.addEventListener('click', runConnectionTest);
       if (wizardPrecheckBtn) {
         wizardPrecheckBtn.addEventListener('click', async () => {
-          // Auto-skip precheck when admin token is already injected
-          if (window.SUITE_ADMIN_TOKEN) {
-            goToStep(2);
-            return;
-          }
-          const ok = await runWizardGatewayPrecheck();
-          if (ok) goToStep(2);
+          // Run diagnostics is informational — always proceed to Step 2
+          goToStep(2);
         });
       }
       if (gatewayIssueBtn) {
@@ -6516,10 +6507,8 @@
 	        setTimeout(() => {
 	          if (shouldShowWizard()) {
 	            showWizard();
-	            // Auto-skip Step 1 when admin token is already injected (e.g. dev_app.py)
-	            if (window.SUITE_ADMIN_TOKEN) {
-	              goToStep(2);
-	            }
+	            // Always start at Step 2 (Configure Upstream LLM) — Step 1 is optional
+	            goToStep(2);
 	          }
 	        }, 500);
 	      }
