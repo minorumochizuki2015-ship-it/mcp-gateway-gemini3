@@ -4369,8 +4369,11 @@ async def demo_run_live(db_path: str = str(DEFAULT_DB_PATH)) -> StreamingRespons
         ts = now.isoformat()
         total_events = 0
 
-        # ── Step 1: Register MCP Servers ──
-        yield _sse_event("phase", {"name": "register", "label": "Registering MCP Servers"})
+        # ── Step 1: LLM Agent requests MCP Server access ──
+        yield _sse_event("phase", {
+            "name": "register",
+            "label": "LLM Agent Requests Tool Access",
+        })
         server_ids: dict[str, int] = {}
         for srv in _DEMO_SERVERS:
             sid = registry.upsert_server(
@@ -4399,8 +4402,11 @@ async def demo_run_live(db_path: str = str(DEFAULT_DB_PATH)) -> StreamingRespons
             total_events += 1
             await asyncio.sleep(0.3)
 
-        # ── Step 2: Security Scans (real scanner — sync, fast) ──
-        yield _sse_event("phase", {"name": "scan", "label": "Running Security Scans"})
+        # ── Step 2: Gateway intercepts and scans tools ──
+        yield _sse_event("phase", {
+            "name": "scan",
+            "label": "Gateway Intercepts \u2192 Security Scan",
+        })
         for srv_name, sid in server_ids.items():
             try:
                 result = scanner.run_scan(db, sid, ["static"])
@@ -4422,8 +4428,11 @@ async def demo_run_live(db_path: str = str(DEFAULT_DB_PATH)) -> StreamingRespons
             total_events += 1
             await asyncio.sleep(0.4)
 
-        # ── Step 3: AI Council Evaluation (real — Gemini or rule-based) ──
-        yield _sse_event("phase", {"name": "council", "label": "AI Council Evaluation"})
+        # ── Step 3: AI Council decides allow/deny ──
+        yield _sse_event("phase", {
+            "name": "council",
+            "label": "AI Council Verdict (Gemini 3)",
+        })
         for srv_name, sid in server_ids.items():
             try:
                 result = ai_council.evaluate(db, sid)
@@ -4458,8 +4467,11 @@ async def demo_run_live(db_path: str = str(DEFAULT_DB_PATH)) -> StreamingRespons
             total_events += 1
             await asyncio.sleep(0.5)
 
-        # ── Step 4: Advanced Attack Detection (real detectors) ──
-        yield _sse_event("phase", {"name": "attack", "label": "Attack Pattern Detection"})
+        # ── Step 4: Advanced Attack Detection ──
+        yield _sse_event("phase", {
+            "name": "attack",
+            "label": "Advanced Threat Analysis",
+        })
         suspicious_srv = next(
             (s for s in _DEMO_SERVERS if s["name"] == "suspicious-mcp"), None,
         )
@@ -4497,8 +4509,11 @@ async def demo_run_live(db_path: str = str(DEFAULT_DB_PATH)) -> StreamingRespons
                 total_events += 1
                 await asyncio.sleep(0.4)
 
-        # ── Step 5: Web Sandbox Analysis (real DOM/a11y/network analysis) ──
-        yield _sse_event("phase", {"name": "web_sandbox", "label": "Web Sandbox Analysis"})
+        # ── Step 5: Causal Web Sandbox (FastRender-inspired DOM analysis) ──
+        yield _sse_event("phase", {
+            "name": "web_sandbox",
+            "label": "Causal Web Sandbox (DOM Analysis)",
+        })
         for page in _DEMO_HTML_PAGES:
             html_content = page["html"]
             page_url = page["url"]

@@ -667,7 +667,7 @@
       var line = '';
       if (d.phase === 'register') {
         var trust = d.trust === 'trusted' ? '<span style="color:var(--success);font-weight:600">trusted</span>' : '<span style="color:var(--danger);font-weight:600">untrusted</span>';
-        line = icon + ' Registered <b>' + escapeHtml(d.server) + '</b> (' + trust + ', ' + d.tools_count + ' tools)';
+        line = icon + ' LLM requests <b>' + escapeHtml(d.server) + '</b> (' + trust + ', ' + d.tools_count + ' tools) &rarr; Gateway intercepts';
       } else if (d.phase === 'scan') {
         var stcol = d.status === 'pass' ? 'var(--success)' : (d.status === 'warn' ? 'var(--warn)' : 'var(--danger)');
         line = icon + ' Scanned <b>' + escapeHtml(d.server) + '</b> &rarr; <span style="color:' + stcol + ';font-weight:700">' + escapeHtml(String(d.status).toUpperCase()) + '</span> (' + d.findings + ' findings)';
@@ -709,7 +709,7 @@
         es.addEventListener('phase', function(e) {
           var d = JSON.parse(e.data);
           phaseEl.textContent = d.label;
-          var phaseIcons = {register: '\u{1F4E6}', scan: '\u{1F50D}', council: '\u{1F3DB}\uFE0F', attack: '\u{1F525}', web_sandbox: '\u{1F310}'};
+          var phaseIcons = {register: '\u{1F916}', scan: '\u{1F6E1}', council: '\u{2696}\uFE0F', attack: '\u{1F525}', web_sandbox: '\u{1F310}'};
           iconEl.textContent = phaseIcons[d.name] || '\u2699\uFE0F';
           // Add phase separator
           stepsEl.innerHTML += '<div style="padding: 6px 8px; color: #8b5cf6; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; border-bottom: 1px solid #ede9fe;">' + escapeHtml(d.label) + '</div>';

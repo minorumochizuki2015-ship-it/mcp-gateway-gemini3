@@ -38,6 +38,10 @@ def init_db(db_path: str | Path = "data/mcp_gateway.db") -> sqlite_utils.Databas
 
     db = sqlite_utils.Database(db_path_obj)
 
+    # Enable WAL mode for concurrent read/write access
+    db.execute("PRAGMA journal_mode=WAL")
+    db.execute("PRAGMA busy_timeout=5000")
+
     # Create mcp_servers table
     if "mcp_servers" not in db.table_names():
         db["mcp_servers"].create(
