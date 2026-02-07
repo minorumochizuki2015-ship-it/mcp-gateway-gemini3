@@ -2164,8 +2164,8 @@ async def trigger_scan(req: ScanRequest, db_path: str = str(DEFAULT_DB_PATH)):
                 )
             if tools_exposed:
                 advanced_result = scanner.run_advanced_threat_scan(tools_exposed)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Advanced threat scan failed: %s", exc)
 
         return {
             "run_id": run_id,
