@@ -6438,6 +6438,11 @@
       // Event listeners
       nextBtn.addEventListener('click', async () => {
         if (currentStep === 1) {
+          // Auto-skip precheck when admin token is already injected (e.g. dev_app.py)
+          if (window.SUITE_ADMIN_TOKEN) {
+            goToStep(2);
+            return;
+          }
           const ok = await runWizardGatewayPrecheck();
           if (ok) goToStep(2);
           return;
@@ -6466,6 +6471,11 @@
       testBtn.addEventListener('click', runConnectionTest);
       if (wizardPrecheckBtn) {
         wizardPrecheckBtn.addEventListener('click', async () => {
+          // Auto-skip precheck when admin token is already injected
+          if (window.SUITE_ADMIN_TOKEN) {
+            goToStep(2);
+            return;
+          }
           const ok = await runWizardGatewayPrecheck();
           if (ok) goToStep(2);
         });
@@ -6506,6 +6516,10 @@
 	        setTimeout(() => {
 	          if (shouldShowWizard()) {
 	            showWizard();
+	            // Auto-skip Step 1 when admin token is already injected (e.g. dev_app.py)
+	            if (window.SUITE_ADMIN_TOKEN) {
+	              goToStep(2);
+	            }
 	          }
 	        }, 500);
 	      }
