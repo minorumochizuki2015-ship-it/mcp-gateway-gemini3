@@ -763,9 +763,7 @@
           }
         } catch (err) {
           console.error('Subscribe error:', err);
-          alert(currentLang === 'ja'
-            ? 'チェックアウトセッションの作成に失敗しました。管理者セッションを確立してください。'
-            : 'Failed to create checkout session. Please establish an admin session.');
+          alert('Failed to create checkout session. Please establish an admin session.');
           if (btn) {
             btn.disabled = false;
             btn.textContent = t('billing.subscribe');
@@ -789,9 +787,7 @@
           } else if (res.status === 404) {
             renderSubscription(null);
           } else if (res.errorType === 'auth') {
-            renderError(currentLang === 'ja'
-              ? '管理者セッションを確立してください'
-              : 'Please establish an admin session');
+            renderError('Please establish an admin session');
           } else {
             renderError();
           }

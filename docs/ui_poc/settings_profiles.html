@@ -275,7 +275,7 @@
     <div class="page-header">
       <div>
         <h1 class="page-title" data-i18n="policyProfiles.title">Policy Profiles</h1>
-        <p class="page-subtitle" data-i18n="policyProfiles.subtitle">セキュリティポリシーのプロファイル設定</p>
+        <p class="page-subtitle" data-i18n="policyProfiles.subtitle">Configure security policy profiles for MCP Gateway.</p>
       </div>
       <div class="tabs">
         <a class="tab" href="settings_environments.html">Environments</a>
@@ -287,7 +287,7 @@
       <!-- Presets Selection -->
       <div class="card">
         <div class="card-header">
-          <h2 data-i18n="policyProfiles.presets">プリセット</h2>
+          <h2 data-i18n="policyProfiles.presets">Presets</h2>
         </div>
         <div class="card-body">
           <div id="coreRules" class="core-rules">
@@ -301,7 +301,7 @@
       <!-- Profile Settings -->
       <div class="card">
         <div class="card-header">
-          <h2 data-i18n="policyProfiles.settings">設定</h2>
+          <h2 data-i18n="policyProfiles.settings">Settings</h2>
         </div>
         <div class="card-body">
           <form id="profileForm">
@@ -574,27 +574,27 @@
       changes.forEach(change => {
         if (change.field === 'profile_name') {
           html += `<div class="diff-item diff-changed">
-            プロファイル: ${change.from} → ${change.to}
+            Profile: ${escapeHtml(change.from)} → ${escapeHtml(change.to)}
           </div>`;
         } else if (change.field === 'restricted_sinks') {
           if (change.added?.length) {
             html += `<div class="diff-item diff-added">
-              + 追加されるsink: ${change.added.join(', ')}
+              + Added sinks: ${escapeHtml(change.added.join(', '))}
             </div>`;
           }
           if (change.removed?.length) {
             html += `<div class="diff-item diff-removed">
-              - 削除されるsink: ${change.removed.join(', ')}
+              - Removed sinks: ${escapeHtml(change.removed.join(', '))}
             </div>`;
           }
         } else if (change.field === 'allow_untrusted_with_approvals') {
           html += `<div class="diff-item diff-changed">
-            untrusted許可: ${change.from ? 'はい' : 'いいえ'} → ${change.to ? 'はい' : 'いいえ'}
+            Allow untrusted: ${change.from ? 'Yes' : 'No'} → ${change.to ? 'Yes' : 'No'}
           </div>`;
         }
       });
 
-      previewContent.innerHTML = html || '<p class="form-hint">変更はありません</p>';
+      previewContent.innerHTML = html || '<p class="form-hint">No changes</p>';
       previewPanel.classList.add('visible');
     }
 
