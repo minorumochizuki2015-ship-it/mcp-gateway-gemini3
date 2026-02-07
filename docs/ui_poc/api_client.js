@@ -32,10 +32,7 @@ window.escapeHtml = function escapeHtml(str) {
     window.location.protocol === "file:";
   const DISABLE_MOCK_PARAM =
     params.get("disable_mock") === "1" || window.SUITE_DISABLE_MOCK === true;
-  const ENABLE_MOCK_PARAM =
-    params.get("enable_mock") === "1" || window.SUITE_ENABLE_MOCK === true;
-  const ENABLE_MOCK =
-    !DISABLE_MOCK_PARAM && (ENABLE_MOCK_PARAM || IS_FILE_PROTOCOL);
+  const ENABLE_MOCK = !DISABLE_MOCK_PARAM;
   const DISABLE_MOCK = !ENABLE_MOCK;
 
   // SaaS mode: hide admin token input UI
@@ -332,7 +329,9 @@ window.escapeHtml = function escapeHtml(str) {
     if (data && Array.isArray(data) && data.length > 0) return data;
     // Fallback to mock when API returns empty or fails
     if (DISABLE_MOCK) return data || [];
-    return (window.suiteScanData && window.suiteScanData.scans) || data || [];
+    var mock = (window.suiteScanData && window.suiteScanData.scans) || null;
+    if (mock) { showMockBadge(); return mock; }
+    return data || [];
   }
 
   async function fetchScanDetail(id) {
@@ -357,6 +356,7 @@ window.escapeHtml = function escapeHtml(str) {
     if (data && Array.isArray(data) && data.length > 0) return data;
     // Fallback to mock allowlist entries when API returns empty
     if (!DISABLE_MOCK && window.suiteScanData && window.suiteScanData.allowlist_entries) {
+      showMockBadge();
       return window.suiteScanData.allowlist_entries;
     }
     return data || [];
@@ -396,8 +396,9 @@ window.escapeHtml = function escapeHtml(str) {
       const al = data.allowlist || {};
       const hasLiveData = (al.total || 0) > 0 || (data.scans && data.scans.total > 0) || (data.council && data.council.total > 0);
       if (hasLiveData) return data;
-      // Live data is empty - merge with mock for demo richness
+      // Live data is empty - use mock for demo richness
       if (!DISABLE_MOCK && window.suiteScanData && window.suiteScanData.dashboard_summary) {
+        showMockBadge();
         return window.suiteScanData.dashboard_summary;
       }
       return data;
@@ -593,6 +594,7 @@ window.escapeHtml = function escapeHtml(str) {
     // Mock fallback: return audit_log from mock_data.js when API fails or returns empty
     if (!DISABLE_MOCK && window.suiteScanData && Array.isArray(window.suiteScanData.audit_log)) {
       const mockData = limit ? window.suiteScanData.audit_log.slice(0, limit) : window.suiteScanData.audit_log;
+      showMockBadge();
       return { ok: true, data: mockData, status: 200 };
     }
     return res;
@@ -650,19 +652,29 @@ window.escapeHtml = function escapeHtml(str) {
   async function fetchWebSandboxVerdicts() {
     const data = await fetchJson(`${BASE}/web-sandbox/verdicts`);
     const liveVerdicts = (data && typeof data === "object" && Array.isArray(data.verdicts)) ? data.verdicts : [];
-    // Merge live verdicts with mock verdicts for demo richness
+    if (liveVerdicts.length > 0) return { verdicts: liveVerdicts };
+    // Fallback to mock only when live data is empty
     if (!DISABLE_MOCK && window.suiteScanData && window.suiteScanData.web_sandbox_verdicts) {
-      const mockVerdicts = window.suiteScanData.web_sandbox_verdicts.verdicts || [];
-      // Combine: live first, then mock (avoid duplicates by run_id)
-      const seenIds = new Set(liveVerdicts.map(v => v.run_id));
-      const merged = [...liveVerdicts, ...mockVerdicts.filter(v => !seenIds.has(v.run_id))];
-      return { verdicts: merged };
+      showMockBadge();
+      return { verdicts: window.suiteScanData.web_sandbox_verdicts.verdicts || [] };
     }
     return { verdicts: liveVerdicts };
   }
 
   function isMockEnabled() {
     return ENABLE_MOCK;
+  }
+
+  // Show "Demo Data" badge when mock fallback is active
+  let _mockBadgeShown = false;
+  function showMockBadge() {
+    if (_mockBadgeShown || DISABLE_MOCK) return;
+    _mockBadgeShown = true;
+    var badge = document.createElement("div");
+    badge.id = "mockBadge";
+    badge.style.cssText = "position:fixed;top:60px;right:12px;z-index:9999;background:#f59e0b;color:#000;font-size:11px;font-weight:700;padding:4px 10px;border-radius:4px;opacity:0.92;pointer-events:none;";
+    badge.textContent = "Demo Data";
+    document.body.appendChild(badge);
   }
 
   function isSaasMode() {
