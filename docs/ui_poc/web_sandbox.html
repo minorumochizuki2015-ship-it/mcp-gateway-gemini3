@@ -182,6 +182,8 @@
     .verdicts-table { margin-top: 16px; }
     tr.clickable { cursor: pointer; transition: background 0.1s; }
     tr.clickable:hover { background: var(--gray-50); }
+    .expand-icon { display: inline-block; font-size: 10px; color: #9ca3af; transition: transform 0.15s; }
+    tr.clickable.expanded .expand-icon { transform: rotate(90deg); color: var(--primary); }
     .detail-row td { background: var(--gray-50); padding: 12px 16px; border-bottom: 2px solid var(--border); }
     .detail-content { font-size: 13px; }
     .detail-label { font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
@@ -597,6 +599,14 @@
       document.getElementById('a11yEmpty').textContent = d.noA11y;
     }
 
+    var CLS_MAP = {
+      benign: 'clsBenign', phishing: 'clsPhishing', malware: 'clsMalware',
+      clickjacking: 'clsClickjacking', scam: 'clsScam', deceptive_ui: 'clsDeceptiveUi'
+    };
+    function translateClassification(cls, dl) {
+      var key = CLS_MAP[cls];
+      return (key && dl[key]) ? dl[key] : cls;
+    }
     function renderHistoryTable(lang) {
       var dl = WS_I18N[lang || getWsLang()] || WS_I18N.en;
       var verdicts = _wsVerdicts || [];
@@ -606,21 +616,23 @@
       var table = document.getElementById('historyTable');
       if (verdicts.length > 0) {
         body.innerHTML = verdicts.slice().reverse().map(function(v, i) {
-          var mainRow = '<tr class="clickable" data-idx="' + i + '">'
-            + '<td title="' + escapeHtml(v.url) + '">' + escapeHtml(truncUrl(v.url, 40)) + '</td>'
-            + '<td><span class="pill ' + classForClassification(v.classification) + '">' + escapeHtml(v.classification) + '</span></td>'
-            + '<td>' + ((v.confidence || 0) * 100).toFixed(0) + '%</td>'
-            + '<td>' + escapeHtml(v.recommended_action) + '</td>'
-            + '<td>' + escapeHtml(v.eval_method === 'gemini' ? 'Gemini' : v.eval_method) + '</td>'
-            + '<td style="font-size:12px;">' + (v.timestamp ? new Date(v.timestamp).toLocaleString() : '-') + '</td>'
-            + '</tr>';
           var summary = v.summary || '';
+          var shortSummary = summary.length > 50 ? summary.slice(0, 50) + '...' : summary;
           var indicators = (v.risk_indicators || []).map(function(r) { return '<span class="indicator-tag">' + escapeHtml(r) + '</span>'; }).join(' ');
           var evidence = (v.evidence_refs || []).map(function(e) { return '<span class="evidence-tag">' + escapeHtml(e) + '</span>'; }).join(' ');
           var hasDetail = summary || indicators || evidence;
+          var mainRow = '<tr class="clickable' + (hasDetail ? '' : ' no-detail') + '" data-idx="' + i + '">'
+            + '<td style="width:24px;text-align:center;">' + (hasDetail ? '<span class="expand-icon">&#9654;</span>' : '') + '</td>'
+            + '<td title="' + escapeHtml(v.url) + '">' + escapeHtml(truncUrl(v.url, 36)) + '</td>'
+            + '<td><span class="pill ' + classForClassification(v.classification) + '">' + escapeHtml(translateClassification(v.classification, dl)) + '</span></td>'
+            + '<td>' + ((v.confidence || 0) * 100).toFixed(0) + '%</td>'
+            + '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;font-size:13px;color:var(--gray-600,#4b5563);">' + escapeHtml(shortSummary || '-') + '</td>'
+            + '<td>' + escapeHtml(v.recommended_action) + '</td>'
+            + '<td style="font-size:12px;">' + (v.timestamp ? new Date(v.timestamp).toLocaleString() : '-') + '</td>'
+            + '</tr>';
           var detailRow = '';
           if (hasDetail) {
-            detailRow = '<tr class="detail-row" data-detail="' + i + '" style="display:none;"><td colspan="6"><div class="detail-content">'
+            detailRow = '<tr class="detail-row" data-detail="' + i + '" style="display:none;"><td colspan="7"><div class="detail-content">'
               + (summary ? '<div class="detail-label">' + escapeHtml(dl.detailSummary) + '</div><div class="detail-summary">' + escapeHtml(summary) + '</div>' : '')
               + (indicators ? '<div class="detail-label">' + escapeHtml(dl.detailRiskIndicators) + '</div><div>' + indicators + '</div>' : '')
               + (evidence ? '<div class="detail-label" style="margin-top:8px;">' + escapeHtml(dl.detailEvidence) + '</div><div>' + evidence + '</div>' : '')
@@ -628,12 +640,15 @@
           }
           return mainRow + detailRow;
         }).join('');
-        // Attach click handlers for expandable detail
         body.querySelectorAll('.clickable').forEach(function(row) {
           row.addEventListener('click', function() {
             var idx = row.getAttribute('data-idx');
             var detail = body.querySelector('[data-detail="' + idx + '"]');
-            if (detail) detail.style.display = detail.style.display === 'none' ? '' : 'none';
+            if (detail) {
+              var open = detail.style.display !== 'none';
+              detail.style.display = open ? 'none' : '';
+              row.classList.toggle('expanded', !open);
+            }
           });
         });
         table.style.display = '';
@@ -720,7 +735,10 @@
         thRole: 'Role', thName: 'Name', thDeceptiveLabel: 'Deceptive Label', deceptive: 'Deceptive',
         // History table headers
         thClassification: 'Classification', thConfidence: 'Confidence',
-        thAction: 'Action', thMethod: 'Method', thTime: 'Time',
+        thAction: 'Action', thMethod: 'Method', thTime: 'Time', thSummary: 'Finding',
+        // Classification values
+        clsBenign: 'Benign', clsPhishing: 'Phishing', clsMalware: 'Malware',
+        clsClickjacking: 'Clickjacking', clsScam: 'Scam', clsDeceptiveUi: 'Deceptive UI',
         // Empty states
         noIndicators: 'No risk indicators found',
         noDomThreats: 'No DOM threats detected',
@@ -767,7 +785,10 @@
         thRole: 'ロール', thName: '名前', thDeceptiveLabel: '偽装ラベル', deceptive: '偽装',
         // History table headers
         thClassification: '分類', thConfidence: '信頼度',
-        thAction: 'アクション', thMethod: '手法', thTime: '時刻',
+        thAction: 'アクション', thMethod: '手法', thTime: '時刻', thSummary: '検出内容',
+        // Classification values
+        clsBenign: '安全', clsPhishing: 'フィッシング', clsMalware: 'マルウェア',
+        clsClickjacking: 'クリックジャッキング', clsScam: '詐欺', clsDeceptiveUi: '偽装UI',
         // Empty states
         noIndicators: 'リスク指標なし',
         noDomThreats: 'DOM 脅威は検出されませんでした',
@@ -830,7 +851,7 @@
       }
       if (el('historyEmpty')) el('historyEmpty').textContent = d.historyEmpty;
       th = el('historyThead');
-      if (th) th.innerHTML = '<tr><th>URL</th><th>' + [d.thClassification, d.thConfidence, d.thAction, d.thMethod, d.thTime].map(escapeHtml).join('</th><th>') + '</th></tr>';
+      if (th) th.innerHTML = '<tr><th></th><th>URL</th><th>' + [d.thClassification, d.thConfidence, d.thSummary, d.thAction, d.thTime].map(escapeHtml).join('</th><th>') + '</th></tr>';
       // Re-render history with new language
       renderHistoryTable(lang);
       // Lang button active state

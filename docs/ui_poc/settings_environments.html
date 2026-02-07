@@ -1757,7 +1757,7 @@
 
         <div class="card form-card">
           <div class="collapsible-header" data-section="wizard">
-            <h3 id="wizardTitle">
+            <h3 id="wizardSectionTitle">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M12 2l9 4-9 4-9-4 9-4z" />
                 <path d="M3 10l9 4 9-4" />
@@ -2147,7 +2147,8 @@
         policySummaryApprovalsDisabled: 'Disabled',
         policyInfoLabel: 'Admin session required:',
         policyInfoText: 'Uses the Control Plane admin session from the upstream section.',
-        wizardTitle: 'Gateway Connection Wizard',
+        wizardTitle: 'MCP Gateway Setup Wizard',
+        wizardSectionTitle: 'Gateway Connection Wizard',
         wizardStep1: 'Pick the target environment to set the Gateway base URL.',
         wizardStep2: 'Issue a short-lived access token for client connections.',
         wizardStep3: 'Copy the client configuration snippet.',
@@ -2504,7 +2505,8 @@
         policySummaryApprovalsDisabled: '無効',
         policyInfoLabel: '管理者セッションが必要:',
         policyInfoText: '上流セクションで確立した Control Plane の管理者セッションを利用します。',
-        wizardTitle: 'ゲートウェイ接続ウィザード',
+        wizardTitle: 'MCP Gateway セットアップウィザード',
+        wizardSectionTitle: 'ゲートウェイ接続ウィザード',
         wizardStep1: 'ゲートウェイの Base URL とする環境を選択',
         wizardStep2: 'クライアント接続用の短期トークンを発行',
         wizardStep3: 'クライアント設定スニペットをコピー',
@@ -2836,6 +2838,7 @@
       setText('policyInfoLabel', tt.policyInfoLabel);
       setText('policyInfoText', tt.policyInfoText);
       setText('wizardTitle', tt.wizardTitle);
+      setText('wizardSectionTitle', tt.wizardSectionTitle);
       setText('wizardSubtitle', tt.wizardSubtitle);
       setText('wizardStep1', tt.wizardStep1);
       setText('wizardStep2', tt.wizardStep2);

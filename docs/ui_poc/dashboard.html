@@ -463,13 +463,25 @@
       document.getElementById('sevLowBar').style.width = ((sev.low || 0) / sevTotal * 100) + '%';
 
       // Recent Decisions - combine audit + web sandbox verdicts
+      // Filter: only show security-relevant events (deny/block/scan/council), not admin management events
+      var SECURITY_EVENTS = ['source_sink_check', 'openai_proxy_block', 'council_decision', 'mcp_scan_run', 'causal_web_scan', 'semantic_scan', 'redteam_gemini'];
+      var ADMIN_EVENTS = ['admin_session_issued', 'control_upstream_updated', 'upstream_test', 'token_issued', 'token_revoked', 'settings_updated'];
       var decisions = [];
-      // From audit log
+      // From audit log - security events only
       if (auditRes && auditRes.ok && Array.isArray(auditRes.data)) {
-        auditRes.data.slice(0, 8).forEach(function(e) {
+        auditRes.data.filter(function(e) {
+          var t = String(e.type || '');
+          // Include: explicit security events, deny decisions, block events
+          // Exclude: admin management events
+          return ADMIN_EVENTS.indexOf(t) === -1;
+        }).slice(0, 8).forEach(function(e) {
+          var dec = 'allow';
+          if (e.summary && (e.summary.indexOf('blocked') >= 0 || e.summary.indexOf('deny') >= 0)) dec = 'deny';
+          else if (e.summary && e.summary.indexOf('quarantine') >= 0) dec = 'quarantine';
+          else if (e.type && e.type.indexOf('block') >= 0) dec = 'deny';
           decisions.push({
             ts: e.ts,
-            decision: e.type || 'allow',
+            decision: dec,
             confidence: null,
             finding: e.summary || '-',
             evidence_id: e.evidence_id || '',

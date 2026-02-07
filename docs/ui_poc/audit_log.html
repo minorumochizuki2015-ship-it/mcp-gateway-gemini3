@@ -367,14 +367,16 @@
       <div class="filter-group">
         <label class="filter-label" data-i18n="auditLog.typeLabel" data-i18n-title="auditLog.typeTitle">Type</label>
         <select id="typeFilter" class="filter-select" data-i18n-title="auditLog.typeFilterTitle">
-          <option value="">All</option>
-          <option value="control_upstream_updated">Upstream</option>
-          <option value="upstream_test">Upstream Test</option>
-          <option value="token_issued">Token Issued</option>
-          <option value="token_revoked">Token Revoked</option>
-          <option value="settings_updated">Environment</option>
-          <option value="openai_proxy_block">Proxy Block</option>
+          <option value="__security__" selected>Security Decisions</option>
+          <option value="">All Events</option>
           <option value="source_sink_check">MCP Block</option>
+          <option value="openai_proxy_block">Proxy Block</option>
+          <option value="council_decision">Council Decision</option>
+          <option value="causal_web_scan">Web Scan</option>
+          <option value="mcp_scan_run">Security Scan</option>
+          <option value="control_upstream_updated">Upstream</option>
+          <option value="token_issued">Token Issued</option>
+          <option value="settings_updated">Environment</option>
         </select>
       </div>
       <div class="filter-group">
@@ -442,11 +444,17 @@
       return `<span class="pill ${cls}">${t || "-"}</span>`;
     }
 
+    const ADMIN_TYPES = ['admin_session_issued', 'control_upstream_updated', 'upstream_test', 'token_issued', 'token_revoked', 'settings_updated'];
     function render() {
       const type = typeSelect.value;
       const actor = actorInput.value.trim().toLowerCase();
       const filtered = items.filter((e) => {
-        const typeOk = !type || e.type === type;
+        let typeOk;
+        if (type === '__security__') {
+          typeOk = ADMIN_TYPES.indexOf(e.type) === -1;
+        } else {
+          typeOk = !type || e.type === type;
+        }
         const actorOk = !actor || String(e.actor || "").toLowerCase().includes(actor);
         // P0-1b: Filter by evidence_id if provided in URL
         const evidenceOk = !evidenceIdFilter || String(e.evidence_id || "").includes(evidenceIdFilter);
