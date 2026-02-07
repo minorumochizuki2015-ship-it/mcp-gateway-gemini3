@@ -1,0 +1,801 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCP Gateway Suite - Scans</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    /* Smooth page transition - prevent flash */
+    html {
+      background: #f9fafb;
+    }
+
+    body {
+      opacity: 1;
+      transition: opacity 0.08s ease-out;
+    }
+
+    body.loading {
+      opacity: 0;
+    }
+
+    :root {
+      --primary: #0066ff;
+      --primary-dark: #0052cc;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-900: #111827;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      --radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-900);
+      line-height: 1.5;
+      padding-top: 56px;
+    }
+
+    /* Navigation */
+    .nav {
+      background: var(--gray-900);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      height: 56px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-brand {
+      color: #fff;
+      font-weight: 700;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-brand svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 4px;
+      margin-left: 40px;
+    }
+
+    .nav-link {
+      color: var(--gray-300);
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+
+    .nav-link:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .nav-link.active {
+      color: #fff;
+      background: var(--primary);
+    }
+
+    .nav-status {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--gray-300);
+      font-size: 13px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    /* Main Content */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
+    .page-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--gray-900);
+    }
+
+    .page-subtitle {
+      color: var(--gray-600);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    .lang-btn {
+      padding: 6px 12px;
+      border: 1px solid var(--gray-300);
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.15s;
+      color: var(--gray-700);
+    }
+
+    .lang-btn:hover {
+      background: var(--gray-50);
+    }
+
+    .lang-btn.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    /* Stats Cards */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: #fff;
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--gray-200);
+      transition: all 0.2s ease;
+    }
+
+    .stat-card:hover {
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+
+    .stat-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
+
+    .stat-icon svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .stat-icon.blue {
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      color: white;
+    }
+
+    .stat-icon.green {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+    }
+
+    .stat-icon.red {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: white;
+    }
+
+    .stat-icon.amber {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: white;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-600);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-top: 4px;
+    }
+
+    .stat-value.critical {
+      color: var(--danger);
+    }
+
+    .stat-value.success {
+      color: var(--success);
+    }
+
+    /* Filters */
+    .filters-bar {
+      background: #fff;
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--gray-200);
+      margin-bottom: 16px;
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .filter-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-600);
+    }
+
+    .filter-input,
+    .filter-select {
+      padding: 8px 12px;
+      border: 1px solid var(--gray-300);
+      border-radius: 6px;
+      font-size: 14px;
+      min-width: 160px;
+      background: #fff;
+    }
+
+    .filter-input:focus,
+    .filter-select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.1);
+    }
+
+    /* Table */
+    .table-container {
+      background: #fff;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--gray-200);
+      overflow: hidden;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    th {
+      background: var(--gray-50);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-600);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--gray-200);
+    }
+
+    td {
+      padding: 14px 16px;
+      font-size: 14px;
+      border-bottom: 1px solid var(--gray-100);
+      vertical-align: middle;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover {
+      background: var(--gray-50);
+    }
+
+    /* Status Pill */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .pill-passed {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .pill-failed {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .pill-warn {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    /* Severity Badge */
+    .severity-grid {
+      display: flex;
+      gap: 6px;
+    }
+
+    .severity-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .sev-critical {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .sev-high {
+      background: #ffedd5;
+      color: #9a3412;
+    }
+
+    .sev-medium {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .sev-low {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    /* OWASP Tags */
+    .owasp-tags {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .owasp-tag {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #ede9fe;
+      color: #5b21b6;
+    }
+
+    /* Action Link */
+    .action-link {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .action-link:hover {
+      color: var(--primary-dark);
+      text-decoration: underline;
+    }
+
+    .action-link svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--gray-600);
+    }
+
+    .empty-state svg {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 1024px) {
+      .nav-links {
+        margin-left: 20px;
+        gap: 2px;
+      }
+
+      .nav-link {
+        padding: 6px 12px;
+        font-size: 13px;
+      }
+
+      .container {
+        padding: 16px;
+      }
+
+      .grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      }
+    }
+
+    @media (max-width: 768px) {
+      .nav {
+        flex-wrap: wrap;
+        height: auto;
+        min-height: 56px;
+        padding: 8px 16px;
+      }
+
+      .nav-brand {
+        font-size: 16px;
+      }
+
+      .nav-brand svg {
+        width: 24px;
+        height: 24px;
+      }
+
+      .nav-links {
+        width: 100%;
+        margin-left: 0;
+        margin-top: 8px;
+        justify-content: center;
+      }
+
+      .nav-link {
+        padding: 6px 10px;
+        font-size: 12px;
+      }
+
+      .nav-status {
+        width: 100%;
+        justify-content: center;
+        margin-top: 8px;
+        margin-left: 0;
+      }
+
+      .container {
+        padding: 12px;
+      }
+
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .side-stack {
+        flex-direction: column;
+      }
+
+      body {
+        padding-top: 0;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .nav-link {
+        padding: 4px 8px;
+        font-size: 11px;
+      }
+
+      .card {
+        padding: 12px;
+      }
+
+      .value {
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <nav class="nav">
+    <div class="nav-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+      </svg>
+      MCP Gateway Suite
+    </div>
+    <div class="nav-links">
+      <a href="settings_environments.html" class="nav-link">Environments</a>
+      <a href="dashboard.html" class="nav-link">Dashboard</a>
+      <a href="scans.html" class="nav-link">Scans</a>
+      <a href="allowlist.html" class="nav-link">AllowList</a>
+      <a href="web_sandbox.html" class="nav-link">Web Sandbox</a>
+      <a href="audit_log.html" class="nav-link">Audit Log</a>
+    </div>
+    <div class="nav-status">
+      <span class="status-dot"></span>
+      Gateway Online
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title" data-i18n="scans.title">Security Scans</h1>
+        <p class="page-subtitle" data-i18n="scans.subtitle">View and analyze MCP Gateway security scan results</p>
+        <div data-admin-session-banner-anchor="page-header"></div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 13px; color: var(--gray-600);">Language:</span>
+        <div style="display: flex; gap: 4px;">
+          <button type="button" class="lang-btn" id="langJa" data-lang="ja">JA</button>
+          <button type="button" class="lang-btn" id="langEn" data-lang="en">EN</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card">
+        <div class="stat-icon blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+        </div>
+        <div class="stat-label" data-i18n="scans.statTotal">Total Scans</div>
+        <div class="stat-value" id="statTotal">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div class="stat-label" data-i18n="scans.statPassed">Passed</div>
+        <div class="stat-value success" id="statPassed">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon red">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div class="stat-label" data-i18n="scans.statFailed">Failed</div>
+        <div class="stat-value critical" id="statFailed">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon amber">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <div class="stat-label" data-i18n="scans.statCritical">Critical Issues</div>
+        <div class="stat-value critical" id="statCritical">-</div>
+      </div>
+    </div>
+
+    <div class="filters-bar">
+      <div class="filter-group">
+        <label class="filter-label" data-i18n="scans.filterStatus">Status</label>
+        <select id="statusFilter" class="filter-select">
+          <option value="" data-i18n="scans.filterStatusAll">All Status</option>
+          <option value="passed" data-i18n="scans.filterStatusPassed">Passed</option>
+          <option value="failed" data-i18n="scans.filterStatusFailed">Failed</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label" data-i18n="scans.filterEnv">Environment</label>
+        <input id="envFilter" class="filter-input" data-i18n-placeholder="scans.filterEnvPlaceholder"
+          placeholder="Search environment..." />
+      </div>
+    </div>
+
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th data-i18n="scans.tableTimestamp">Timestamp</th>
+            <th data-i18n="scans.tableEnvironment">Environment</th>
+            <th data-i18n="scans.tableActor">Actor</th>
+            <th data-i18n="scans.tableStatus">Status</th>
+            <th data-i18n="scans.tableSeverity">Severity</th>
+            <th data-i18n="scans.tableOwasp">OWASP LLM</th>
+            <th data-i18n="scans.tableProfile">Profile</th>
+            <th data-i18n="scans.tableActions">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="scanRows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="mock_data.js"></script>
+  <script src="api_client.js"></script>
+  <script>
+    const rows = document.getElementById("scanRows");
+    const statusSelect = document.getElementById("statusFilter");
+    const envInput = document.getElementById("envFilter");
+    let scans = [];
+
+    function formatTimestamp(ts) {
+      if (!ts) return "-";
+      const d = new Date(ts);
+      const lang = window.getLanguage ? window.getLanguage() : "ja";
+      const locale = lang === "en" ? "en-US" : "ja-JP";
+      return d.toLocaleString(locale, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    }
+
+    function formatSeverity(counts) {
+      const c = counts || {};
+      const items = [];
+      if (c.critical > 0) items.push(`<span class="severity-badge sev-critical">C:${c.critical}</span>`);
+      if (c.high > 0) items.push(`<span class="severity-badge sev-high">H:${c.high}</span>`);
+      if (c.medium > 0) items.push(`<span class="severity-badge sev-medium">M:${c.medium}</span>`);
+      if (c.low > 0) items.push(`<span class="severity-badge sev-low">L:${c.low}</span>`);
+      return items.length ? `<div class="severity-grid">${items.join("")}</div>` : '<span style="color:var(--gray-300)">-</span>';
+    }
+
+    function formatOwasp(counts) {
+      const entries = Object.entries(counts || {});
+      if (!entries.length) return '<span style="color:var(--gray-300)">-</span>';
+      return `<div class="owasp-tags">${entries.map(([k, v]) => `<span class="owasp-tag">${k}:${v}</span>`).join("")}</div>`;
+    }
+
+    function statusPill(status) {
+      const cls = status === "passed" ? "pill-passed" : status === "warn" ? "pill-warn" : "pill-failed";
+      return `<span class="pill ${cls}">${status}</span>`;
+    }
+
+    function updateStats() {
+      document.getElementById("statTotal").textContent = scans.length;
+      document.getElementById("statPassed").textContent = scans.filter(s => s.status === "passed").length;
+      document.getElementById("statFailed").textContent = scans.filter(s => s.status === "failed").length;
+      const criticalSum = scans.reduce((sum, s) => sum + (s.severity_counts?.critical || 0), 0);
+      document.getElementById("statCritical").textContent = criticalSum;
+    }
+
+    function render() {
+      const viewDetails = window.tCommon ? window.tCommon("scans.actionViewDetails") : "View Details";
+      const status = statusSelect.value;
+      const env = envInput.value.trim().toLowerCase();
+      const filtered = scans.filter((s) => {
+        const statusOk = !status || s.status === status;
+        const envOk = !env || s.environment.toLowerCase().includes(env);
+        return statusOk && envOk;
+      });
+      rows.innerHTML = filtered
+        .map((s) => `<tr>
+          <td>${formatTimestamp(s.startedAt)}</td>
+          <td><strong>${s.environment}</strong></td>
+          <td>${s.actor || "-"}</td>
+          <td>${statusPill(s.status)}</td>
+          <td>${formatSeverity(s.severity_counts)}</td>
+          <td>${formatOwasp(s.owasp_counts)}</td>
+          <td>${s.profile || "-"}</td>
+          <td><a href="scan_detail.html?id=${encodeURIComponent(s.id)}" class="action-link">${viewDetails} <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a></td>
+        </tr>`)
+        .join("");
+    }
+
+    async function init() {
+      scans = await window.apiClient.fetchScans();
+      updateStats();
+      render();
+    }
+
+    statusSelect.addEventListener("change", render);
+    envInput.addEventListener("input", render);
+    init();
+  </script>
+  <script>
+    // Language toggle
+    const langJa = document.getElementById('langJa');
+    const langEn = document.getElementById('langEn');
+    function updateLangButtons() {
+      const lang = window.getLanguage ? window.getLanguage() : 'ja';
+      if (langJa) langJa.classList.toggle('active', lang === 'ja');
+      if (langEn) langEn.classList.toggle('active', lang === 'en');
+    }
+    if (langJa) langJa.addEventListener('click', () => {
+      if (window.setLanguage) window.setLanguage('ja');
+      if (window.applyCommonI18n) window.applyCommonI18n();
+      updateLangButtons();
+      render();
+    });
+    if (langEn) langEn.addEventListener('click', () => {
+      if (window.setLanguage) window.setLanguage('en');
+      if (window.applyCommonI18n) window.applyCommonI18n();
+      updateLangButtons();
+      render();
+    });
+    if (window.applyCommonI18n) window.applyCommonI18n();
+    updateLangButtons();
+  </script>
+  <script>
+    // Auto-detect active nav link
+    (function () {
+      if (!window.location || !window.location.pathname) return;
+      const currentFile = window.location.pathname.split('/').pop() || 'index.html';
+      document.querySelectorAll('.nav-link').forEach(link => {
+        const href = link.getAttribute('href');
+        if (href === currentFile) {
+          link.classList.add('active');
+        } else {
+          link.classList.remove('active');
+        }
+      });
+    })();
+  </script>
+  <script>
+    // Smooth page transitions - fade out before navigating
+    document.querySelectorAll('.nav-link').forEach(link => {
+      link.addEventListener('click', function (e) {
+        const href = this.getAttribute('href');
+        if (href && !href.startsWith('#') && !href.startsWith('javascript')) {
+          e.preventDefault();
+          document.body.style.opacity = '0';
+          setTimeout(() => { window.location.href = href; }, 80);
+        }
+      });
+    });
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCP Gateway Suite - MCP Detail</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    :root {
+      --bg: #f7f9fc;
+      --card: #fff;
+      --border: #d7dce3;
+      --text: #0f172a;
+      --muted: #6b7280;
+      --primary: #0f5adb;
+      --success: #0f9d58;
+      --warn: #eab308;
+      --danger: #d93025;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter','Segoe UI',sans-serif; background: var(--bg); color: var(--text); }
+    a { color: var(--primary); text-decoration: none; }
+    .nav { background: var(--gray-900); color: #fff; padding: 0 24px; display: flex; gap: 16px; align-items: center; height: 56px; position: sticky; top: 0; z-index: 100; }
+    .nav a { color: #cbd5e1; font-weight: 600; }
+    .nav a.active { color: #fff; }
+    
+    .nav-brand { color: #fff; font-weight: 700; font-size: 18px; display: flex; align-items: center; gap: 10px; }
+    .nav-brand svg { width: 28px; height: 28px; }
+    .nav-links { display: flex; gap: 4px; margin-left: 40px; flex-wrap: wrap; }
+    .nav-link { color: var(--gray-300); text-decoration: none; padding: 8px 16px; border-radius: 6px; font-size: 14px; font-weight: 500; transition: all 0.15s; }
+    .nav-link:hover { color: #fff; background: rgba(255,255,255,0.1); }
+    .nav-link.active { color: #fff; background: var(--primary); }
+    .nav-status { margin-left: auto; display: flex; align-items: center; gap: 8px; color: var(--gray-300); font-size: 13px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+    .header { margin-bottom: 16px; }
+    .header h1 { font-size: 22px; margin-bottom: 6px; }
+    .muted { color: var(--muted); font-size: 14px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-bottom: 14px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); padding: 14px 16px; }
+    .label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
+    .value { font-size: 16px; font-weight: 700; margin-top: 4px; }
+    .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+    .pill { display: inline-flex; align-items: center; padding: 6px 10px; border-radius: 999px; font-weight: 700; font-size: 12px; border: 1px solid transparent; }
+    .pill.ok { background: #e0f4ed; color: #0f5132; border-color: #a3e2c7; }
+    .pill.warn { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+    .pill.danger { background: #fee2e2; color: #b91c1c; border-color: #fecdd3; }
+    .section-title { font-size: 15px; font-weight: 800; margin-bottom: 6px; }
+    .list { list-style: none; display: flex; gap: 6px; flex-wrap: wrap; }
+    .list li { background: #eef2ff; color: #312e81; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+    .small { font-size: 12px; color: var(--muted); }
+    .error { color: var(--danger); font-weight: 700; }
+    .tabs { display: flex; gap: 8px; margin: 12px 0; }
+    .tab { border: 1px solid var(--border); background: #fff; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: 700; color: var(--muted); }
+    .tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .history-controls { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+    .history-list { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+    .history-item { border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: #fff; }
+    .history-meta { display: flex; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+    .history-title { font-weight: 800; margin-bottom: 6px; }
+    .chip { display: inline-flex; align-items: center; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; background: #e5e7eb; color: #111827; }
+  
+
+    /* Enhanced Card Styles */
+    .card { transition: transform 0.2s, box-shadow 0.2s; }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .card-clickable { cursor: pointer; }
+    
+    /* Status Badges */
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .badge-success { background: #dcfce7; color: #166534; }
+    .badge-warning { background: #fef3c7; color: #92400e; }
+    .badge-danger { background: #fee2e2; color: #b91c1c; }
+    .badge-info { background: #dbeafe; color: #1e40af; }
+    
+    /* Loading States */
+    .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 4px; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    
+    /* Empty State */
+    .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); }
+    .empty-state svg { width: 48px; height: 48px; margin-bottom: 12px; opacity: 0.5; }
+    .empty-state p { font-size: 14px; }
+    
+    /* Action Buttons */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; font-size: 14px; font-weight: 600; border: none; cursor: pointer; transition: all 0.15s; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: #0d4eb8; }
+    .btn-secondary { background: #e5e7eb; color: #374151; }
+    .btn-secondary:hover { background: #d1d5db; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+    /* Responsive Design */
+    @media (max-width: 1024px) {
+      .nav-links { margin-left: 20px; gap: 2px; }
+      .nav-link { padding: 6px 12px; font-size: 13px; }
+      .container { padding: 16px; }
+      .grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+    }
+    @media (max-width: 768px) {
+      .nav { flex-wrap: wrap; height: auto; min-height: 56px; padding: 8px 16px; }
+      .nav-brand { font-size: 16px; }
+      .nav-brand svg { width: 24px; height: 24px; }
+      .nav-links { width: 100%; margin-left: 0; margin-top: 8px; justify-content: center; }
+      .nav-link { padding: 6px 10px; font-size: 12px; }
+      .nav-status { width: 100%; justify-content: center; margin-top: 8px; margin-left: 0; }
+      .container { padding: 12px; }
+      .header { flex-direction: column; align-items: flex-start; }
+      .grid { grid-template-columns: 1fr; }
+      .side-stack { flex-direction: column; }
+      body { padding-top: 0; }
+    }
+    @media (max-width: 480px) {
+      .nav-link { padding: 4px 8px; font-size: 11px; }
+      .card { padding: 12px; }
+      .value { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+    <nav class="nav">
+    <div class="nav-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      MCP Gateway Suite
+    </div>
+    <div class="nav-links">
+      <a href="dashboard.html" class="nav-link">Dashboard</a>
+      <a href="scans.html" class="nav-link">Scans</a>
+      <a href="settings_environments.html" class="nav-link">Environments</a>
+      <a href="allowlist.html" class="nav-link">AllowList</a>
+      <a href="mcp_detail.html" class="nav-link active">MCP Detail</a>
+      <a href="web_sandbox.html" class="nav-link">Web Sandbox</a>
+      <a href="audit_log.html" class="nav-link">Audit Log</a>
+    </div>
+    <div class="nav-status">
+      <span class="status-dot"></span>
+      Gateway Online
+    </div>
+  </nav>
+  <div class="container">
+    <div class="header">
+      <h1>MCP Detail</h1>
+      <p class="muted">MCP のメタ情報・最新スキャンと council 決定を閲覧（read-only）</p>
+      <div data-admin-session-banner-anchor="page-header"></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" id="tabOverview" type="button" aria-selected="true">概要</button>
+      <button class="tab" id="tabHistory" type="button" aria-selected="false">履歴</button>
+    </div>
+
+    <div id="overviewSection">
+    <div class="card" id="errorCard" style="display:none;">
+      <span class="error">詳細を取得できませんでした。</span>
+    </div>
+
+    <div class="grid">
+      <div class="card" id="serverCard">
+        <div class="section-title">Server</div>
+        <div class="label">Name</div>
+        <div class="value" id="srvName">-</div>
+        <div class="label">Base URL</div>
+        <div class="value" id="srvUrl">-</div>
+        <div class="badges" id="srvStatus"></div>
+      </div>
+      <div class="card" id="allowCard">
+        <div class="section-title">AllowList</div>
+        <div class="label">Status</div>
+        <div class="value" id="allowStatus">-</div>
+        <div class="label">Risk</div>
+        <div class="value" id="allowRisk">-</div>
+        <div class="label">Capabilities</div>
+        <ul class="list" id="allowCaps"></ul>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card" id="scanCard">
+        <div class="section-title">最新スキャン</div>
+        <div class="label">Run ID</div>
+        <div class="value" id="scanRun">-</div>
+        <div class="label">Status / Time</div>
+        <div class="value" id="scanStatus">-</div>
+        <div class="label">Severity Counts</div>
+        <div class="value" id="scanSev">-</div>
+      </div>
+      <div class="card" id="councilCard">
+        <div class="section-title">判定結果</div>
+        <div class="label">Decision</div>
+        <div class="value" id="councilDecision">-</div>
+        <div class="label">Rationale</div>
+        <div class="value" id="councilRationale">-</div>
+        <div class="label">Timestamp</div>
+        <div class="value" id="councilTs">-</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">証跡</div>
+      <div class="label">Scan run_id</div>
+      <div class="value" id="evScan">-</div>
+      <div class="label">Council run_id</div>
+      <div class="value" id="evCouncil">-</div>
+      <div class="small">リンクは参考表示のみ（read-only）。</div>
+    </div>
+    </div>
+
+    <div id="historySection" style="display:none;">
+      <div class="card">
+        <div class="section-title">履歴</div>
+        <div class="history-controls">
+          <label class="small" for="historyType">Type</label>
+          <select id="historyType">
+            <option value="all">All</option>
+            <option value="scan">Scans</option>
+            <option value="council_decision">Decisions</option>
+          </select>
+          <button class="tab" id="loadMore" type="button">Load More</button>
+        </div>
+        <ul class="history-list" id="historyList"></ul>
+        <div class="small" id="historySummary"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="api_client.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const serverId = params.get("server_id") || 1;
+    const errorCard = document.getElementById("errorCard");
+    const overviewSection = document.getElementById("overviewSection");
+    const historySection = document.getElementById("historySection");
+    const tabOverview = document.getElementById("tabOverview");
+    const tabHistory = document.getElementById("tabHistory");
+    const historyType = document.getElementById("historyType");
+    const historyList = document.getElementById("historyList");
+    const historySummary = document.getElementById("historySummary");
+    const loadMoreBtn = document.getElementById("loadMore");
+    let historyData = { history: [], total: 0, limit: 20, offset: 0 };
+    let visibleCount = 0;
+
+    function pill(text, type) {
+      const cls = type === "ok" ? "ok" : type === "warn" ? "warn" : "danger";
+      return `<span class="pill ${cls}">${text}</span>`;
+    }
+
+    function setText(id, value) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    }
+
+    function render(detail) {
+      if (!detail) {
+        errorCard.style.display = "block";
+        return;
+      }
+      const srv = detail.server || {};
+      setText("srvName", srv.name || "-");
+      setText("srvUrl", srv.base_url || "-");
+      const statusWrap = document.getElementById("srvStatus");
+      if (statusWrap) statusWrap.innerHTML = pill(srv.status || "unknown", "warn");
+
+      const allow = detail.allowlist || {};
+      setText("allowStatus", allow.status || "-");
+      setText("allowRisk", allow.risk_level || "-");
+      const caps = Array.isArray(allow.capabilities) ? allow.capabilities : [];
+      const capList = document.getElementById("allowCaps");
+      if (capList) {
+        capList.innerHTML = caps.length
+          ? caps.map((c) => `<li>${c}</li>`).join("")
+          : '<li style="background:#e5e7eb;color:#475569;">none</li>';
+      }
+
+      const scan = detail.scan || {};
+      setText("scanRun", scan.run_id || "-");
+      setText("scanStatus", `${scan.status || "-"} / ${scan.last_scan_ts || "-"}`);
+      const sev = scan.severity_counts || {};
+      setText("scanSev", `C:${sev.critical || 0} H:${sev.high || 0} M:${sev.medium || 0} L:${sev.low || 0}`);
+
+      const council = detail.council || {};
+      setText("councilDecision", council.decision || "-");
+      setText("councilRationale", council.rationale || "-");
+      setText("councilTs", council.ts || "-");
+
+      const evidence = detail.evidence || {};
+      setText("evScan", evidence.scan_run_id || "-");
+      setText("evCouncil", evidence.council_run_id || "-");
+    }
+
+    function renderHistory(items) {
+      if (!historyList) return;
+      if (!items || items.length === 0) {
+        historyList.innerHTML = '<li class="history-item"><span class="muted">履歴はありません。</span></li>';
+        historySummary.textContent = "showing 0/0";
+        return;
+      }
+      historyList.innerHTML = items
+        .map((item) => {
+          const ts = item.ts || "-";
+          if (item.type === "scan") {
+            const sev = item.severity_counts || {};
+            const sevText = `C:${sev.critical || 0} H:${sev.high || 0} M:${sev.medium || 0} L:${sev.low || 0}`;
+            return `<li class="history-item" data-type="scan">
+              <div class="history-title">Scan ${item.run_id || ""} <span class="chip">${item.status || ""}</span></div>
+              <div class="history-meta">
+                <span>${ts}</span>
+                <span>Severity ${sevText}</span>
+              </div>
+            </li>`;
+          }
+          return `<li class="history-item" data-type="council_decision">
+            <div class="history-title">Council: ${item.decision || ""}</div>
+            <div class="history-meta">
+              <span>${ts}</span>
+              <span>${item.evaluator_count || 0} evaluators</span>
+            </div>
+            <div class="small">${item.rationale || ""}</div>
+          </li>`;
+        })
+        .join("");
+      historySummary.textContent = `showing ${items.length}/${historyData.total || items.length}`;
+    }
+
+    function applyHistoryFilter() {
+      const filter = historyType ? historyType.value : "all";
+      let items = historyData.history || [];
+      if (filter !== "all") {
+        const normalized = filter === "council" ? "council_decision" : filter;
+        items = items.filter((i) => i.type === normalized);
+      }
+       if (!items.length && historyData.history) {
+        items = historyData.history;
+      }
+      visibleCount = visibleCount || Math.min(items.length, historyData.limit || 20);
+      renderHistory(items.slice(0, visibleCount));
+    }
+
+    async function loadHistory() {
+      try {
+        const data = await window.apiClient.fetchMcpHistory(serverId);
+        const fallback =
+          window.suiteScanData &&
+          window.suiteScanData.history &&
+          window.suiteScanData.history[String(serverId)];
+        const payload = data && Array.isArray(data.history) ? data : fallback;
+        if (!payload || !Array.isArray(payload.history)) {
+          renderHistory([]);
+          return;
+        }
+        historyData = payload;
+        window.historyData = payload;
+        visibleCount = Math.min((payload.limit || 20), payload.history.length);
+        applyHistoryFilter();
+      } catch (e) {
+        renderHistory([]);
+      }
+    }
+
+    function switchTab(name) {
+      const isOverview = name === "overview";
+      overviewSection.style.display = isOverview ? "block" : "none";
+      historySection.style.display = isOverview ? "none" : "block";
+      tabOverview.classList.toggle("active", isOverview);
+      tabHistory.classList.toggle("active", !isOverview);
+      tabOverview.setAttribute("aria-selected", String(isOverview));
+      tabHistory.setAttribute("aria-selected", String(!isOverview));
+    }
+
+    async function init() {
+      try {
+        const detail = await window.apiClient.fetchMcpDetail(serverId);
+        render(detail);
+        await loadHistory();
+      } catch (e) {
+        errorCard.style.display = "block";
+      }
+    }
+
+    tabOverview.addEventListener("click", () => switchTab("overview"));
+    tabHistory.addEventListener("click", () => switchTab("history"));
+    if (historyType) {
+      historyType.addEventListener("change", () => applyHistoryFilter());
+    }
+    if (loadMoreBtn) {
+      loadMoreBtn.addEventListener("click", () => {
+        const items = historyData.history || [];
+        visibleCount = Math.min(items.length, visibleCount + (historyData.limit || 20));
+        applyHistoryFilter();
+      });
+    }
+
+    window.loadHistory = loadHistory;
+    window.showHistoryTab = () => switchTab("history");
+    window.applyHistoryFilter = applyHistoryFilter;
+    window.renderHistory = renderHistory;
+
+    init();
+  </script>
+</body>
+</html>

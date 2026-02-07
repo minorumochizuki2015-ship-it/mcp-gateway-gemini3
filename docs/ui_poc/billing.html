@@ -1,0 +1,845 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCP Gateway Suite - Billing</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;600;700&display=swap');
+
+    html {
+      background: #f9fafb;
+    }
+
+    body {
+      opacity: 1;
+      transition: opacity 0.08s ease-out;
+    }
+
+    body.loading {
+      opacity: 0;
+    }
+
+    :root {
+      --primary: #0066ff;
+      --primary-dark: #0052cc;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-900: #111827;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      --radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-900);
+      line-height: 1.5;
+      padding-top: 56px;
+    }
+
+    /* Navigation */
+    .nav {
+      background: var(--gray-900);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      height: 56px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+    }
+
+    .nav-brand {
+      color: #fff;
+      font-weight: 700;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .nav-brand svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 4px;
+      margin-left: 40px;
+    }
+
+    .nav-link {
+      color: var(--gray-300);
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+
+    .nav-link:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .nav-link.active {
+      color: #fff;
+      background: var(--primary);
+    }
+
+    .nav-status {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--gray-300);
+      font-size: 13px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Main Content */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
+    .page-title {
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .page-subtitle {
+      color: var(--gray-600);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    /* Cards */
+    .card {
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    /* Subscription Status */
+    .subscription-status {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .status-card {
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .status-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-600);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .status-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--gray-900);
+    }
+
+    .status-value.plan-free { color: var(--gray-600); }
+    .status-value.plan-starter { color: var(--primary); }
+    .status-value.plan-team { color: #7c3aed; }
+    .status-value.plan-enterprise { color: #059669; }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .status-badge.active {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status-badge.trialing {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .status-badge.past_due {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .status-badge.canceled, .status-badge.unpaid {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .status-badge::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    /* Seats Progress */
+    .seats-progress {
+      margin-top: 8px;
+    }
+
+    .seats-bar {
+      height: 8px;
+      background: var(--gray-200);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .seats-bar-fill {
+      height: 100%;
+      background: var(--primary);
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    .seats-bar-fill.warning {
+      background: var(--warning);
+    }
+
+    .seats-bar-fill.danger {
+      background: var(--danger);
+    }
+
+    .seats-text {
+      font-size: 12px;
+      color: var(--gray-600);
+      margin-top: 4px;
+    }
+
+    /* Plan Cards */
+    .plans-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
+
+    .plan-card {
+      background: #fff;
+      border: 2px solid var(--gray-200);
+      border-radius: 12px;
+      padding: 24px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .plan-card:hover {
+      border-color: var(--primary);
+      box-shadow: var(--shadow-md);
+    }
+
+    .plan-card.current {
+      border-color: var(--primary);
+      background: #f0f7ff;
+    }
+
+    .plan-card.recommended {
+      border-color: #7c3aed;
+    }
+
+    .plan-card.recommended::before {
+      content: 'Recommended';
+      display: block;
+      background: #7c3aed;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+      width: fit-content;
+    }
+
+    .plan-name {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .plan-price {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--gray-900);
+    }
+
+    .plan-price-period {
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--gray-600);
+    }
+
+    .plan-seats {
+      font-size: 13px;
+      color: var(--gray-600);
+      margin-top: 4px;
+      margin-bottom: 16px;
+    }
+
+    .plan-features {
+      list-style: none;
+      margin-bottom: 20px;
+    }
+
+    .plan-features li {
+      font-size: 13px;
+      color: var(--gray-700);
+      padding: 6px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .plan-features li::before {
+      content: '';
+      width: 16px;
+      height: 16px;
+      background: var(--success);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='white'%3E%3Cpath d='M12.207 4.793a1 1 0 0 1 0 1.414l-5 5a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L6.5 9.086l4.293-4.293a1 1 0 0 1 1.414 0z'/%3E%3C/svg%3E");
+      background-size: 12px;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: var(--radius);
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn-primary:disabled {
+      background: var(--gray-300);
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: #fff;
+      color: var(--gray-700);
+      border: 1px solid var(--gray-300);
+    }
+
+    .btn-secondary:hover {
+      background: var(--gray-100);
+    }
+
+    .btn-block {
+      width: 100%;
+    }
+
+    /* Loading */
+    .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--gray-200);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-state {
+      text-align: center;
+      padding: 40px;
+      color: var(--gray-600);
+    }
+
+    /* Error */
+    .error-state {
+      text-align: center;
+      padding: 40px;
+      color: var(--danger);
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    .empty-state-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 16px;
+      opacity: 0.5;
+    }
+
+    .empty-state-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .empty-state-desc {
+      font-size: 14px;
+      color: var(--gray-600);
+      margin-bottom: 20px;
+    }
+
+    /* Language Switcher */
+    .lang-switcher {
+      display: flex;
+      gap: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      padding: 2px;
+      margin-left: 12px;
+    }
+
+    .lang-btn {
+      padding: 4px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      background: transparent;
+      color: var(--gray-300);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .lang-btn:hover {
+      color: #fff;
+    }
+
+    .lang-btn.active {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .nav-links {
+        display: none;
+      }
+      .subscription-status {
+        grid-template-columns: 1fr;
+      }
+      .plans-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body class="loading">
+  <nav class="nav">
+    <a href="dashboard.html" class="nav-brand">
+      <svg viewBox="0 0 28 28" fill="none">
+        <rect width="28" height="28" rx="6" fill="#0066ff" />
+        <path d="M7 14h14M14 7v14" stroke="#fff" stroke-width="2.5" stroke-linecap="round" />
+      </svg>
+      MCP Gateway
+    </a>
+    <div class="nav-links">
+      <a href="settings_environments.html" class="nav-link">Environments</a>
+      <a href="dashboard.html" class="nav-link">Dashboard</a>
+      <a href="scans.html" class="nav-link">Scans</a>
+      <a href="allowlist.html" class="nav-link">AllowList</a>
+      <a href="web_sandbox.html" class="nav-link">Web Sandbox</a>
+      <a href="audit_log.html" class="nav-link">Audit Log</a>
+      <a href="billing.html" class="nav-link active">Billing</a>
+    </div>
+    <div class="nav-status">
+      <span class="status-dot"></span>
+      <span data-i18n="common.gatewayOnline">Gateway Online</span>
+      <div class="lang-switcher">
+        <button class="lang-btn" data-lang="ja">JA</button>
+        <button class="lang-btn" data-lang="en">EN</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container" data-onboarding-root="true">
+    <header class="page-header">
+      <div>
+        <h1 class="page-title" data-i18n="billing.title">Billing & Subscription</h1>
+        <p class="page-subtitle" data-i18n="billing.subtitle">Manage your subscription, payment method, and billing history</p>
+      </div>
+    </header>
+
+    <div id="billing-content">
+      <div class="loading-state">
+        <div class="loading-spinner"></div>
+        <p data-i18n="billing.loadingSubscription">Loading subscription...</p>
+      </div>
+    </div>
+  </main>
+
+  <script src="api_client.js"></script>
+  <script>
+    (function () {
+      const PLANS = [
+        { id: 'free', name: 'Free', price: 0, seats: 1, features: ['planFeatureBasic'] },
+        { id: 'starter', name: 'Starter', price: 980, seats: 5, features: ['planFeatureFull'], recommended: false },
+        { id: 'team', name: 'Team', price: 4980, seats: 20, features: ['planFeatureFull', 'planFeaturePriority'], recommended: true },
+        { id: 'enterprise', name: 'Enterprise', price: null, seats: null, features: ['planFeatureFull', 'planFeaturePriority', 'planFeatureSla'], recommended: false }
+      ];
+
+      let currentLang = 'ja';
+      let subscription = null;
+
+      function t(key) {
+        const dict = window.CommonI18N && window.CommonI18N[currentLang] || {};
+        const keys = key.split('.');
+        let val = dict;
+        for (const k of keys) { val = val && val[k]; }
+        return val || key;
+      }
+
+      function formatDate(iso) {
+        if (!iso) return '-';
+        const d = new Date(iso);
+        return d.toLocaleDateString(currentLang === 'ja' ? 'ja-JP' : 'en-US', {
+          year: 'numeric', month: 'short', day: 'numeric'
+        });
+      }
+
+      function getStatusClass(status) {
+        const map = {
+          'active': 'active',
+          'trialing': 'trialing',
+          'past_due': 'past_due',
+          'canceled': 'canceled',
+          'unpaid': 'unpaid'
+        };
+        return map[status] || 'active';
+      }
+
+      function getStatusLabel(status) {
+        const map = {
+          'active': t('billing.statusActive'),
+          'trialing': t('billing.statusTrialing'),
+          'past_due': t('billing.statusPastDue'),
+          'canceled': t('billing.statusCanceled'),
+          'unpaid': t('billing.statusUnpaid')
+        };
+        return map[status] || status;
+      }
+
+      function renderSubscription(data) {
+        const container = document.getElementById('billing-content');
+        if (!data || !data.subscription) {
+          container.innerHTML = renderEmptyState();
+          return;
+        }
+
+        subscription = data.subscription;
+        const seats = data.seats || { used: 0, limit: 5 };
+        const seatsPercent = Math.min((seats.used / seats.limit) * 100, 100);
+        const seatsBarClass = seatsPercent >= 90 ? 'danger' : seatsPercent >= 70 ? 'warning' : '';
+
+        const planId = subscription.plan_id || 'free';
+        const planName = t(`billing.plan${planId.charAt(0).toUpperCase() + planId.slice(1)}`) || planId;
+
+        container.innerHTML = `
+          <div class="subscription-status">
+            <div class="status-card">
+              <div class="status-label" data-i18n="billing.currentPlan">${t('billing.currentPlan')}</div>
+              <div class="status-value plan-${planId}">${planName}</div>
+            </div>
+            <div class="status-card">
+              <div class="status-label" data-i18n="billing.status">${t('billing.status')}</div>
+              <div class="status-badge ${getStatusClass(subscription.status)}">${getStatusLabel(subscription.status)}</div>
+            </div>
+            <div class="status-card">
+              <div class="status-label" data-i18n="billing.seats">${t('billing.seats')}</div>
+              <div class="status-value">${seats.used} / ${seats.limit}</div>
+              <div class="seats-progress">
+                <div class="seats-bar">
+                  <div class="seats-bar-fill ${seatsBarClass}" style="width: ${seatsPercent}%"></div>
+                </div>
+                <div class="seats-text">${seats.used} ${t('billing.seatsUsed')}, ${seats.limit} ${t('billing.seatsLimit')}</div>
+              </div>
+            </div>
+            <div class="status-card">
+              <div class="status-label">${subscription.trial_end ? t('billing.trialEnd') : t('billing.periodEnd')}</div>
+              <div class="status-value" style="font-size: 18px;">
+                ${formatDate(subscription.trial_end || subscription.current_period_end)}
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title" data-i18n="billing.selectPlan">${t('billing.selectPlan')}</h2>
+            </div>
+            <div class="plans-grid">
+              ${PLANS.map(plan => renderPlanCard(plan, planId)).join('')}
+            </div>
+          </div>
+        `;
+
+        // Attach event listeners
+        document.querySelectorAll('.plan-subscribe-btn').forEach(btn => {
+          btn.addEventListener('click', () => handleSubscribe(btn.dataset.plan));
+        });
+      }
+
+      function renderPlanCard(plan, currentPlanId) {
+        const isCurrent = plan.id === currentPlanId;
+        const priceText = plan.price === null
+          ? (currentLang === 'ja' ? 'お問い合わせ' : 'Contact us')
+          : plan.price === 0
+            ? (currentLang === 'ja' ? '無料' : 'Free')
+            : `¥${plan.price.toLocaleString()}`;
+        const periodText = plan.price > 0 ? `<span class="plan-price-period">/ ${currentLang === 'ja' ? '月' : 'mo'}</span>` : '';
+        const seatsText = plan.seats === null
+          ? (currentLang === 'ja' ? '無制限' : 'Unlimited')
+          : `${plan.seats} ${t('billing.seats')}`;
+
+        return `
+          <div class="plan-card ${isCurrent ? 'current' : ''} ${plan.recommended ? 'recommended' : ''}">
+            <div class="plan-name">${plan.name}</div>
+            <div class="plan-price">${priceText}${periodText}</div>
+            <div class="plan-seats">${seatsText}</div>
+            <ul class="plan-features">
+              ${plan.features.map(f => `<li>${t('billing.' + f)}</li>`).join('')}
+            </ul>
+            ${isCurrent
+              ? `<button class="btn btn-secondary btn-block" disabled>${currentLang === 'ja' ? '現在のプラン' : 'Current Plan'}</button>`
+              : plan.price === null
+                ? `<a href="mailto:sales@example.com" class="btn btn-secondary btn-block">${currentLang === 'ja' ? 'お問い合わせ' : 'Contact Sales'}</a>`
+                : `<button class="btn btn-primary btn-block plan-subscribe-btn" data-plan="${plan.id}">${t('billing.subscribe')}</button>`
+            }
+          </div>
+        `;
+      }
+
+      function renderEmptyState() {
+        return `
+          <div class="empty-state">
+            <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+            </svg>
+            <h3 class="empty-state-title" data-i18n="billing.noSubscription">${t('billing.noSubscription')}</h3>
+            <p class="empty-state-desc">${currentLang === 'ja' ? 'プランを選択して開始してください' : 'Choose a plan to get started'}</p>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title" data-i18n="billing.selectPlan">${t('billing.selectPlan')}</h2>
+            </div>
+            <div class="plans-grid">
+              ${PLANS.map(plan => renderPlanCard(plan, null)).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      function renderError(message) {
+        const container = document.getElementById('billing-content');
+        container.innerHTML = `
+          <div class="error-state">
+            <p>${message || t('billing.errorLoad')}</p>
+            <button class="btn btn-primary" onclick="location.reload()">${currentLang === 'ja' ? '再読み込み' : 'Reload'}</button>
+          </div>
+        `;
+      }
+
+      async function handleSubscribe(planId) {
+        const btn = document.querySelector(`[data-plan="${planId}"]`);
+        if (btn) {
+          btn.disabled = true;
+          btn.innerHTML = '<span class="loading-spinner"></span>';
+        }
+
+        try {
+          const plan = PLANS.find(p => p.id === planId);
+          if (!plan) throw new Error('Invalid plan');
+
+          const res = await window.apiClient.createCheckoutSession({
+            plan_id: planId,
+            success_url: window.location.href + '?success=1',
+            cancel_url: window.location.href + '?canceled=1'
+          });
+
+          if (res.ok && res.data && res.data.checkout_url) {
+            window.location.href = res.data.checkout_url;
+          } else {
+            throw new Error(res.data?.detail || 'Failed to create checkout session');
+          }
+        } catch (err) {
+          console.error('Subscribe error:', err);
+          alert(currentLang === 'ja'
+            ? 'チェックアウトセッションの作成に失敗しました。管理者セッションを確立してください。'
+            : 'Failed to create checkout session. Please establish an admin session.');
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = t('billing.subscribe');
+          }
+        }
+      }
+
+      async function loadSubscription() {
+        const container = document.getElementById('billing-content');
+        container.innerHTML = `
+          <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <p data-i18n="billing.loadingSubscription">${t('billing.loadingSubscription')}</p>
+          </div>
+        `;
+
+        try {
+          const res = await window.apiClient.fetchBillingSubscription();
+          if (res.ok) {
+            renderSubscription(res.data);
+          } else if (res.status === 404) {
+            renderSubscription(null);
+          } else if (res.errorType === 'auth') {
+            renderError(currentLang === 'ja'
+              ? '管理者セッションを確立してください'
+              : 'Please establish an admin session');
+          } else {
+            renderError();
+          }
+        } catch (err) {
+          console.error('Load error:', err);
+          renderError();
+        }
+      }
+
+      function initLanguage() {
+        try {
+          const stored = localStorage.getItem('suite_language');
+          if (stored) currentLang = stored;
+        } catch (e) {}
+
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.lang === currentLang);
+          btn.addEventListener('click', () => {
+            currentLang = btn.dataset.lang;
+            try { localStorage.setItem('suite_language', currentLang); } catch (e) {}
+            if (window.setLanguage) window.setLanguage(currentLang);
+            document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === currentLang));
+            loadSubscription();
+          });
+        });
+      }
+
+      function checkUrlParams() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('success') === '1') {
+          // Show success message
+          setTimeout(() => {
+            alert(currentLang === 'ja' ? 'サブスクリプションが正常に作成されました' : 'Subscription created successfully');
+            window.history.replaceState({}, '', window.location.pathname);
+          }, 500);
+        } else if (params.get('canceled') === '1') {
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+      }
+
+      // Initialize
+      document.addEventListener('DOMContentLoaded', () => {
+        document.body.classList.remove('loading');
+        initLanguage();
+        checkUrlParams();
+        loadSubscription();
+      });
+    })();
+  </script>
+</body>
+</html>

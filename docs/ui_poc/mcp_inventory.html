@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCP Gateway Suite - MCP Inventory</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    :root {
+      --primary: #0066ff;
+      --primary-dark: #0052cc;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-900: #111827;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--gray-50); color: var(--gray-900); line-height: 1.5; padding-top: 56px; }
+
+    /* Navigation */
+    .nav { background: var(--gray-900); padding: 0 24px; display: flex; align-items: center; height: 56px; position: sticky; top: 0; z-index: 100; }
+    .nav-brand { color: #fff; font-weight: 700; font-size: 18px; display: flex; align-items: center; gap: 10px; }
+    .nav-brand svg { width: 28px; height: 28px; }
+    .nav-links { display: flex; gap: 4px; margin-left: 40px; }
+    .nav-link { color: var(--gray-300); text-decoration: none; padding: 8px 16px; border-radius: 6px; font-size: 14px; font-weight: 500; transition: all 0.15s; }
+    .nav-link:hover { color: #fff; background: rgba(255,255,255,0.1); }
+    .nav-link.active { color: #fff; background: var(--primary); }
+    .nav-status { margin-left: auto; display: flex; align-items: center; gap: 8px; color: var(--gray-300); font-size: 13px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+    /* Main Content */
+    .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .page-title { font-size: 24px; font-weight: 700; color: var(--gray-900); }
+    .page-subtitle { color: var(--gray-600); font-size: 14px; margin-top: 4px; }
+
+    /* Stats Cards */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: #fff; border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow-sm); border: 1px solid var(--gray-200); }
+    .stat-label { font-size: 12px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { font-size: 28px; font-weight: 700; color: var(--gray-900); margin-top: 4px; }
+    .stat-value.success { color: var(--success); }
+    .stat-value.danger { color: var(--danger); }
+    .stat-value.warning { color: var(--warning); }
+
+    /* Filters */
+    .filters-bar { background: #fff; border-radius: var(--radius); padding: 16px 20px; box-shadow: var(--shadow-sm); border: 1px solid var(--gray-200); margin-bottom: 16px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+    .filter-group { display: flex; flex-direction: column; gap: 4px; }
+    .filter-label { font-size: 12px; font-weight: 600; color: var(--gray-600); }
+    .filter-input, .filter-select { padding: 8px 12px; border: 1px solid var(--gray-300); border-radius: 6px; font-size: 14px; min-width: 160px; background: #fff; }
+    .filter-input:focus, .filter-select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,102,255,0.1); }
+
+    /* Table */
+    .table-container { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow-sm); border: 1px solid var(--gray-200); overflow: hidden; }
+    table { border-collapse: collapse; width: 100%; }
+    th { background: var(--gray-50); font-size: 12px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px; padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--gray-200); }
+    td { padding: 14px 16px; font-size: 14px; border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover { background: var(--gray-50); cursor: pointer; }
+
+    /* Status Badge */
+    .status-badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    .status-allow, .status-active { background: #d1fae5; color: #065f46; }
+    .status-deny { background: #fee2e2; color: #991b1b; }
+    .status-quarantine { background: #fef3c7; color: #92400e; }
+    .status-unknown { background: var(--gray-100); color: var(--gray-600); }
+
+    /* Risk Badge */
+    .risk-badge { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .risk-critical { background: #fee2e2; color: #991b1b; }
+    .risk-high { background: #ffedd5; color: #9a3412; }
+    .risk-medium { background: #fef3c7; color: #92400e; }
+    .risk-low { background: #d1fae5; color: #065f46; }
+
+    /* Capability Tags */
+    .cap-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+    .cap-tag { font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: var(--gray-100); color: var(--gray-600); }
+    .cap-tag.dangerous { background: #fee2e2; color: #991b1b; }
+
+    /* URL */
+    .url-text { font-family: 'SF Mono', Monaco, monospace; font-size: 12px; color: var(--gray-600); }
+
+    /* Timestamp */
+    .ts-text { font-size: 12px; color: var(--gray-600); }
+
+    /* Action Link */
+    .action-link { color: var(--primary); text-decoration: none; font-weight: 500; display: inline-flex; align-items: center; gap: 4px; }
+    .action-link:hover { color: var(--primary-dark); text-decoration: underline; }
+
+    /* Loading / Error */
+    .loading { text-align: center; padding: 48px 24px; color: var(--gray-600); }
+    .error-banner { background: #fee2e2; border: 1px solid #fecaca; color: #991b1b; padding: 12px 16px; border-radius: var(--radius); margin-bottom: 16px; display: none; }
+    .error-banner.show { display: block; }
+  
+    /* Responsive Design */
+    @media (max-width: 1024px) {
+      .nav-links { margin-left: 20px; gap: 2px; }
+      .nav-link { padding: 6px 12px; font-size: 13px; }
+      .container { padding: 16px; }
+      .grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+    }
+    @media (max-width: 768px) {
+      .nav { flex-wrap: wrap; height: auto; min-height: 56px; padding: 8px 16px; }
+      .nav-brand { font-size: 16px; }
+      .nav-brand svg { width: 24px; height: 24px; }
+      .nav-links { width: 100%; margin-left: 0; margin-top: 8px; justify-content: center; }
+      .nav-link { padding: 6px 10px; font-size: 12px; }
+      .nav-status { width: 100%; justify-content: center; margin-top: 8px; margin-left: 0; }
+      .container { padding: 12px; }
+      .header { flex-direction: column; align-items: flex-start; }
+      .grid { grid-template-columns: 1fr; }
+      .side-stack { flex-direction: column; }
+      body { padding-top: 0; }
+    }
+    @media (max-width: 480px) {
+      .nav-link { padding: 4px 8px; font-size: 11px; }
+      .card { padding: 12px; }
+      .value { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      MCP Gateway Suite
+    </div>
+    <div class="nav-links">
+      <a href="scans.html" class="nav-link">Scans</a>
+      <a href="allowlist.html" class="nav-link">AllowList</a>
+      <a href="mcp_inventory.html" class="nav-link active">MCP Inventory</a>
+      <a href="settings_environments.html" class="nav-link">Environments</a>
+      <a href="dashboard.html" class="nav-link">Dashboard</a>
+      <a href="web_sandbox.html" class="nav-link">Web Sandbox</a>
+      <a href="audit_log.html" class="nav-link">Audit Log</a>
+    </div>
+    <div class="nav-status">
+      <span class="status-dot"></span>
+      Gateway Online
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">MCP Inventory</h1>
+        <p class="page-subtitle">Registered MCP servers and their security status</p>
+        <div data-admin-session-banner-anchor="page-header"></div>
+      </div>
+    </div>
+
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card"><div class="stat-label">Total Servers</div><div class="stat-value" id="statTotal">-</div></div>
+      <div class="stat-card"><div class="stat-label">Allowed</div><div class="stat-value success" id="statAllow">-</div></div>
+      <div class="stat-card"><div class="stat-label">Quarantined</div><div class="stat-value warning" id="statQuarantine">-</div></div>
+      <div class="stat-card"><div class="stat-label">Denied</div><div class="stat-value danger" id="statDeny">-</div></div>
+      <div class="stat-card"><div class="stat-label">High/Critical Risk</div><div class="stat-value danger" id="statHighRisk">-</div></div>
+    </div>
+
+    <div class="error-banner" id="errorBanner"></div>
+
+    <div class="filters-bar">
+      <div class="filter-group">
+        <label class="filter-label">Status</label>
+        <select id="statusFilter" class="filter-select">
+          <option value="">All Status</option>
+          <option value="active">Active/Allow</option>
+          <option value="quarantine">Quarantine</option>
+          <option value="deny">Deny</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Risk Level</label>
+        <select id="riskFilter" class="filter-select">
+          <option value="">All Risk</option>
+          <option value="critical">Critical</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Search</label>
+        <input id="searchFilter" class="filter-input" placeholder="Name or URL..." />
+      </div>
+    </div>
+
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Base URL</th>
+            <th>Status</th>
+            <th>Risk</th>
+            <th>Capabilities</th>
+            <th>Last Scan</th>
+            <th>Last Decision</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="mcpRows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="mcp_inventory_mock.js"></script>
+  <script src="api_client.js"></script>
+  <script>
+    const rows = document.getElementById("mcpRows");
+    const statusFilter = document.getElementById("statusFilter");
+    const riskFilter = document.getElementById("riskFilter");
+    const searchFilter = document.getElementById("searchFilter");
+    const errorBanner = document.getElementById("errorBanner");
+    let mcpServers = [];
+
+    const DANGEROUS_CAPS = ["network_write", "file_write", "sampling"];
+
+    function formatTimestamp(ts) {
+      if (!ts) return '<span class="ts-text">-</span>';
+      const d = new Date(ts);
+      return `<span class="ts-text">${d.toLocaleString("ja-JP", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>`;
+    }
+
+    function statusBadge(status) {
+      const s = (status || "").toLowerCase();
+      if (s === "active" || s === "allow") return `<span class="status-badge status-allow">${status}</span>`;
+      if (s === "deny") return `<span class="status-badge status-deny">${status}</span>`;
+      if (s === "quarantine") return `<span class="status-badge status-quarantine">${status}</span>`;
+      return `<span class="status-badge status-unknown">${status || "unknown"}</span>`;
+    }
+
+    function riskBadge(risk) {
+      const r = (risk || "").toLowerCase();
+      if (r === "critical") return `<span class="risk-badge risk-critical">Critical</span>`;
+      if (r === "high") return `<span class="risk-badge risk-high">High</span>`;
+      if (r === "medium") return `<span class="risk-badge risk-medium">Medium</span>`;
+      if (r === "low") return `<span class="risk-badge risk-low">Low</span>`;
+      return `<span class="risk-badge" style="background:var(--gray-100);color:var(--gray-600)">-</span>`;
+    }
+
+    function capTags(caps) {
+      if (!caps || !caps.length) return '<span class="ts-text">-</span>';
+      return `<div class="cap-tags">${caps.map(c => {
+        const isDangerous = DANGEROUS_CAPS.includes(c.toLowerCase());
+        return `<span class="cap-tag${isDangerous ? " dangerous" : ""}">${c}</span>`;
+      }).join("")}</div>`;
+    }
+
+    function updateStats() {
+      const total = mcpServers.length;
+      const allow = mcpServers.filter(s => ["active", "allow"].includes((s.status || "").toLowerCase())).length;
+      const quarantine = mcpServers.filter(s => (s.status || "").toLowerCase() === "quarantine").length;
+      const deny = mcpServers.filter(s => (s.status || "").toLowerCase() === "deny").length;
+      const highRisk = mcpServers.filter(s => ["high", "critical"].includes((s.risk_level || "").toLowerCase())).length;
+
+      document.getElementById("statTotal").textContent = total;
+      document.getElementById("statAllow").textContent = allow;
+      document.getElementById("statQuarantine").textContent = quarantine;
+      document.getElementById("statDeny").textContent = deny;
+      document.getElementById("statHighRisk").textContent = highRisk;
+    }
+
+    function render() {
+      const status = statusFilter.value.toLowerCase();
+      const risk = riskFilter.value.toLowerCase();
+      const search = searchFilter.value.trim().toLowerCase();
+
+      const filtered = mcpServers.filter(s => {
+        const sStatus = (s.status || "").toLowerCase();
+        const sRisk = (s.risk_level || "").toLowerCase();
+        const sName = (s.name || "").toLowerCase();
+        const sUrl = (s.base_url || "").toLowerCase();
+
+        const statusOk = !status || sStatus === status || (status === "active" && (sStatus === "active" || sStatus === "allow"));
+        const riskOk = !risk || sRisk === risk;
+        const searchOk = !search || sName.includes(search) || sUrl.includes(search);
+
+        return statusOk && riskOk && searchOk;
+      });
+
+      if (!filtered.length) {
+        rows.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:48px;color:var(--gray-600);">No MCP servers found</td></tr>`;
+        return;
+      }
+
+      rows.innerHTML = filtered.map(s => `<tr onclick="location.href='mcp_detail.html?id=${s.server_id}'">
+        <td><strong>${s.name || "-"}</strong></td>
+        <td><span class="url-text">${s.base_url || "-"}</span></td>
+        <td>${statusBadge(s.status)}</td>
+        <td>${riskBadge(s.risk_level)}</td>
+        <td>${capTags(s.capabilities)}</td>
+        <td>${formatTimestamp(s.last_scan_ts)}</td>
+        <td>${formatTimestamp(s.last_decision_ts)}</td>
+        <td><a href="mcp_detail.html?id=${s.server_id}" class="action-link" onclick="event.stopPropagation()">Details</a></td>
+      </tr>`).join("");
+    }
+
+    function allowMockFallback() {
+      const client = window.apiClient;
+      if (!client || typeof client.isMockEnabled !== "function") return false;
+      return client.isMockEnabled();
+    }
+
+    async function fetchMcpServers() {
+      try {
+        const res = await fetch("/api/mcp", { headers: { Accept: "application/json" } });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return await res.json();
+      } catch (e) {
+        console.warn("[mcp_inventory] API fetch failed:", e.message);
+        return null;
+      }
+    }
+
+    async function init() {
+      rows.innerHTML = `<tr><td colspan="8" class="loading">Loading MCP servers...</td></tr>`;
+
+      const apiData = await fetchMcpServers();
+      if (apiData && Array.isArray(apiData)) {
+        mcpServers = apiData;
+        errorBanner.classList.remove("show");
+      } else if (allowMockFallback()) {
+        mcpServers = (window.mcpInventoryMock && window.mcpInventoryMock.servers) || [];
+        if (!apiData) {
+          errorBanner.textContent = "API unavailable - showing mock data";
+          errorBanner.classList.add("show");
+        }
+      } else {
+        mcpServers = [];
+        errorBanner.textContent = "API unavailable - mock disabled";
+        errorBanner.classList.add("show");
+      }
+
+      updateStats();
+      render();
+    }
+
+    statusFilter.addEventListener("change", render);
+    riskFilter.addEventListener("change", render);
+    searchFilter.addEventListener("input", render);
+    init();
+  </script>
+</body>
+</html>

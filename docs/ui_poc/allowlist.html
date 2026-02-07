@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCP Gateway Suite - AllowList</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;600;700&display=swap');
+
+    /* Smooth page transition - prevent flash */
+    html {
+      background: #f7f9fc;
+    }
+
+    body {
+      opacity: 1;
+      transition: opacity 0.08s ease-out;
+    }
+
+    body.loading {
+      opacity: 0;
+    }
+
+    :root {
+      --bg: #f7f9fc;
+      --card: #fff;
+      --border: #d7dce3;
+      --text: #0f172a;
+      --muted: #6b7280;
+      --primary: #0f5adb;
+      --success: #0f9d58;
+      --warn: #eab308;
+      --danger: #d93025;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', 'Noto Sans JP', 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding-top: 56px;
+    }
+
+    a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    /* Navigation */
+    .nav {
+      background: #111827;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      height: 56px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-brand {
+      color: #fff;
+      font-weight: 700;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-brand svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 4px;
+      margin-left: 40px;
+    }
+
+    .nav-link {
+      color: #cbd5e1;
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+
+    .nav-link:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .nav-link.active {
+      color: #fff;
+      background: #0066ff;
+    }
+
+    .nav-status {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #cbd5e1;
+      font-size: 13px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .header {
+      margin-bottom: 24px;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      margin-bottom: 6px;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    th,
+    td {
+      padding: 12px 16px;
+      font-size: 14px;
+      text-align: left;
+    }
+
+    th {
+      background: #f3f6fb;
+      color: var(--muted);
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      font-size: 12px;
+    }
+
+    tbody tr:nth-child(odd) {
+      background: #fafbff;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 12px;
+      color: #fff;
+    }
+
+    .status.active {
+      background: var(--success);
+    }
+
+    .status.proposed {
+      background: var(--warn);
+      color: #111;
+    }
+
+    .status.revoked {
+      background: var(--danger);
+    }
+
+    .endpoint {
+      font-family: 'SF Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .empty {
+      text-align: center;
+      padding: 18px;
+      color: var(--muted);
+    }
+
+    .status-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .status-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .status-card-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+    }
+
+    .status-metric {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+      min-height: 80px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .status-metric .label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-bottom: 6px;
+    }
+
+    .status-metric .value {
+      font-size: 28px;
+      font-weight: 800;
+    }
+
+    .status-meta {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 12px;
+      border: 1px solid transparent;
+    }
+
+    .pill.ok {
+      background: #e0f4ed;
+      color: #0f5132;
+      border-color: #a3e2c7;
+    }
+
+    .pill.warn {
+      background: #fef3c7;
+      color: #92400e;
+      border-color: #fde68a;
+    }
+
+    .pill.ng {
+      background: #fff1f2;
+      color: #9f1239;
+      border-color: #fecdd3;
+    }
+
+    .status-unavailable {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    .action-link {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .action-link:hover {
+      text-decoration: underline;
+    }
+
+    .timestamps {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .lang-btn {
+      padding: 6px 12px;
+      border: 1px solid var(--gray-300);
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.15s;
+      color: var(--gray-700);
+    }
+
+    .lang-btn:hover {
+      background: var(--gray-50);
+    }
+
+    .lang-btn.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+  </style>
+</head>
+
+<body>
+  <nav class="nav">
+    <div class="nav-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+      </svg>
+      MCP Gateway Suite
+    </div>
+    <div class="nav-links">
+      <a href="settings_environments.html" class="nav-link">Environments</a>
+      <a href="dashboard.html" class="nav-link">Dashboard</a>
+      <a href="scans.html" class="nav-link">Scans</a>
+      <a href="allowlist.html" class="nav-link">AllowList</a>
+      <a href="web_sandbox.html" class="nav-link">Web Sandbox</a>
+      <a href="audit_log.html" class="nav-link">Audit Log</a>
+    </div>
+    <div class="nav-status">
+      <span class="status-dot"></span>
+      Gateway Online
+    </div>
+  </nav>
+  <div class="container">
+    <div class="header"
+      style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+      <div>
+        <h1 data-i18n="allowlist.title">AllowList</h1>
+        <p class="muted" data-i18n="allowlist.subtitle">List of approved MCP servers (read-only)</p>
+        <div data-admin-session-banner-anchor="page-header"></div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 13px; color: var(--muted);">Language:</span>
+        <div style="display: flex; gap: 4px;">
+          <button type="button" class="lang-btn" id="langJa" data-lang="ja">JA</button>
+          <button type="button" class="lang-btn" id="langEn" data-lang="en">EN</button>
+        </div>
+      </div>
+    </div>
+    <div class="status-card" id="statusCard">
+      <div class="status-card-header">
+        <div>
+          <div class="status-card-title" data-i18n="allowlist.title">AllowList</div>
+          <div class="muted" style="font-size:13px;" data-i18n="allowlist.statusSummary">AllowList health summary
+            (read-only)</div>
+        </div>
+        <a class="action-link" href="allowlist.html" data-i18n="allowlist.detailsLink">View details</a>
+      </div>
+      <div class="status-grid">
+        <div class="status-metric">
+          <div class="label">Total</div>
+          <div class="value" id="statusTotal">-</div>
+        </div>
+        <div class="status-metric">
+          <div class="label">Allow</div>
+          <div class="value" id="statusAllow">-</div>
+        </div>
+        <div class="status-metric">
+          <div class="label">Deny</div>
+          <div class="value" id="statusDeny">-</div>
+        </div>
+        <div class="status-metric">
+          <div class="label">Quarantine</div>
+          <div class="value" id="statusQuarantine">-</div>
+        </div>
+      </div>
+      <div class="status-meta">
+        <span class="pill ok" id="shadowBadge">Shadow Audit OK</span>
+        <span class="pill warn" id="bundlePresentBadge">bundle present: N/A</span>
+        <span class="pill warn" id="bundleSignatureBadge">signature: N/A</span>
+        <span class="pill warn" id="bundleShaBadge" style="display:none;">sha: -</span>
+        <span class="timestamps" id="statusTimestamps">last_scan: -, last_decision: -</span>
+      </div>
+      <div class="status-unavailable" id="statusUnavailable" hidden data-i18n="allowlist.statusUnavailable">
+        ステータスを取得できませんでした</div>
+    </div>
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Base URL</th>
+            <th>Status</th>
+            <th>Registered</th>
+            <th>Last Scan</th>
+          </tr>
+        </thead>
+        <tbody id="allowRows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="api_client.js"></script>
+  <script>
+    // Auto-detect active nav link
+    (function () {
+      if (!window.location || !window.location.pathname) return;
+      const currentFile = window.location.pathname.split('/').pop() || 'index.html';
+      document.querySelectorAll('.nav-link').forEach(link => {
+        const href = link.getAttribute('href');
+        if (href === currentFile) {
+          link.classList.add('active');
+        } else {
+          link.classList.remove('active');
+        }
+      });
+    })();
+  </script>
+  <script>
+    const rows = document.getElementById("allowRows");
+    const statusUnavailable = document.getElementById("statusUnavailable");
+    const statusTimestamps = document.getElementById("statusTimestamps");
+    const shadowBadge = document.getElementById("shadowBadge");
+    const bundlePresentBadge = document.getElementById("bundlePresentBadge");
+    const bundleSignatureBadge = document.getElementById("bundleSignatureBadge");
+    const bundleShaBadge = document.getElementById("bundleShaBadge");
+
+    function t(key, fallback) {
+      return window.tCommon ? window.tCommon(key) : fallback;
+    }
+
+    function formatTs(ts) {
+      if (!ts) return "-";
+      const d = new Date(ts);
+      return isNaN(d.getTime()) ? "-" : d.toLocaleString("ja-JP", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    }
+
+    function statusBadge(status) {
+      const cls = status === "active" ? "active" : status === "proposed" ? "proposed" : "revoked";
+      return `<span class="status ${cls}">${status || "-"}</span>`;
+    }
+
+    function render(items) {
+      if (!items || !items.length) {
+        rows.innerHTML = `<tr><td colspan="5" class="empty">No allowlist entries</td></tr>`;
+        return;
+      }
+      rows.innerHTML = items
+        .map((item) => `<tr>
+          <td><strong>${item.name || "-"}</strong></td>
+          <td><span class="endpoint">${item.base_url || "-"}</span></td>
+          <td>${statusBadge(item.status)}</td>
+          <td>${item.registered_at || "-"}</td>
+          <td>${item.last_scan_ts || "-"}</td>
+        </tr>`)
+        .join("");
+    }
+
+    function updateBadge(el, ok, labelOk, labelNg) {
+      const isOk = !!ok;
+      el.textContent = isOk ? labelOk : labelNg;
+      el.className = `pill ${isOk ? "ok" : "ng"}`;
+    }
+
+    function updateBadgeTone(el, tone, text) {
+      if (!el) return;
+      const cls = tone === "ok" || tone === "ng" || tone === "warn" ? tone : "warn";
+      el.textContent = text;
+      el.className = `pill ${cls}`;
+    }
+
+    function getPolicyBundlePresent(status) {
+      if (!status) return null;
+      if (Object.prototype.hasOwnProperty.call(status, "policy_bundle_present_ok")) {
+        const present = status.policy_bundle_present_ok;
+        if (present === true || present === false) return present;
+        return null;
+      }
+      const legacy = status.policy_bundle_hash_ok;
+      if (legacy === true || legacy === false) return legacy;
+      return null;
+    }
+
+    function getSignatureKind(status) {
+      const raw = status && typeof status.policy_bundle_signature_status === "string"
+        ? status.policy_bundle_signature_status
+        : "";
+      if (!raw) return "";
+      return raw.split(":")[0];
+    }
+
+    function updatePolicyBundleBadges(status) {
+      const present = getPolicyBundlePresent(status);
+      if (present === true) {
+        updateBadgeTone(bundlePresentBadge, "ok", t("common.policyBundlePresentPresent", "Policy bundle: Present"));
+      } else if (present === false) {
+        updateBadgeTone(bundlePresentBadge, "ng", t("common.policyBundlePresentMissing", "Policy bundle: Missing"));
+      } else {
+        updateBadgeTone(bundlePresentBadge, "warn", t("common.policyBundlePresentNA", "Policy bundle: N/A"));
+      }
+
+      const raw = status && typeof status.policy_bundle_signature_status === "string"
+        ? status.policy_bundle_signature_status
+        : "";
+      const kind = raw ? raw.split(":")[0] : "";
+      const isBundleMissing = raw === "skip:bundle_missing";
+      if (present === false) {
+        updateBadgeTone(bundleSignatureBadge, "warn", t("common.policyBundleSignatureNA", "Signature: N/A"));
+      } else if (present === true) {
+        if (kind === "verified") {
+          updateBadgeTone(bundleSignatureBadge, "ok", t("common.policyBundleSignatureVerified", "Signature: Verified"));
+        } else if (kind === "skip" && !isBundleMissing) {
+          updateBadgeTone(bundleSignatureBadge, "warn", t("common.policyBundleSignatureNotVerified", "Signature: Not verified"));
+        } else if (kind === "failed" || kind === "error") {
+          updateBadgeTone(bundleSignatureBadge, "ng", t("common.policyBundleSignatureInvalid", "Signature: Invalid"));
+        } else {
+          updateBadgeTone(bundleSignatureBadge, "warn", t("common.policyBundleSignatureNA", "Signature: N/A"));
+        }
+      } else {
+        updateBadgeTone(bundleSignatureBadge, "warn", t("common.policyBundleSignatureNA", "Signature: N/A"));
+      }
+      if (bundleSignatureBadge) {
+        bundleSignatureBadge.title = raw || "";
+      }
+
+      const sha = status && typeof status.policy_bundle_sha256 === "string"
+        ? status.policy_bundle_sha256.trim()
+        : "";
+      if (bundleShaBadge) {
+        if (!sha) {
+          bundleShaBadge.style.display = "none";
+        } else {
+          const short = sha.length > 12 ? `${sha.slice(0, 8)}…${sha.slice(-4)}` : sha;
+          bundleShaBadge.style.display = "inline-flex";
+          updateBadgeTone(bundleShaBadge, "warn", `sha: ${short}`);
+        }
+      }
+    }
+
+    async function loadStatus() {
+      try {
+        const status = await window.apiClient.fetchAllowlistStatus();
+        if (!status) {
+          statusUnavailable.hidden = false;
+          updateBadge(shadowBadge, false, "Shadow Audit OK", "Shadow Audit NG");
+          updatePolicyBundleBadges(null);
+          ["Total", "Allow", "Deny", "Quarantine"].forEach((key) => {
+            const el = document.getElementById(`status${key}`);
+            if (el) el.textContent = "-";
+          });
+          statusTimestamps.textContent = "last_scan: -, last_decision: -";
+          return;
+        }
+        statusUnavailable.hidden = true;
+        document.getElementById("statusTotal").textContent = status.total ?? "-";
+        document.getElementById("statusAllow").textContent = status.allow ?? "-";
+        document.getElementById("statusDeny").textContent = status.deny ?? "-";
+        document.getElementById("statusQuarantine").textContent = status.quarantine ?? "-";
+        updateBadge(shadowBadge, status.shadow_audit_chain_ok, "Shadow Audit OK", "Shadow Audit NG");
+        updatePolicyBundleBadges(status);
+        statusTimestamps.textContent = `last_scan: ${formatTs(status.last_scan_ts)}, last_decision: ${formatTs(status.last_decision_ts)}`;
+      } catch (e) {
+        statusUnavailable.hidden = false;
+      }
+    }
+
+    async function init() {
+      try {
+        const data = await window.apiClient.fetchAllowlist();
+        render(data);
+      } catch (e) {
+        rows.innerHTML = `<tr><td colspan="5" class="empty">Failed to load allowlist</td></tr>`;
+      }
+      await loadStatus();
+    }
+
+    init();
+  </script>
+  <script>
+    // Language toggle
+    const langJa = document.getElementById('langJa');
+    const langEn = document.getElementById('langEn');
+    function updateLangButtons() {
+      const lang = window.getLanguage ? window.getLanguage() : 'ja';
+      if (langJa) langJa.classList.toggle('active', lang === 'ja');
+      if (langEn) langEn.classList.toggle('active', lang === 'en');
+    }
+    if (langJa) langJa.addEventListener('click', () => {
+      if (window.setLanguage) window.setLanguage('ja');
+      if (window.applyCommonI18n) window.applyCommonI18n();
+      updateLangButtons();
+      loadStatus();
+    });
+    if (langEn) langEn.addEventListener('click', () => {
+      if (window.setLanguage) window.setLanguage('en');
+      if (window.applyCommonI18n) window.applyCommonI18n();
+      updateLangButtons();
+      loadStatus();
+    });
+    if (window.applyCommonI18n) window.applyCommonI18n();
+    updateLangButtons();
+  </script>
+  <script>
+    // Smooth page transitions - fade out before navigating
+    document.querySelectorAll('.nav-link').forEach(link => {
+      link.addEventListener('click', function (e) {
+        const href = this.getAttribute('href');
+        if (href && !href.startsWith('#') && !href.startsWith('javascript')) {
+          e.preventDefault();
+          document.body.style.opacity = '0';
+          setTimeout(() => { window.location.href = href; }, 80);
+        }
+      });
+    });
+  </script>
+</body>
+
+</html>
