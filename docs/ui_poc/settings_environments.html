@@ -1375,6 +1375,31 @@
             <tbody id="envRows"></tbody>
           </table>
         </div>
+
+        <!-- Environment Quick Status -->
+        <div style="margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;" id="envQuickStatus">
+          <div style="background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 14px;">
+            <div style="font-size: 11px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px;" id="qsConnectionLabel">Connection</div>
+            <div style="font-size: 20px; font-weight: 700; margin-top: 4px;" id="qsConnectionValue">
+              <span class="status-indicator" id="qsConnectionStatus">-</span>
+            </div>
+            <div style="font-size: 12px; color: var(--gray-600); margin-top: 2px;" id="qsConnectionSub">Upstream status</div>
+          </div>
+          <div style="background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 14px;">
+            <div style="font-size: 11px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px;" id="qsUpstreamLabel">Upstream</div>
+            <div style="font-size: 14px; font-weight: 600; margin-top: 6px; font-family: 'SF Mono', Monaco, monospace; word-break: break-all; color: var(--gray-700);" id="qsUpstreamValue">Not set</div>
+          </div>
+          <div style="background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 14px;">
+            <div style="font-size: 11px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px;" id="qsPolicyLabel">Policy Profile</div>
+            <div style="font-size: 16px; font-weight: 700; margin-top: 4px;" id="qsPolicyValue">-</div>
+            <div style="font-size: 12px; color: var(--gray-600); margin-top: 2px;" id="qsPolicySub">Current profile</div>
+          </div>
+          <div style="background: #fff; border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 14px;">
+            <div style="font-size: 11px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.5px;" id="qsTokensLabel">Active Tokens</div>
+            <div style="font-size: 20px; font-weight: 700; margin-top: 4px; color: var(--primary);" id="qsTokensValue">0</div>
+            <div style="font-size: 12px; color: var(--gray-600); margin-top: 2px;" id="qsTokensSub">Issued tokens</div>
+          </div>
+        </div>
       </div>
 
       <div class="side-stack">
@@ -5380,9 +5405,40 @@
 	    renderGatewayWizard();
     renderGatewayHistory();
     refreshEnvironments();
-    refreshUpstream();
-    refreshPolicyProfile();
-    refreshGatewayTokens();
+    refreshUpstream().then(updateQuickStatus);
+    refreshPolicyProfile().then(updateQuickStatus);
+    refreshGatewayTokens().then(updateQuickStatus);
+
+    function updateQuickStatus() {
+      // Connection status
+      var up = window.SUITE_SETTINGS_UPSTREAM || {};
+      var connEl = document.getElementById('qsConnectionStatus');
+      if (connEl) {
+        var st = up.status || 'inactive';
+        connEl.textContent = st === 'ok' ? 'Connected' : st === 'error' ? 'Error' : 'Inactive';
+        connEl.className = 'status-indicator ' + (st === 'ok' ? 'active' : st === 'error' ? 'error' : 'inactive');
+      }
+      // Upstream URL
+      var upUrlEl = document.getElementById('qsUpstreamValue');
+      if (upUrlEl) {
+        var url = up.base_url || '';
+        upUrlEl.textContent = url ? url.replace(/^https?:\/\//, '').slice(0, 40) : 'Not configured';
+      }
+      // Policy profile
+      var polEl = document.getElementById('qsPolicyValue');
+      if (polEl) {
+        var polSel = document.getElementById('policyProfileSelect');
+        var profile = polSel ? (polSel.options[polSel.selectedIndex] || {}).textContent : '-';
+        polEl.textContent = profile || '-';
+      }
+      // Active tokens
+      var tokEl = document.getElementById('qsTokensValue');
+      if (tokEl) {
+        var tokens = window.SUITE_SETTINGS_GATEWAY_TOKENS || [];
+        var active = tokens.filter(function(t) { return t.status === 'active'; }).length;
+        tokEl.textContent = active;
+      }
+    }
 
     // Auto-populate admin token from server-injected value and start session
     (function autoAdminSession() {

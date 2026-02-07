@@ -2,7 +2,8 @@
 window.suiteScanData = {
   scans: [
     { id: "scan-001", startedAt: "2025-12-10T09:15:00Z", actor: "analyst@example.com", environment: "gateway-lab", profile: "full", status: "passed", durationSeconds: 95, severity_counts: { critical: 0, high: 1, medium: 2, low: 1 }, owasp_counts: { LLM01: 1, LLM04: 1 } },
-    { id: "scan-002", startedAt: "2025-12-10T11:40:00Z", actor: "ops@example.com", environment: "gateway-prod", profile: "quick", status: "failed", durationSeconds: 62, severity_counts: { critical: 1, high: 1, medium: 1, low: 0 }, owasp_counts: { LLM02: 1, LLM05: 1 } }
+    { id: "scan-002", startedAt: "2025-12-10T11:40:00Z", actor: "ops@example.com", environment: "gateway-prod", profile: "quick", status: "failed", durationSeconds: 62, severity_counts: { critical: 1, high: 1, medium: 1, low: 0 }, owasp_counts: { LLM02: 1, LLM05: 1 } },
+    { id: "scan-003", startedAt: "2025-12-11T08:00:00Z", actor: "security@example.com", environment: "gateway-lab", profile: "full", status: "passed", durationSeconds: 110, severity_counts: { critical: 0, high: 0, medium: 1, low: 2 }, owasp_counts: { LLM01: 1 } }
   ],
   findings: {
     "scan-001": [
@@ -12,13 +13,126 @@ window.suiteScanData = {
     "scan-002": [
       { severity: "Critical", category: "ログ", summary: "Unmasked secret in gateway response", resource: "/gateway/run", owasp_llm_code: "LLM05", owasp_llm_title: "Sensitive information disclosure", evidence_source: "acl_proxy_evidence" },
       { severity: "High", category: "データ", summary: "AllowList missing sampling guard", resource: "/allowlist/tools_exposed", owasp_llm_code: "LLM02", owasp_llm_title: "Insecure output handling", evidence_source: "ci_evidence" }
+    ],
+    "scan-003": [
+      { severity: "Medium", category: "構成", summary: "Debug endpoint exposed in production", resource: "/gateway/debug", owasp_llm_code: "LLM01", owasp_llm_title: "Prompt injection", evidence_source: "ci_evidence" }
     ]
   },
   audit_log: [
-    { ts: "2025-12-10T14:30:00Z", type: "scan_run", actor: "analyst@example.com", summary: "scan started: gateway-lab (profile=full)", source: "ui" },
-    { ts: "2025-12-10T14:35:00Z", type: "council_decision", actor: "council@example.com", summary: "decision=allow (server_id=1)", source: "govern" },
-    { ts: "2025-12-11T10:00:00Z", type: "shadow_audit_verify", actor: "system", summary: "verify_chain=pass", source: "shadow_audit" },
-    { ts: "2025-12-11T11:00:00Z", type: "gateway_update", actor: "ops@example.com", summary: "allowlist snapshot applied", source: "gateway" }
+    {
+      ts: "2025-12-11T14:22:00Z", type: "source_sink_check", actor: "gateway",
+      summary: "Blocked: filesystem-mcp → network_write (untrusted, no approval)",
+      source: "govern", evidence_id: "ev-ss-001",
+      detail: {
+        decision: "deny", reason: "untrusted tool accessing restricted sink without approval",
+        server_id: "filesystem-mcp", tool_name: "write_file", path: "/etc/passwd",
+        capabilities: ["file_read", "file_write"], source_reasons: ["sink:network_write", "trust:untrusted"]
+      }
+    },
+    {
+      ts: "2025-12-11T14:18:00Z", type: "source_sink_check", actor: "gateway",
+      summary: "Blocked: unknown-mcp → clipboard (untrusted, suspicious)",
+      source: "govern", evidence_id: "ev-ss-002",
+      detail: {
+        decision: "deny", reason: "unknown server attempting clipboard access",
+        server_id: "unknown-mcp", tool_name: "paste_content", path: "/clipboard",
+        capabilities: ["clipboard_read", "clipboard_write"], source_reasons: ["sink:clipboard", "trust:unknown"]
+      }
+    },
+    {
+      ts: "2025-12-11T14:15:00Z", type: "causal_web_scan", actor: "web-sandbox",
+      summary: "Phishing detected: login-secure.example.com (confidence: 94%)",
+      source: "web_sandbox", evidence_id: "ev-ws-001",
+      detail: {
+        decision: "block", reason: "phishing page with deceptive login form",
+        classification: "phishing", confidence: 0.94,
+        model: "gemini-2.5-flash", provider: "Google AI",
+        capabilities: ["dom_analysis", "a11y_tree", "network_trace"],
+        source_reasons: ["hidden_iframe", "deceptive_form", "external_credential_harvest"]
+      }
+    },
+    {
+      ts: "2025-12-11T14:10:00Z", type: "council_decision", actor: "ai-council",
+      summary: "Allow: code-assistant-mcp (3/3 evaluators agree, low risk)",
+      source: "govern", evidence_id: "ev-cd-001",
+      detail: {
+        decision: "allow", reason: "all evaluators determined low risk",
+        server_id: "code-assistant-mcp", model: "gemini-2.5-flash",
+        capabilities: ["code_read", "code_write"],
+        source_reasons: ["evaluator:3/3 allow", "risk_score:low"]
+      }
+    },
+    {
+      ts: "2025-12-11T13:55:00Z", type: "openai_proxy_block", actor: "gateway",
+      summary: "Blocked: prompt injection attempt via tool response",
+      source: "govern", evidence_id: "ev-pb-001",
+      detail: {
+        decision: "deny", reason: "prompt injection payload detected in tool output",
+        server_id: "external-api-mcp", tool_name: "fetch_data",
+        model: "gemini-2.5-flash", provider: "proxy",
+        http_status: "403", latency_ms: "12",
+        source_reasons: ["injection:tool_response", "pattern:system_prompt_override"]
+      }
+    },
+    {
+      ts: "2025-12-11T13:50:00Z", type: "causal_web_scan", actor: "web-sandbox",
+      summary: "Benign: docs.example.com (confidence: 98%)",
+      source: "web_sandbox", evidence_id: "ev-ws-002",
+      detail: {
+        decision: "allow", reason: "standard documentation site, no threats detected",
+        classification: "benign", confidence: 0.98,
+        model: "gemini-2.5-flash", provider: "Google AI"
+      }
+    },
+    {
+      ts: "2025-12-11T13:40:00Z", type: "council_decision", actor: "ai-council",
+      summary: "Quarantine: data-scraper-mcp (2/3 evaluators flag risk)",
+      source: "govern", evidence_id: "ev-cd-002",
+      detail: {
+        decision: "quarantine", reason: "majority flagged excessive network access capability",
+        server_id: "data-scraper-mcp", model: "gemini-2.5-flash",
+        capabilities: ["network_read", "network_write", "file_write"],
+        source_reasons: ["evaluator:2/3 quarantine", "risk_score:medium", "capability:network_write"]
+      }
+    },
+    {
+      ts: "2025-12-11T13:30:00Z", type: "mcp_scan_run", actor: "security@example.com",
+      summary: "Security scan completed: 0 critical, 1 high finding",
+      source: "scanner", evidence_id: "ev-sc-001",
+      detail: {
+        decision: "warn", reason: "scan passed with warnings",
+        server_id: "gateway-lab",
+        source_reasons: ["severity:high:1", "severity:medium:2"]
+      }
+    },
+    {
+      ts: "2025-12-11T12:00:00Z", type: "shadow_audit_verify", actor: "system",
+      summary: "Shadow audit chain verification: PASS",
+      source: "shadow_audit", evidence_id: "ev-sa-001",
+      detail: {
+        decision: "allow", reason: "all chain hashes verified, no tampering detected",
+        source_reasons: ["chain_hash:verified", "policy_bundle:present"]
+      }
+    },
+    {
+      ts: "2025-12-11T11:30:00Z", type: "source_sink_check", actor: "gateway",
+      summary: "Allow: code-assistant-mcp → code_write (trusted, approved)",
+      source: "govern", evidence_id: "ev-ss-003",
+      detail: {
+        decision: "allow", reason: "trusted server with valid approval for restricted sink",
+        server_id: "code-assistant-mcp", tool_name: "edit_code", path: "/src/main.py",
+        capabilities: ["code_read", "code_write"], source_reasons: ["trust:trusted", "approval:valid"]
+      }
+    },
+    {
+      ts: "2025-12-10T14:35:00Z", type: "council_decision", actor: "ai-council",
+      summary: "Allow: code-assistant-mcp (initial evaluation, low risk)",
+      source: "govern", evidence_id: "ev-cd-003"
+    },
+    {
+      ts: "2025-12-10T14:30:00Z", type: "scan_run", actor: "analyst@example.com",
+      summary: "Scan started: gateway-lab (profile=full)", source: "ui"
+    }
   ],
   history: {
     "1": {
@@ -55,15 +169,59 @@ window.suiteScanData = {
     }
   },
   dashboard_summary: {
-    allowlist: { total: 4, active: 3, deny: 0, quarantine: 1 },
+    allowlist: { total: 8, active: 5, deny: 2, quarantine: 1 },
     scans: {
-      total: 12,
+      total: 15,
       latest_status: "warn",
-      latest_ts: "2025-12-10T14:30:00Z",
-      severity_counts: { critical: 1, high: 3, medium: 4, low: 2 },
-      owasp_counts: { LLM01: 2, LLM04: 1, LLM05: 1 }
+      latest_ts: "2025-12-11T08:00:00Z",
+      severity_counts: { critical: 1, high: 3, medium: 5, low: 3 },
+      owasp_counts: { LLM01: 3, LLM02: 1, LLM04: 2, LLM05: 1 }
     },
-    council: { total: 4, latest_decision: "allow", latest_ts: "2025-12-10T14:35:00Z" },
-    shadow_audit: { chain_ok: true, policy_bundle_hash_ok: false }
+    council: { total: 7, latest_decision: "allow", latest_ts: "2025-12-11T14:10:00Z" },
+    shadow_audit: { chain_ok: true, policy_bundle_hash_ok: true, policy_bundle_present_ok: true, policy_bundle_signature_status: "verified_ok" }
+  },
+  web_sandbox_verdicts: {
+    verdicts: [
+      {
+        run_id: "ws-001", url: "https://login-secure.example.com/signin",
+        classification: "phishing", confidence: 0.94, recommended_action: "block",
+        summary: "Deceptive login form harvesting credentials to external domain",
+        risk_indicators: ["hidden_iframe", "deceptive_form", "external_action_url"],
+        evidence_refs: ["form[action*=evil]", "iframe[style*=display:none]"],
+        timestamp: "2025-12-11T14:15:00Z",
+        dom_threats_count: 3, suspicious_network_count: 2, bundle_sha256: "a1b2c3d4e5f6"
+      },
+      {
+        run_id: "ws-002", url: "https://docs.example.com/api/reference",
+        classification: "benign", confidence: 0.98, recommended_action: "allow",
+        summary: "Standard documentation site with no security threats",
+        risk_indicators: [], evidence_refs: [],
+        timestamp: "2025-12-11T13:50:00Z",
+        dom_threats_count: 0, suspicious_network_count: 0, bundle_sha256: "f6e5d4c3b2a1"
+      },
+      {
+        run_id: "ws-003", url: "https://free-tools.example.net/converter",
+        classification: "clickjacking", confidence: 0.76, recommended_action: "warn",
+        summary: "Transparent overlay iframe detected over download button",
+        risk_indicators: ["transparent_iframe_overlay", "z_index_manipulation"],
+        evidence_refs: ["iframe[style*=opacity:0]", "div.overlay"],
+        timestamp: "2025-12-11T13:30:00Z",
+        dom_threats_count: 1, suspicious_network_count: 1, bundle_sha256: "1a2b3c4d5e6f"
+      },
+      {
+        run_id: "ws-004", url: "https://prize-winner.example.org",
+        classification: "scam", confidence: 0.89, recommended_action: "block",
+        summary: "Deceptive prize notification with urgency tactics",
+        risk_indicators: ["deceptive_ui", "urgency_language", "external_form_action"],
+        evidence_refs: ["div.countdown", "form[action*=collect]"],
+        timestamp: "2025-12-11T12:45:00Z",
+        dom_threats_count: 2, suspicious_network_count: 3, bundle_sha256: "5e6f1a2b3c4d"
+      }
+    ]
+  },
+  allowlist_status: {
+    policy_bundle_present_ok: true,
+    policy_bundle_signature_status: "verified_ok",
+    last_snapshot_ts: "2025-12-11T10:00:00Z"
   }
 };

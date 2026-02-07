@@ -303,6 +303,12 @@
     .decision-pill.warn { background: #fef3c7; color: #92400e; }
     .expand-icon { display: inline-block; transition: transform 0.15s; font-size: 11px; margin-right: 6px; color: var(--gray-300); }
     tr.clickable.expanded .expand-icon { transform: rotate(90deg); }
+    .evidence-summary { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; padding: 10px 14px; margin-top: 8px; font-size: 12px; line-height: 1.6; }
+    .evidence-summary .ev-line { display: flex; gap: 8px; }
+    .evidence-summary .ev-label { font-weight: 700; color: #0369a1; min-width: 90px; white-space: nowrap; }
+    .evidence-summary .ev-value { color: var(--gray-900); }
+    .cross-link { display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--primary); text-decoration: none; }
+    .cross-link:hover { text-decoration: underline; }
 
     .lang-btn {
       padding: 6px 12px;
@@ -503,7 +509,22 @@
             }
             if (detail.base_url) pairs.push(['Base URL', `<code>${escapeHtml(detail.base_url)}</code>`]);
             if (detail.note) pairs.push([lang==='ja'?'メモ':'Note', escapeHtml(detail.note)]);
-            detailHtml = `<tr class="detail-row" id="${rowId}"><td colspan="4"><div class="detail-grid">${pairs.map(([k,v]) => `<div class="detail-key">${k}</div><div class="detail-val">${v}</div>`).join('')}</div></td></tr>`;
+            // Evidence Summary (3-line template: Detection → Evidence → Action)
+            const evDetection = e.summary || '-';
+            const evEvidence = (detail.source_reasons || []).join(', ') || detail.reason || '-';
+            const evAction = detail.decision || '-';
+            const evLabels = lang === 'ja'
+              ? { detection: '検知', evidence: '根拠', action: '推奨' }
+              : { detection: 'Detection', evidence: 'Evidence', action: 'Action' };
+            const evSummaryHtml = `<div class="evidence-summary"><div class="ev-line"><span class="ev-label">${evLabels.detection}:</span><span class="ev-value">${escapeHtml(evDetection)}</span></div><div class="ev-line"><span class="ev-label">${evLabels.evidence}:</span><span class="ev-value">${escapeHtml(evEvidence)}</span></div><div class="ev-line"><span class="ev-label">${evLabels.action}:</span><span class="ev-value"><span class="decision-pill ${decisionCls}">${escapeHtml(evAction)}</span></span></div></div>`;
+            // Cross-links: type → related page
+            let crossLinkHtml = '';
+            if (e.type === 'causal_web_scan') {
+              crossLinkHtml = `<a class="cross-link" href="web_sandbox.html">&#8594; ${lang==='ja'?'Web Sandbox で詳細を確認':'View in Web Sandbox'}</a>`;
+            } else if (e.type === 'mcp_scan_run' || e.type === 'scan_run') {
+              crossLinkHtml = `<a class="cross-link" href="scans.html">&#8594; ${lang==='ja'?'Scans で詳細を確認':'View in Scans'}</a>`;
+            }
+            detailHtml = `<tr class="detail-row" id="${rowId}"><td colspan="4"><div class="detail-grid">${pairs.map(([k,v]) => `<div class="detail-key">${k}</div><div class="detail-val">${v}</div>`).join('')}</div>${evSummaryHtml}${crossLinkHtml}</td></tr>`;
           }
           return `<tr class="${hasDetail ? 'clickable' : ''}${hlClass}" ${hasDetail ? `onclick="var d=document.getElementById('${rowId}');d.classList.toggle('open');this.classList.toggle('expanded')"` : ''}>
             <td>${hasDetail ? '<span class="expand-icon">&#9654;</span>' : ''}${formatTimestamp(e.ts)}</td>

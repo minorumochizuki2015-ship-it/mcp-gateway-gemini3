@@ -242,6 +242,30 @@
       </div>
     </div>
 
+    <!-- SSOT / Shadow Audit Status -->
+    <div class="section-card" id="ssotCard" style="margin-bottom: 16px;">
+      <div class="section-header">
+        <div>
+          <div class="section-title" id="ssotTitle">Evidence Chain Integrity</div>
+          <div class="section-sub" id="ssotSub">SSOT verification and shadow audit status</div>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-top: 12px;" id="ssotGrid">
+        <div style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--gray-50); border-radius: 8px; border: 1px solid var(--gray-200);">
+          <div style="width: 10px; height: 10px; border-radius: 50%;" id="ssotChainDot"></div>
+          <div><div style="font-size: 12px; font-weight: 600;" id="ssotChainLabel">Chain Hash</div><div style="font-size: 11px; color: var(--gray-600);" id="ssotChainStatus">-</div></div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--gray-50); border-radius: 8px; border: 1px solid var(--gray-200);">
+          <div style="width: 10px; height: 10px; border-radius: 50%;" id="ssotBundleDot"></div>
+          <div><div style="font-size: 12px; font-weight: 600;" id="ssotBundleLabel">Policy Bundle</div><div style="font-size: 11px; color: var(--gray-600);" id="ssotBundleStatus">-</div></div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--gray-50); border-radius: 8px; border: 1px solid var(--gray-200);">
+          <div style="width: 10px; height: 10px; border-radius: 50%;" id="ssotSigDot"></div>
+          <div><div style="font-size: 12px; font-weight: 600;" id="ssotSigLabel">Signature</div><div style="font-size: 11px; color: var(--gray-600);" id="ssotSigStatus">-</div></div>
+        </div>
+      </div>
+    </div>
+
     <!-- Bottom Grid: Severity + Quick Actions -->
     <div class="bottom-grid">
       <div class="section-card">
@@ -309,6 +333,8 @@
         actionAudit: 'View Evidence Trail', actionAuditDesc: 'Browse structured audit log with evidence IDs',
         actionPolicy: 'Configure Policies', actionPolicyDesc: 'Manage upstream LLM and policy profiles',
         policyVerified: 'Verified', policyPresent: 'Present', policyMissing: 'Missing', policyNA: 'N/A',
+        ssotTitle: 'Evidence Chain Integrity', ssotSub: 'SSOT verification and shadow audit status',
+        ssotPass: 'Verified', ssotFail: 'Not verified', ssotPresent: 'Present', ssotMissing: 'Missing', ssotSigned: 'Signed', ssotUnsigned: 'Not signed',
       },
       ja: {
         pageTitle: 'AI ゲートウェイ ダッシュボード',
@@ -330,6 +356,8 @@
         actionAudit: '証跡トレイルを表示', actionAuditDesc: '構造化された監査ログと証跡 ID を閲覧',
         actionPolicy: 'ポリシーを設定', actionPolicyDesc: 'アップストリーム LLM とポリシープロファイルを管理',
         policyVerified: '検証済', policyPresent: '存在', policyMissing: '未設定', policyNA: 'N/A',
+        ssotTitle: '証跡チェーン完全性', ssotSub: 'SSOT検証とシャドー監査の状態',
+        ssotPass: '検証済', ssotFail: '未検証', ssotPresent: '存在', ssotMissing: '未設定', ssotSigned: '署名済', ssotUnsigned: '未署名',
       }
     };
 
@@ -360,6 +388,8 @@
       if (el('decisionsTitle')) el('decisionsTitle').textContent = d.decisionsTitle;
       if (el('decisionsSub')) el('decisionsSub').textContent = d.decisionsSub;
       if (el('viewAllLink')) el('viewAllLink').innerHTML = escapeHtml(d.viewAll) + ' &rarr;';
+      if (el('ssotTitle')) el('ssotTitle').textContent = d.ssotTitle;
+      if (el('ssotSub')) el('ssotSub').textContent = d.ssotSub;
       if (el('severityTitle')) el('severityTitle').textContent = d.severityTitle;
       if (el('actionsTitle')) el('actionsTitle').textContent = d.actionsTitle;
       if (el('actionScan')) el('actionScan').textContent = d.actionScan;
@@ -449,6 +479,24 @@
       document.getElementById('flowAllowed').textContent = allowed + ' ' + d.flowAllowed;
       document.getElementById('flowBlocked').textContent = (allow.deny || 0) + ' ' + d.flowBlocked;
       document.getElementById('flowQuarantined').textContent = (allow.quarantine || 0) + ' ' + d.flowQuarantined;
+
+      // SSOT / Shadow Audit Status
+      var shadow = (summary && summary.shadow_audit) || {};
+      var aStatus = allowlistStatus || {};
+      function ssotDot(ok, elId) {
+        var dot = document.getElementById(elId);
+        if (dot) dot.style.background = ok ? '#22c55e' : ok === false ? '#ef4444' : '#d1d5db';
+      }
+      ssotDot(shadow.chain_ok, 'ssotChainDot');
+      ssotDot(shadow.policy_bundle_present_ok || aStatus.policy_bundle_present_ok, 'ssotBundleDot');
+      var sigOk = String(shadow.policy_bundle_signature_status || aStatus.policy_bundle_signature_status || '').startsWith('verified');
+      ssotDot(sigOk || null, 'ssotSigDot');
+      var chainSt = document.getElementById('ssotChainStatus');
+      if (chainSt) chainSt.textContent = shadow.chain_ok ? (d.ssotPass || 'Verified') : (d.ssotFail || 'Not verified');
+      var bundleSt = document.getElementById('ssotBundleStatus');
+      if (bundleSt) bundleSt.textContent = (shadow.policy_bundle_present_ok || aStatus.policy_bundle_present_ok) ? (d.ssotPresent || 'Present') : (d.ssotMissing || 'Missing');
+      var sigSt = document.getElementById('ssotSigStatus');
+      if (sigSt) sigSt.textContent = sigOk ? (d.ssotSigned || 'Signed') : (d.ssotUnsigned || 'Not signed');
 
       // Severity
       var sev = scans.severity_counts || {};

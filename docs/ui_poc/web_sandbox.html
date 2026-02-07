@@ -190,6 +190,15 @@
     .detail-summary { margin-bottom: 8px; line-height: 1.6; }
     .indicator-tag { display: inline-block; background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin: 2px; }
     .evidence-tag { display: inline-block; background: var(--gray-100); color: var(--gray-700); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-family: monospace; margin: 2px; }
+    .ev-summary-box { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; padding: 10px 14px; margin-top: 10px; font-size: 12px; line-height: 1.7; }
+    .ev-summary-box .ev-line { display: flex; gap: 8px; }
+    .ev-summary-box .ev-lbl { font-weight: 700; color: #0369a1; min-width: 80px; white-space: nowrap; }
+    .ev-summary-box .ev-val { color: #111827; }
+    .ev-summary-box .action-deny { color: #dc2626; font-weight: 700; }
+    .ev-summary-box .action-allow { color: #16a34a; font-weight: 700; }
+    .ev-summary-box .action-warn { color: #d97706; font-weight: 700; }
+    .cross-link { display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--primary); text-decoration: none; }
+    .cross-link:hover { text-decoration: underline; }
   </style>
 </head>
 
@@ -632,10 +641,25 @@
             + '</tr>';
           var detailRow = '';
           if (hasDetail) {
+            // Evidence Summary (3-line template)
+            var evLabels = lang === 'ja'
+              ? { detection: '検知', evidence: '根拠', action: '推奨アクション' }
+              : { detection: 'Detection', evidence: 'Evidence', action: 'Action' };
+            var actionCls = v.recommended_action === 'block' ? 'action-deny' : v.recommended_action === 'warn' ? 'action-warn' : 'action-allow';
+            var evSummaryHtml = '<div class="ev-summary-box">'
+              + '<div class="ev-line"><span class="ev-lbl">' + evLabels.detection + ':</span><span class="ev-val">' + escapeHtml(translateClassification(v.classification, dl)) + (summary ? ' - ' + escapeHtml(summary.slice(0, 60)) : '') + '</span></div>'
+              + '<div class="ev-line"><span class="ev-lbl">' + evLabels.evidence + ':</span><span class="ev-val">' + (indicators || evidence || '-') + '</span></div>'
+              + '<div class="ev-line"><span class="ev-lbl">' + evLabels.action + ':</span><span class="ev-val ' + actionCls + '">' + escapeHtml(v.recommended_action || '-') + '</span></div>'
+              + '</div>';
+            // Cross-link to Audit Log
+            var crossLink = v.run_id
+              ? '<a class="cross-link" href="audit_log.html?evidence_id=' + encodeURIComponent(v.run_id) + '">&#8594; ' + (lang==='ja'?'Audit Log で確認':'View in Audit Log') + '</a>'
+              : '';
             detailRow = '<tr class="detail-row" data-detail="' + i + '" style="display:none;"><td colspan="7"><div class="detail-content">'
               + (summary ? '<div class="detail-label">' + escapeHtml(dl.detailSummary) + '</div><div class="detail-summary">' + escapeHtml(summary) + '</div>' : '')
               + (indicators ? '<div class="detail-label">' + escapeHtml(dl.detailRiskIndicators) + '</div><div>' + indicators + '</div>' : '')
               + (evidence ? '<div class="detail-label" style="margin-top:8px;">' + escapeHtml(dl.detailEvidence) + '</div><div>' + evidence + '</div>' : '')
+              + evSummaryHtml + crossLink
               + '</div></td></tr>';
           }
           return mainRow + detailRow;

@@ -573,7 +573,14 @@ window.escapeHtml = function escapeHtml(str) {
 
   async function fetchControlAudit(limit) {
     const query = limit ? `?limit=${encodeURIComponent(limit)}` : "";
-    return requestJsonWithStatus(`${CONTROL_BASE}/control/audit${query}`, { auth: true });
+    const res = await requestJsonWithStatus(`${CONTROL_BASE}/control/audit${query}`, { auth: true });
+    if (res && res.ok) return res;
+    // Mock fallback: return audit_log from mock_data.js
+    if (!DISABLE_MOCK && window.suiteScanData && Array.isArray(window.suiteScanData.audit_log)) {
+      const mockData = limit ? window.suiteScanData.audit_log.slice(0, limit) : window.suiteScanData.audit_log;
+      return { ok: true, data: mockData, status: 200 };
+    }
+    return res;
   }
 
   async function fetchControlDiagnostics() {
@@ -627,7 +634,11 @@ window.escapeHtml = function escapeHtml(str) {
 
   async function fetchWebSandboxVerdicts() {
     const data = await fetchJson(`${BASE}/web-sandbox/verdicts`);
-    if (data && typeof data === "object") return data;
+    if (data && typeof data === "object" && Array.isArray(data.verdicts) && data.verdicts.length > 0) return data;
+    // Mock fallback: return web_sandbox_verdicts from mock_data.js
+    if (!DISABLE_MOCK && window.suiteScanData && window.suiteScanData.web_sandbox_verdicts) {
+      return window.suiteScanData.web_sandbox_verdicts;
+    }
     return { verdicts: [] };
   }
 
