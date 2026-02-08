@@ -2,7 +2,7 @@
 
 > **The first security gateway that makes AI tool access _auditable_, not just allow/deny.**
 
-**Gemini 3 Hackathon Submission** | [Live Pipeline Demo](#live-pipeline-demo) | [Quick Start](#quick-start-30-seconds) | [5 Gemini Integration Points](#5-gemini-3-integration-points)
+**Gemini 3 Hackathon Submission** | [Live Pipeline Demo](#live-pipeline-demo) | [Quick Start](#quick-start-30-seconds) | [6 Gemini Integration Points](#6-gemini-3-integration-points)
 
 ---
 
@@ -15,6 +15,24 @@ The MCP (Model Context Protocol) ecosystem has exploded to **13,000+ servers**, 
 - **Bait-and-Switch**: A "read-only file viewer" that secretly requests `password`, `api_key`, `session_id` fields
 
 **No existing tool catches these.** Static scanners miss semantic attacks. Rule-based systems can't reason about intent.
+
+### Real-World Validation: The OpenClaw Incident (Feb 2026)
+
+This threat is not theoretical. In February 2026, the [OpenClaw AI agent marketplace disclosed](https://thehackernews.com/2026/02/openclaw-integrates-virustotal-scanning.html) that **~12% of skills were malicious**, exposing **tens of thousands of AI agent instances** to prompt injection, credential exfiltration, and arbitrary code execution.
+
+OpenClaw's response — integrating VirusTotal hash-based scanning — addresses **known malware signatures**. But hash-based scanning alone cannot catch the MCP-specific threats where attacks use:
+
+- **Semantic manipulation**: Tool descriptions that change meaning post-approval (signature cloaking)
+- **Prompt injection**: Instructions hidden in tool outputs (91% of observed attacks)
+- **Typosquatting**: Character-level tool name mimicry (`read_fi1e` vs `read_file`)
+
+| Approach | Catches Known Malware | Catches Semantic Attacks | Catches Novel Threats |
+|----------|----------------------|-------------------------|----------------------|
+| Hash-based (VirusTotal) | Yes | No | No |
+| Rule-based (static) | Partial | Partial | No |
+| **Gemini 3 Reasoning (MCP Gateway)** | Partial | **Yes** | **Yes** |
+
+**MCP Gateway complements hash-based scanning** with Gemini 3's semantic reasoning — detecting the **novel, intent-based attacks** that signature matching cannot catch. Together, they cover the full threat spectrum.
 
 ## What MCP Gateway Does
 
