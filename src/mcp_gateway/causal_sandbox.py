@@ -759,9 +759,10 @@ def analyze_dom_security(html: str, url: str) -> list[DOMSecurityNode]:
                 break
 
     # MCP / JSON-RPC injection patterns (zero-day vector detection)
-    full_html_lower = html.lower() if len(html) < MAX_HTML_BYTES else html[:MAX_HTML_BYTES].lower()
+    # Patterns already use re.IGNORECASE, so no need for html.lower() copy.
+    scan_html = html if len(html) < MAX_HTML_BYTES else html[:MAX_HTML_BYTES]
     for pattern in MCP_THREAT_PATTERNS:
-        match = pattern.search(full_html_lower)
+        match = pattern.search(scan_html)
         if match:
             threats.append(
                 DOMSecurityNode(
