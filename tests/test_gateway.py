@@ -3129,3 +3129,132 @@ class TestGeminiKeyConfig:
             assert resp2.status_code == 401
 
 
+# ---------------------------------------------------------------------------
+# MCP Streamable HTTP Transport Tests
+# ---------------------------------------------------------------------------
+
+
+class TestMCPHTTPTransport:
+    """Test the POST /mcp Streamable HTTP Transport endpoint."""
+
+    def test_initialize_via_http(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    ) -> None:
+        """MCP initialize handshake works over HTTP."""
+        monkeypatch.setenv("MCP_GATEWAY_DEMO_MODE", "true")
+        monkeypatch.setenv("MCP_GATEWAY_DB_PATH", str(tmp_path / "g.db"))
+        with TestClient(app) as client:
+            resp = client.post("/mcp/security", json={
+                "jsonrpc": "2.0", "id": 1, "method": "initialize",
+                "params": {},
+            })
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["jsonrpc"] == "2.0"
+            assert data["id"] == 1
+            assert "serverInfo" in data["result"]
+            assert data["result"]["serverInfo"]["name"] == (
+                "mcp-security-gateway"
+            )
+            # Session ID header
+            assert "mcp-session-id" in resp.headers
+
+    def test_tools_list_via_http(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    ) -> None:
+        """MCP tools/list works over HTTP."""
+        monkeypatch.setenv("MCP_GATEWAY_DEMO_MODE", "true")
+        monkeypatch.setenv("MCP_GATEWAY_DB_PATH", str(tmp_path / "g.db"))
+        with TestClient(app) as client:
+            resp = client.post("/mcp/security", json={
+                "jsonrpc": "2.0", "id": 2, "method": "tools/list",
+                "params": {},
+            })
+            assert resp.status_code == 200
+            data = resp.json()
+            tools = data["result"]["tools"]
+            tool_names = [t["name"] for t in tools]
+            assert "secure_browse" in tool_names
+            assert "check_url" in tool_names
+            assert "session_stats" in tool_names
+
+    def test_check_url_via_http(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    ) -> None:
+        """MCP tools/call check_url works over HTTP."""
+        monkeypatch.setenv("MCP_GATEWAY_DEMO_MODE", "true")
+        monkeypatch.setenv("MCP_GATEWAY_DB_PATH", str(tmp_path / "g.db"))
+        with TestClient(app) as client:
+            resp = client.post("/mcp/security", json={
+                "jsonrpc": "2.0", "id": 3, "method": "tools/call",
+                "params": {
+                    "name": "check_url",
+                    "arguments": {"url": "https://example.com"},
+                },
+            })
+            assert resp.status_code == 200
+            data = resp.json()
+            content = data["result"]["content"]
+            assert len(content) > 0
+            import json as _json
+            result = _json.loads(content[0]["text"])
+            assert "classification" in result
+
+    def test_notification_returns_202(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    ) -> None:
+        """MCP notifications return 202 with no body."""
+        monkeypatch.setenv("MCP_GATEWAY_DEMO_MODE", "true")
+        monkeypatch.setenv("MCP_GATEWAY_DB_PATH", str(tmp_path / "g.db"))
+        with TestClient(app) as client:
+            resp = client.post("/mcp/security", json={
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {},
+            })
+            assert resp.status_code == 202
+
+    def test_session_persistence(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    ) -> None:
+        """Session ID persists across requests via header."""
+        monkeypatch.setenv("MCP_GATEWAY_DEMO_MODE", "true")
+        monkeypatch.setenv("MCP_GATEWAY_DB_PATH", str(tmp_path / "g.db"))
+        with TestClient(app) as client:
+            resp1 = client.post("/mcp/security", json={
+                "jsonrpc": "2.0", "id": 1, "method": "initialize",
+                "params": {},
+            })
+            session_id = resp1.headers.get("mcp-session-id", "")
+            assert session_id
+
+            # Use same session
+            resp2 = client.post(
+                "/mcp/security",
+                json={
+                    "jsonrpc": "2.0", "id": 2, "method": "tools/call",
+                    "params": {
+                        "name": "session_stats",
+                        "arguments": {},
+                    },
+                },
+                headers={"mcp-session-id": session_id},
+            )
+            assert resp2.status_code == 200
+            assert resp2.headers.get("mcp-session-id") == session_id
+
+    def test_demo_mode_blocked_endpoints_via_mcp(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    ) -> None:
+        """DEMO_MODE blocks admin endpoints but allows /mcp."""
+        monkeypatch.setenv("MCP_GATEWAY_DEMO_MODE", "true")
+        monkeypatch.setenv("MCP_GATEWAY_DB_PATH", str(tmp_path / "g.db"))
+        with TestClient(app) as client:
+            # /mcp should work in demo mode
+            resp = client.post("/mcp/security", json={
+                "jsonrpc": "2.0", "id": 1, "method": "ping",
+                "params": {},
+            })
+            assert resp.status_code == 200
+
+

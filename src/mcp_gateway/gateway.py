@@ -4025,6 +4025,82 @@ async def mcp_intercept_stats() -> JSONResponse:
 
 
 # ---------------------------------------------------------------------------
+# MCP Streamable HTTP Transport (POST /mcp)
+# ---------------------------------------------------------------------------
+# Enables any MCP client to connect over HTTP instead of stdio.
+# Implements the MCP Streamable HTTP specification:
+#   POST /mcp  — single JSON-RPC request/response
+# This allows Gemini CLI, ChatGPT, or any HTTP-capable MCP client to use
+# the security gateway without stdio piping.
+
+_MCP_HTTP_SESSIONS: dict[str, str] = {}
+
+
+@app.post("/mcp/security")
+async def mcp_security_http_transport(request: Request) -> Response:
+    """MCP Security Server — Streamable HTTP Transport.
+
+    Accepts JSON-RPC 2.0 messages, routes them through the MCP Security Server
+    (secure_browse, check_url, scan_report, session_stats tools).
+    Each client gets a persistent session via the Mcp-Session-Id header.
+
+    This is separate from POST /mcp (the proxy gateway for allowlisted servers).
+    """
+    from . import mcp_security_server
+
+    # Session management
+    session_id = request.headers.get("mcp-session-id", "")
+    if not session_id:
+        session_id = f"http-{uuid.uuid4().hex[:12]}"
+
+    body = await request.body()
+    raw = body.decode("utf-8")
+
+    response_str = mcp_security_server.handle_message(raw, session_id)
+
+    if response_str is None:
+        # Notification — no response body
+        return Response(status_code=202, headers={"Mcp-Session-Id": session_id})
+
+    return Response(
+        content=response_str,
+        media_type="application/json",
+        headers={"Mcp-Session-Id": session_id},
+    )
+
+
+@app.get("/mcp/security")
+async def mcp_security_http_sse(request: Request) -> StreamingResponse:
+    """MCP Security Server SSE endpoint for server-initiated notifications.
+
+    Returns an SSE stream for server-initiated messages.
+    Currently emits a heartbeat every 30s to keep the connection alive.
+    """
+    session_id = request.query_params.get("session_id", f"sse-{uuid.uuid4().hex[:8]}")
+
+    async def event_stream():
+        # Initial connection confirmation
+        yield f"event: endpoint\ndata: /mcp/security\n\n"
+        # Heartbeat to keep connection alive
+        try:
+            while True:
+                await asyncio.sleep(30)
+                yield f"event: ping\ndata: {{}}\n\n"
+        except asyncio.CancelledError:
+            pass
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Mcp-Session-Id": session_id,
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
 # Gemini API Key configuration (hackathon demo)
 # ---------------------------------------------------------------------------
 
