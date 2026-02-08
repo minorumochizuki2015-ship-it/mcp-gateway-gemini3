@@ -678,13 +678,42 @@ def _csrf_guard(request: Request) -> JSONResponse | None:
 
 
 def _is_demo_mode() -> bool:
-    """Check if demo mode is enabled (skips all auth)."""
+    """Check if demo mode is enabled (read-only access without auth)."""
     return _env_bool(DEMO_MODE_ENV, default=False)
+
+
+# Demo-mode allowlist: only read-only / analysis endpoints (no admin mutations)
+_DEMO_SAFE_PREFIXES = (
+    "/api/health",
+    "/api/dashboard",
+    "/api/scans",
+    "/api/council/evaluate",
+    "/api/web-sandbox",
+    "/api/mcp/intercept",
+    "/api/audit-log",
+    "/api/demo/",
+    "/api/redteam",
+    "/ui",
+    "/docs",
+)
+_DEMO_BLOCKED_PREFIXES = (
+    "/api/settings",
+    "/api/admin",
+    "/api/tokens",
+    "/api/allowlist",
+)
 
 
 def _admin_auth_guard(request: Request) -> JSONResponse | None:
     if _is_demo_mode():
-        return None  # Demo mode: skip all auth
+        path = request.url.path
+        # Block admin-mutation endpoints even in demo mode
+        if any(path.startswith(p) for p in _DEMO_BLOCKED_PREFIXES):
+            return JSONResponse(
+                {"detail": "endpoint disabled in demo mode"},
+                status_code=403,
+            )
+        return None  # Demo mode: allow safe endpoints without auth
     token = _read_secret(ADMIN_TOKEN_ENV, ADMIN_TOKEN_FILE_ENV)
     if not token:
         return JSONResponse({"detail": "admin token not configured"}, status_code=503)
