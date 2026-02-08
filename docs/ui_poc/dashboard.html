@@ -977,6 +977,12 @@
           demoBtn.disabled = false;
           demoBtn.style.opacity = '1';
           demoBtn.querySelector('#demoBtnText').textContent = I18N[getLang()].demoBtn;
+          // Save pipeline results to localStorage for persistence across navigation
+          try {
+            localStorage.setItem('mcp_pipeline_html', stepsEl.innerHTML);
+            localStorage.setItem('mcp_pipeline_count', d.total_events + ' events \u2014 complete');
+            localStorage.setItem('mcp_pipeline_stats', JSON.stringify(_interceptStats));
+          } catch(_) {}
           // Final dashboard refresh
           setTimeout(function() { init(); }, 500);
         });
@@ -995,6 +1001,30 @@
         };
       });
     }
+
+    // Restore pipeline results from localStorage if available
+    (function() {
+      try {
+        var savedHtml = localStorage.getItem('mcp_pipeline_html');
+        var savedCount = localStorage.getItem('mcp_pipeline_count');
+        var savedStats = localStorage.getItem('mcp_pipeline_stats');
+        if (savedHtml) {
+          var logPanel = document.getElementById('pipelineLog');
+          var stepsEl = document.getElementById('pipelineSteps');
+          var counterEl = document.getElementById('pipelineCounter');
+          var phaseEl = document.getElementById('pipelinePhase');
+          var iconEl = document.getElementById('pipelineIcon');
+          logPanel.style.display = '';
+          stepsEl.innerHTML = savedHtml;
+          counterEl.textContent = savedCount || '';
+          phaseEl.textContent = 'Done';
+          iconEl.textContent = '\u2705';
+          if (savedStats) {
+            _interceptStats = JSON.parse(savedStats);
+          }
+        }
+      } catch(_) {}
+    })();
 
     applyI18n(getLang());
     init();
