@@ -1599,3 +1599,220 @@ class TestBrandImpersonation:
         """Key brands must be present."""
         for brand in ["odakyu", "amazon", "google", "mercari", "paypal"]:
             assert brand in IMPERSONATED_BRANDS, f"{brand} missing"
+
+
+# ---- Gemini 3 Unique Features ----
+
+
+class TestGemini3Features:
+    """Tests for Gemini 3 specific feature integration."""
+
+    def test_gemini_deep_scan_uses_thinking_high(self) -> None:
+        """Deep scan calls Gemini with thinking_level='high'."""
+        mock_response = MagicMock()
+        mock_response.text = json.dumps({
+            "classification": "phishing",
+            "confidence": 0.9,
+            "risk_indicators": ["phishing_content"],
+            "evidence_refs": ["https://evil.example.com"],
+            "recommended_action": "block",
+            "summary": "Gemini detected phishing",
+        })
+        mock_client = MagicMock()
+        mock_client.models.generate_content.return_value = mock_response
+
+        with (
+            patch.dict("os.environ", {"GOOGLE_API_KEY": "test-key"}),
+            patch("mcp_gateway.causal_sandbox.genai", create=True) as mock_genai_mod,
+        ):
+            from google import genai
+            from google.genai import types
+
+            with patch.object(genai, "Client", return_value=mock_client):
+                verdict = gemini_security_verdict(
+                    "https://evil.example.com",
+                    "Enter your password here",
+                    [], [], [],
+                )
+
+        # Verify Gemini was called
+        assert mock_client.models.generate_content.called
+        call_kwargs = mock_client.models.generate_content.call_args
+        config = call_kwargs.kwargs.get("config") or call_kwargs[1].get("config")
+        # Verify thinking_config was passed
+        assert config is not None
+        assert config.thinking_config is not None
+        assert config.thinking_config.thinking_level.value.upper() == "HIGH"
+
+    def test_gemini_deep_scan_uses_url_context_and_search(self) -> None:
+        """Deep scan passes url_context and google_search tools."""
+        mock_response = MagicMock()
+        mock_response.text = json.dumps({
+            "classification": "benign",
+            "confidence": 0.8,
+            "risk_indicators": [],
+            "evidence_refs": [],
+            "recommended_action": "allow",
+            "summary": "Safe page",
+        })
+        mock_client = MagicMock()
+        mock_client.models.generate_content.return_value = mock_response
+
+        with (
+            patch.dict("os.environ", {"GOOGLE_API_KEY": "test-key"}),
+        ):
+            from google import genai
+            from google.genai import types
+
+            with patch.object(genai, "Client", return_value=mock_client):
+                verdict = gemini_security_verdict(
+                    "https://example.com",
+                    "Normal page content",
+                    [], [], [],
+                )
+
+        call_kwargs = mock_client.models.generate_content.call_args
+        config = call_kwargs.kwargs.get("config") or call_kwargs[1].get("config")
+        # Verify tools include url_context and google_search
+        assert config.tools is not None
+        tool_types = [type(t.url_context).__name__ if t.url_context else None for t in config.tools]
+        has_url_context = any(t.url_context is not None for t in config.tools)
+        has_google_search = any(t.google_search is not None for t in config.tools)
+        assert has_url_context, "url_context tool missing"
+        assert has_google_search, "google_search tool missing"
+
+    def test_gemini_fast_verdict_uses_thinking_low(self) -> None:
+        """Fast-tier Gemini uses thinking_level='low' for quick analysis."""
+        from mcp_gateway.causal_sandbox import _gemini_fast_verdict
+
+        rule_verdict = WebSecurityVerdict(
+            classification=ThreatClassification.phishing,
+            confidence=0.7,
+            risk_indicators=["suspicious_tld"],
+            evidence_refs=["evil.tk"],
+            recommended_action="warn",
+            summary="Fast-scan: phishing",
+        )
+
+        mock_response = MagicMock()
+        mock_response.text = json.dumps({
+            "classification": "phishing",
+            "confidence": 0.85,
+            "risk_indicators": ["suspicious_tld", "gemini_confirmed"],
+            "evidence_refs": ["evil.tk"],
+            "recommended_action": "block",
+            "summary": "Gemini confirmed phishing",
+        })
+        mock_client = MagicMock()
+        mock_client.models.generate_content.return_value = mock_response
+
+        from google import genai
+
+        with patch.object(genai, "Client", return_value=mock_client):
+            result = _gemini_fast_verdict(
+                "https://evil.tk", rule_verdict, "test-key"
+            )
+
+        assert result is not None
+        assert result.classification == ThreatClassification.phishing
+        assert result.confidence == 0.85
+        # Verify thinking_level="low"
+        call_kwargs = mock_client.models.generate_content.call_args
+        config = call_kwargs.kwargs.get("config") or call_kwargs[1].get("config")
+        assert config.thinking_config.thinking_level.value.upper() == "LOW"
+
+    def test_fast_scan_calls_gemini_when_suspicious(self) -> None:
+        """fast_scan calls Gemini fast tier when threats are detected."""
+        mock_response = MagicMock()
+        mock_response.text = json.dumps({
+            "classification": "phishing",
+            "confidence": 0.9,
+            "risk_indicators": ["dga_domain", "gemini_enhanced"],
+            "evidence_refs": ["xkjqwert.tk"],
+            "recommended_action": "block",
+            "summary": "Gemini enhanced: phishing",
+        })
+        mock_client = MagicMock()
+        mock_client.models.generate_content.return_value = mock_response
+
+        from google import genai
+
+        with (
+            patch.dict("os.environ", {"GOOGLE_API_KEY": "test-key"}),
+            patch.object(genai, "Client", return_value=mock_client),
+        ):
+            verdict = fast_scan("https://xkjqwert.tk/login")
+
+        # Should have been enhanced by Gemini
+        assert mock_client.models.generate_content.called
+        assert verdict.confidence == 0.9
+
+    def test_fast_scan_skips_gemini_for_benign(self) -> None:
+        """fast_scan does NOT call Gemini when URL is clearly benign."""
+        mock_client = MagicMock()
+
+        from google import genai
+
+        with (
+            patch.dict("os.environ", {"GOOGLE_API_KEY": "test-key"}),
+            patch.object(genai, "Client", return_value=mock_client),
+        ):
+            verdict = fast_scan("https://www.google.com/search?q=test")
+
+        # Should NOT call Gemini for clearly benign URLs
+        assert not mock_client.models.generate_content.called
+        assert verdict.classification == ThreatClassification.benign
+
+    def test_gemini_deep_prompt_contains_url(self) -> None:
+        """Deep scan prompt includes the URL for Gemini URL Context."""
+        mock_response = MagicMock()
+        mock_response.text = json.dumps({
+            "classification": "benign",
+            "confidence": 0.8,
+            "risk_indicators": [],
+            "evidence_refs": [],
+            "recommended_action": "allow",
+            "summary": "Safe",
+        })
+        mock_client = MagicMock()
+        mock_client.models.generate_content.return_value = mock_response
+
+        from google import genai
+
+        target_url = "https://suspicious-site.example.com/phish"
+        with (
+            patch.dict("os.environ", {"GOOGLE_API_KEY": "test-key"}),
+            patch.object(genai, "Client", return_value=mock_client),
+        ):
+            gemini_security_verdict(target_url, "text", [], [], [])
+
+        call_args = mock_client.models.generate_content.call_args
+        prompt = call_args.kwargs.get("contents") or call_args[1].get("contents")
+        # Prompt must contain the URL so url_context can browse it
+        assert target_url in prompt
+
+    def test_gemini_temperature_is_one(self) -> None:
+        """Gemini 3 recommends temperature=1.0 (not 0.0)."""
+        mock_response = MagicMock()
+        mock_response.text = json.dumps({
+            "classification": "benign",
+            "confidence": 0.8,
+            "risk_indicators": [],
+            "evidence_refs": [],
+            "recommended_action": "allow",
+            "summary": "Safe",
+        })
+        mock_client = MagicMock()
+        mock_client.models.generate_content.return_value = mock_response
+
+        from google import genai
+
+        with (
+            patch.dict("os.environ", {"GOOGLE_API_KEY": "test-key"}),
+            patch.object(genai, "Client", return_value=mock_client),
+        ):
+            gemini_security_verdict("https://example.com", "text", [], [], [])
+
+        call_kwargs = mock_client.models.generate_content.call_args
+        config = call_kwargs.kwargs.get("config") or call_kwargs[1].get("config")
+        assert config.temperature == 1.0

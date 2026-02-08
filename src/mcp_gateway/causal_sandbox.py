@@ -1231,15 +1231,37 @@ def gemini_security_verdict(
         from google.genai import types
 
         client = genai.Client(api_key=api_key)
+
+        # --- Gemini 3 unique features ---
+        # 1. thinking_level="high" - deep reasoning about complex attacks
+        # 2. url_context - Gemini 3 browses the URL directly (multimodal)
+        # 3. google_search - real-time threat intelligence grounding
+        thinking_cfg = types.ThinkingConfig(thinking_level="high")
+        tools = [
+            types.Tool(url_context=types.UrlContext()),
+            types.Tool(google_search=types.GoogleSearch()),
+        ]
+
+        # Gemini 3 enhanced prompt: leverage URL Context + Search
+        enhanced_prompt = (
+            f"Analyze this URL for security threats: {url}\n\n"
+            "Use URL Context to visit and inspect the page directly. "
+            "Use Google Search to check if this domain/URL has been "
+            "reported as phishing, malware, or scam.\n\n"
+            f"Our pre-analysis findings:\n{instructions}\n\n"
+            f"Page visible text (first 10K chars):\n{content_preview}"
+        )
+
         response = client.models.generate_content(
             model=GEMINI_MODEL,
-            contents=prompt,
+            contents=enhanced_prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_schema=WebSecurityVerdict,
-                temperature=0.0,
-                max_output_tokens=2048,
-                seed=42,
+                thinking_config=thinking_cfg,
+                tools=tools,
+                temperature=1.0,  # Gemini 3 recommended default
+                max_output_tokens=4096,
             ),
         )
         return WebSecurityVerdict.model_validate_json(response.text)
@@ -1934,7 +1956,7 @@ def fast_scan(url: str) -> WebSecurityVerdict:
         has_brand_impersonation, impersonated_brand,
     )
 
-    return WebSecurityVerdict(
+    rule_verdict = WebSecurityVerdict(
         classification=classification,
         confidence=confidence,
         risk_indicators=risk_indicators,
@@ -1949,6 +1971,61 @@ def fast_scan(url: str) -> WebSecurityVerdict:
             if has_brand_impersonation else []
         ),
     )
+
+    # --- Gemini 3 fast tier (thinking_level="low") ---
+    # When API key is available, enhance fast scan with lightweight Gemini reasoning
+    api_key = os.getenv(GEMINI_API_KEY_ENV)
+    if not api_key or classification == ThreatClassification.benign:
+        return rule_verdict
+
+    try:
+        gemini_fast = _gemini_fast_verdict(url, rule_verdict, api_key)
+        if gemini_fast is not None:
+            return gemini_fast
+    except Exception:
+        pass
+    return rule_verdict
+
+
+def _gemini_fast_verdict(
+    url: str, rule_verdict: WebSecurityVerdict, api_key: str
+) -> WebSecurityVerdict | None:
+    """Gemini 3 fast-tier verdict using thinking_level='low'.
+
+    Only called when rule-based scan found something suspicious.
+    Uses minimal thinking for low latency while still leveraging Gemini 3.
+    """
+    from google import genai
+    from google.genai import types
+
+    client = genai.Client(api_key=api_key)
+
+    prompt = (
+        f"Quick security check for URL: {url}\n"
+        f"Our rule-based scan found: {rule_verdict.classification.value} "
+        f"(confidence={rule_verdict.confidence:.2f})\n"
+        f"Indicators: {', '.join(rule_verdict.risk_indicators)}\n\n"
+        "Confirm or adjust this classification. Be brief."
+    )
+
+    response = client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=WebSecurityVerdict,
+            thinking_config=types.ThinkingConfig(thinking_level="low"),
+            temperature=1.0,
+            max_output_tokens=1024,
+        ),
+    )
+    verdict = WebSecurityVerdict.model_validate_json(response.text)
+    # Preserve causal chain from rule-based analysis
+    if not verdict.causal_chain and rule_verdict.causal_chain:
+        verdict.causal_chain = rule_verdict.causal_chain
+    if not verdict.attack_narrative and rule_verdict.attack_narrative:
+        verdict.attack_narrative = rule_verdict.attack_narrative
+    return verdict
 
 
 # ---------------------------------------------------------------------------
