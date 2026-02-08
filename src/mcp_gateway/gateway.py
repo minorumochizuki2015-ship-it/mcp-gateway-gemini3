@@ -5407,21 +5407,21 @@ async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
         _demo_sessions = [
             {
                 "id": f"ses-{uuid.uuid4().hex[:8]}",
-                "agent": "Claude-3.5 (Coding Agent)",
-                "model": "claude-sonnet-4-5-20250929",
-                "color": "#8b5cf6",
+                "agent": "Gemini 3 Pro (Coding Agent)",
+                "model": "gemini-3-pro-preview",
+                "color": "#4285f4",
             },
             {
                 "id": f"ses-{uuid.uuid4().hex[:8]}",
-                "agent": "Gemini 3 (Research Agent)",
+                "agent": "Gemini 3 Flash (Research Agent)",
                 "model": "gemini-3-flash-preview",
-                "color": "#2563eb",
+                "color": "#0d9488",
             },
             {
                 "id": f"ses-{uuid.uuid4().hex[:8]}",
-                "agent": "GPT-4.1 (Data Analyst)",
-                "model": "gpt-4.1-2025-04-14",
-                "color": "#059669",
+                "agent": "Gemini 3 Nano (Data Analyst)",
+                "model": "gemini-3-nano-preview",
+                "color": "#ea4335",
             },
         ]
 
@@ -5439,62 +5439,62 @@ async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
             total_events += 1
             await asyncio.sleep(0.3)
 
-        s_claude = _demo_sessions[0]["id"]
-        s_gemini = _demo_sessions[1]["id"]
-        s_gpt = _demo_sessions[2]["id"]
+        s_pro = _demo_sessions[0]["id"]
+        s_flash = _demo_sessions[1]["id"]
+        s_nano = _demo_sessions[2]["id"]
 
-        # Interleaved tool calls from different sessions
+        # Interleaved tool calls from different Gemini sessions
         _intercept_calls = [
-            # Claude tries suspicious server → BLOCKED
+            # Pro tries suspicious server → BLOCKED
             {
-                "session_id": s_claude, "agent": "Claude-3.5",
+                "session_id": s_pro, "agent": "Gemini Pro",
                 "color": _demo_sessions[0]["color"],
                 "server": "suspicious-mcp", "tool": "read_fi1e",
                 "result": "BLOCKED",
                 "reason": "AllowList status=blocked \u2014 Council denied this server",
             },
-            # Gemini uses web-search → ALLOWED
+            # Flash uses web-search → ALLOWED
             {
-                "session_id": s_gemini, "agent": "Gemini 3",
+                "session_id": s_flash, "agent": "Gemini Flash",
                 "color": _demo_sessions[1]["color"],
                 "server": "web-search-mcp", "tool": "search",
                 "result": "ALLOWED",
                 "reason": "AllowList active, source=trusted, response DLP clean",
             },
-            # Claude tries signature-cloaked tool → BLOCKED
+            # Pro tries signature-cloaked tool → BLOCKED
             {
-                "session_id": s_claude, "agent": "Claude-3.5",
+                "session_id": s_pro, "agent": "Gemini Pro",
                 "color": _demo_sessions[0]["color"],
                 "server": "suspicious-mcp", "tool": "data_helper",
                 "result": "BLOCKED",
                 "reason": "Signature cloaking detected \u2014 description mismatch from manifest",
             },
-            # GPT reads file → ALLOWED
+            # Nano reads file → ALLOWED
             {
-                "session_id": s_gpt, "agent": "GPT-4.1",
+                "session_id": s_nano, "agent": "Gemini Nano",
                 "color": _demo_sessions[2]["color"],
                 "server": "code-assistant-mcp", "tool": "read_file",
                 "result": "ALLOWED",
                 "reason": "AllowList status=active, source=trusted",
             },
-            # GPT read_file response triggers DLP
+            # Nano read_file response triggers DLP
             {
-                "session_id": s_gpt, "agent": "GPT-4.1",
+                "session_id": s_nano, "agent": "Gemini Nano",
                 "color": _demo_sessions[2]["color"],
                 "action": "dlp_scan",
                 "server": "code-assistant-mcp", "tool": "read_file",
             },
-            # Gemini tries data-scraper → BLOCKED
+            # Flash tries data-scraper → BLOCKED
             {
-                "session_id": s_gemini, "agent": "Gemini 3",
+                "session_id": s_flash, "agent": "Gemini Flash",
                 "color": _demo_sessions[1]["color"],
                 "server": "data-scraper-mcp", "tool": "scrape_page",
                 "result": "BLOCKED",
                 "reason": "AllowList status=blocked \u2014 network exfiltration risk",
             },
-            # Claude uses code-assistant → ALLOWED
+            # Pro uses code-assistant → ALLOWED
             {
-                "session_id": s_claude, "agent": "Claude-3.5",
+                "session_id": s_pro, "agent": "Gemini Pro",
                 "color": _demo_sessions[0]["color"],
                 "server": "code-assistant-mcp", "tool": "run_code",
                 "result": "ALLOWED",
