@@ -409,17 +409,26 @@ def _css_selector(tag: Tag) -> str:
 
 def _is_hidden(tag: Tag) -> bool:
     """Check if an element is visually hidden."""
-    style = str(tag.get("style", "")).lower()
+    # Guard against decomposed tags where attrs becomes None
+    if tag.attrs is None:
+        return False
+    try:
+        style = str(tag.get("style", "")).lower()
+    except (AttributeError, TypeError):
+        return False
     if "display:none" in style or "display: none" in style:
         return True
     if "visibility:hidden" in style or "visibility: hidden" in style:
         return True
     if "opacity:0" in style or "opacity: 0" in style:
         return True
-    if tag.get("hidden") is not None:
-        return True
-    w = str(tag.get("width", ""))
-    h = str(tag.get("height", ""))
+    try:
+        if tag.get("hidden") is not None:
+            return True
+        w = str(tag.get("width", ""))
+        h = str(tag.get("height", ""))
+    except (AttributeError, TypeError):
+        return False
     if w in ("0", "0px", "1") and h in ("0", "0px", "1"):
         return True
     return False
@@ -707,10 +716,13 @@ def extract_visible_text(html: str, max_len: int = MAX_VISIBLE_TEXT_LEN) -> str:
     for comment in soup.find_all(string=lambda t: isinstance(t, Comment)):
         comment.extract()
 
-    # Remove hidden elements
-    for tag in soup.find_all(True):
-        if _is_hidden(tag):
+    # Remove hidden elements (collect first to avoid mutation during iteration)
+    hidden_tags = [tag for tag in soup.find_all(True) if _is_hidden(tag)]
+    for tag in hidden_tags:
+        try:
             tag.decompose()
+        except (AttributeError, TypeError):
+            pass
 
     # Remove hidden inputs
     for inp in soup.find_all("input", {"type": "hidden"}):
