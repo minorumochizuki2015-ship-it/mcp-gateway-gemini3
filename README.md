@@ -132,6 +132,18 @@ Gemini 3 Agent Loop:
 
 **Why this matters**: Unlike a fixed pipeline, Gemini 3 **decides what to investigate**. A `.com` domain might only need DGA check, while a `.tk` domain triggers full analysis. This is **agentic security** — the same pattern MCP agents themselves use.
 
+### Side-by-Side: Rule-Based vs Gemini Agent
+
+```bash
+curl -X POST http://localhost:4100/api/web-sandbox/compare \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://xkjhwqe.tk/payload"}'
+```
+
+Returns both verdicts in one response — showing exactly what Gemini 3 adds over pure rule-based analysis:
+- `rule_based`: Fast (<5ms), catches DGA entropy + suspicious TLD
+- `gemini_agent`: Deep reasoning with tool selection, Google Search threat intel, multi-turn analysis
+
 ## Live Pipeline Demo
 
 The gateway includes a **real-time SSE pipeline** that demonstrates the full security flow in ~30 seconds:
@@ -141,7 +153,8 @@ The gateway includes a **real-time SSE pipeline** that demonstrates the full sec
 3. **AI Council Verdict (Gemini 3)** — Per-server allow/deny with latency and rationale
 4. **Advanced Threat Analysis** — Typosquatting char-diff, signature cloaking description diff, bait-and-switch field detection
 5. **Causal Web Sandbox** — Live HTTP fetch → DOM analysis → Gemini verdict on 3 test pages
-6. **MCP Tool Call Interception** — Agent session simulation with BLOCKED/ALLOWED/DLP enforcement
+6. **Agent Scan (Function Calling)** — Gemini autonomously selects security tools to analyze a suspicious URL
+7. **MCP Tool Call Interception** — Agent session simulation with BLOCKED/ALLOWED/DLP enforcement
 
 Each step streams as a Server-Sent Event with visual indicators (Gemini badges, latency timers, confidence bars).
 
@@ -302,7 +315,7 @@ gcloud run services describe mcp-gateway --format='value(status.url)'
 ## Test Suite
 
 ```bash
-# 371 tests
+# 373 tests
 python -m pytest tests/ -v
 
 # Gemini integration tests only

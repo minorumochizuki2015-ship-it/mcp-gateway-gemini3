@@ -1540,7 +1540,7 @@ async def about() -> JSONResponse:
             {"protocol": "MCP stdio", "command": "python -m src.mcp_gateway.mcp_security_server"},
             {"protocol": "MCP Streamable HTTP", "endpoint": "/mcp/security"},
         ],
-        "test_count": 371,
+        "test_count": 373,
     })
 
 
@@ -4139,6 +4139,64 @@ async def web_sandbox_agent_scan(
     )
 
     return JSONResponse(resp)
+
+
+@app.post("/api/web-sandbox/compare")
+async def web_sandbox_compare(
+    request: Request, body: WebSandboxScanRequest
+) -> JSONResponse:
+    """Compare rule-based vs Gemini Agent Scan on the same URL.
+
+    Demonstrates the value of Gemini 3: rule-based catches obvious threats,
+    while the Gemini agent provides deeper reasoning and context.
+    """
+    if guard := _admin_auth_guard(request):
+        return guard
+    from . import causal_sandbox
+
+    import time as _time
+
+    url = body.url
+
+    # Rule-based scan (no Gemini)
+    t0 = _time.perf_counter()
+    rule_verdict = causal_sandbox.fast_scan(url)
+    rule_ms = round((_time.perf_counter() - t0) * 1000, 1)
+
+    # Gemini Agent Scan (function calling + thinking + search)
+    t0 = _time.perf_counter()
+    agent_result = causal_sandbox.run_agent_scan(url)
+    agent_ms = round((_time.perf_counter() - t0) * 1000, 1)
+
+    def _verdict_dict(v: causal_sandbox.WebSecurityVerdict) -> dict:
+        d = v.model_dump()
+        d["classification"] = v.classification.value
+        d["causal_chain"] = [s.model_dump() for s in v.causal_chain]
+        return d
+
+    return JSONResponse({
+        "url": url,
+        "rule_based": {
+            "verdict": _verdict_dict(rule_verdict),
+            "latency_ms": rule_ms,
+            "method": "fast_scan (no Gemini)",
+        },
+        "gemini_agent": {
+            "verdict": _verdict_dict(agent_result.verdict),
+            "latency_ms": agent_ms,
+            "method": agent_result.eval_method,
+            "tools_called": agent_result.tools_called,
+            "reasoning_steps": agent_result.reasoning_steps,
+        },
+        "gemini_advantage": {
+            "features_used": [
+                "function_calling", "thinking_level=high",
+                "google_search", "multi_turn", "structured_output",
+            ],
+            "deeper_analysis": agent_result.eval_method != "rule_based",
+            "tool_count": len(agent_result.tools_called),
+        },
+    })
 
 
 # ---------------------------------------------------------------------------

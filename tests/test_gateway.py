@@ -3644,3 +3644,41 @@ class TestAgentScanEndpoint:
         assert "multi_turn" in agent_point[0]["gemini_features"]
 
 
+class TestCompareEndpoint:
+    """Tests for /api/web-sandbox/compare endpoint."""
+
+    @pytest.fixture(autouse=True)
+    def _demo_mode(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Enable demo mode to bypass admin auth guard."""
+        monkeypatch.setenv("MCP_GATEWAY_DEMO_MODE", "true")
+
+    def test_compare_returns_both_verdicts(self) -> None:
+        """Compare endpoint returns rule_based and gemini_agent."""
+        with TestClient(app) as client:
+            resp = client.post(
+                "/api/web-sandbox/compare",
+                json={"url": "https://example.com"},
+            )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "rule_based" in body
+        assert "gemini_agent" in body
+        assert "gemini_advantage" in body
+        assert body["url"] == "https://example.com"
+        assert body["rule_based"]["method"] == "fast_scan (no Gemini)"
+        assert "latency_ms" in body["rule_based"]
+        assert "latency_ms" in body["gemini_agent"]
+
+    def test_compare_gemini_advantage_fields(self) -> None:
+        """Gemini advantage section shows features and tool count."""
+        with TestClient(app) as client:
+            resp = client.post(
+                "/api/web-sandbox/compare",
+                json={"url": "https://xkjhwqe.tk/payload"},
+            )
+        body = resp.json()
+        adv = body["gemini_advantage"]
+        assert "function_calling" in adv["features_used"]
+        assert isinstance(adv["tool_count"], int)
+
+
