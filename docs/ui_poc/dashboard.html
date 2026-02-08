@@ -181,6 +181,20 @@
       <div id="pipelineSteps" style="max-height: 320px; overflow-y: auto; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; line-height: 1.8; padding: 8px 0;"></div>
     </div>
 
+    <!-- Gemini API Key (shared across all features) -->
+    <div class="section-card" style="margin-bottom: 24px; padding: 16px 20px;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+        <span style="font-size: 16px; font-weight: 700;">Gemini API Key</span>
+        <span id="dashGeminiStatus" style="font-size: 11px; padding: 2px 10px; border-radius: 10px; font-weight: 600; background: var(--danger); color: #fff;">Not configured</span>
+      </div>
+      <p class="muted" style="margin-bottom: 10px; font-size: 13px;" id="dashGeminiDesc">Enter your Google AI Studio API key to enable Gemini-powered analysis across all features (Council, Scanner, RedTeam, Web Sandbox).</p>
+      <form id="dashGeminiForm" style="display: flex; gap: 8px; align-items: center;">
+        <input type="text" id="dashGeminiInput" placeholder="AIza..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; font-family: monospace;">
+        <button type="submit" id="dashGeminiBtn" style="padding: 8px 20px; background: var(--primary); color: #fff; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;">Set Key</button>
+      </form>
+      <div id="dashGeminiError" style="display: none; color: var(--danger); font-size: 13px; margin-top: 6px;"></div>
+    </div>
+
     <!-- KPI Cards -->
     <div class="kpi-grid">
       <div class="kpi-card blue">
@@ -943,6 +957,92 @@
 
     applyI18n(getLang());
     init();
+  </script>
+  <script>
+    // --- Gemini API Key (shared across all features) ---
+    (function() {
+      var geminiForm = document.getElementById('dashGeminiForm');
+      var geminiInput = document.getElementById('dashGeminiInput');
+      var geminiBtn = document.getElementById('dashGeminiBtn');
+      var geminiStatus = document.getElementById('dashGeminiStatus');
+      var geminiError = document.getElementById('dashGeminiError');
+      var geminiDesc = document.getElementById('dashGeminiDesc');
+      if (!geminiForm) return;
+
+      function getToken() {
+        return (window.apiClient && window.apiClient.getAdminToken)
+          ? window.apiClient.getAdminToken() : (window.SUITE_ADMIN_TOKEN || '');
+      }
+
+      function updateStatus(configured) {
+        if (configured) {
+          geminiStatus.textContent = '\u2713 Configured';
+          geminiStatus.style.background = 'var(--success)';
+          geminiInput.placeholder = '\u2022\u2022\u2022\u2022 (configured)';
+          geminiBtn.textContent = 'Update Key';
+          geminiDesc.textContent = 'Gemini API key is active. All AI-powered features are enabled.';
+        } else {
+          geminiStatus.textContent = 'Not configured';
+          geminiStatus.style.background = 'var(--danger)';
+          geminiInput.placeholder = 'AIza...';
+          geminiBtn.textContent = 'Set Key';
+          geminiDesc.textContent = 'Enter your Google AI Studio API key to enable Gemini-powered analysis across all features (Council, Scanner, RedTeam, Web Sandbox).';
+        }
+      }
+
+      async function checkStatus() {
+        try {
+          var token = getToken();
+          var res = await fetch('/api/config/gemini-status', {
+            headers: token ? { 'Authorization': 'Bearer ' + token } : {},
+          });
+          if (res.ok) {
+            var data = await res.json();
+            updateStatus(data.configured);
+          }
+        } catch (e) {
+          updateStatus(false);
+        }
+      }
+
+      geminiForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        geminiError.style.display = 'none';
+        var key = geminiInput.value.trim();
+        if (!key) {
+          geminiError.textContent = 'Please enter a valid API key.';
+          geminiError.style.display = '';
+          return;
+        }
+        geminiBtn.disabled = true;
+        geminiBtn.textContent = 'Setting...';
+        try {
+          var token = getToken();
+          var hdrs = { 'Content-Type': 'application/json' };
+          if (token) hdrs['Authorization'] = 'Bearer ' + token;
+          var res = await fetch('/api/config/gemini-key', {
+            method: 'POST',
+            headers: hdrs,
+            body: JSON.stringify({ api_key: key }),
+          });
+          if (res.ok) {
+            geminiInput.value = '';
+            await checkStatus();
+          } else {
+            var data = await res.json().catch(function() { return {}; });
+            geminiError.textContent = data.detail || 'Failed to set key.';
+            geminiError.style.display = '';
+          }
+        } catch (err) {
+          geminiError.textContent = 'Network error: ' + err.message;
+          geminiError.style.display = '';
+        } finally {
+          geminiBtn.disabled = false;
+        }
+      });
+
+      checkStatus();
+    })();
   </script>
   <script>
     document.querySelectorAll('.nav-link').forEach(function(link) {
