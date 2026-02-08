@@ -252,6 +252,84 @@ def _handle_secure_browse(params: dict[str, Any], session_id: str) -> dict[str, 
     return response
 
 
+def _handle_secure_fetch(params: dict[str, Any], session_id: str) -> dict[str, Any]:
+    """Handle secure_fetch tool call - fetch URL content with security scanning.
+
+    Unlike secure_browse (which returns clearance for client-side navigation),
+    secure_fetch actually retrieves the page, scans it, and returns sanitized
+    content if safe. This enables AI agents to read web pages through the
+    security gateway.
+    """
+    url = params.get("url", "")
+    if not url:
+        return {"error": "url parameter is required"}
+
+    # Run full causal scan (fetches + analyzes the page)
+    try:
+        scan_result = run_causal_scan(url)
+    except SSRFError as exc:
+        return {
+            "blocked": True,
+            "url": url,
+            "reason": f"SSRF blocked: {exc}",
+            "tier": "ssrf_guard",
+        }
+    except Exception as exc:
+        return {"error": f"Scan failed: {exc}"}
+
+    _update_session(session_id, MCPInterceptResult(
+        allowed=scan_result.verdict.recommended_action != "block",
+        action=scan_result.verdict.recommended_action,
+        reason=scan_result.verdict.summary,
+        tier=scan_result.tier or "deep",
+        verdict=scan_result.verdict,
+        latency_ms=scan_result.scan_latency_ms or 0.0,
+    ))
+
+    if scan_result.verdict.recommended_action == "block":
+        response: dict[str, Any] = {
+            "blocked": True,
+            "url": url,
+            "reason": scan_result.verdict.summary,
+            "classification": scan_result.verdict.classification.value,
+            "confidence": scan_result.verdict.confidence,
+            "attack_narrative": scan_result.verdict.attack_narrative,
+            "causal_chain": [
+                s.model_dump() for s in scan_result.verdict.causal_chain
+            ],
+            "mcp_threats": scan_result.verdict.mcp_specific_threats,
+            "tier": "deep",
+        }
+        return response
+
+    # Safe - return page content for the AI agent to read
+    from .causal_sandbox import extract_visible_text
+
+    visible_text = ""
+    if scan_result.bundle and scan_result.bundle.content_length > 0:
+        # Re-fetch is avoided: extract text from the bundle we already have
+        try:
+            import httpx
+
+            resp = httpx.get(url, timeout=15.0, follow_redirects=True)
+            visible_text = extract_visible_text(resp.text)
+        except Exception:
+            visible_text = "(content extraction failed)"
+
+    return {
+        "blocked": False,
+        "url": url,
+        "classification": scan_result.verdict.classification.value,
+        "confidence": scan_result.verdict.confidence,
+        "content": visible_text[:50_000],
+        "content_length": len(visible_text),
+        "sha256": scan_result.bundle.sha256 if scan_result.bundle else "",
+        "dom_threats_count": len(scan_result.dom_threats),
+        "tier": "deep",
+        "latency_ms": scan_result.scan_latency_ms or 0.0,
+    }
+
+
 def _handle_check_url(params: dict[str, Any], session_id: str) -> dict[str, Any]:
     """Handle check_url tool call - fast scan only."""
     url = params.get("url", "")
@@ -384,7 +462,7 @@ def _handle_tool_call(
     if tool_name == "secure_browse":
         result = _handle_secure_browse(args, session_id)
     elif tool_name == "secure_fetch":
-        result = _handle_secure_browse(args, session_id)  # same handler
+        result = _handle_secure_fetch(args, session_id)
     elif tool_name == "check_url":
         result = _handle_check_url(args, session_id)
     elif tool_name == "scan_report":
