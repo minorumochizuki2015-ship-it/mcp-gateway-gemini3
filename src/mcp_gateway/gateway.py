@@ -4553,6 +4553,9 @@ async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
             "label": "AI Council Verdict (Gemini 3)",
         })
         for srv_name, sid in server_ids.items():
+            import time as _time
+
+            _t0 = _time.perf_counter()
             try:
                 result = ai_council.evaluate(db, sid)
                 decision = result.get("decision", "unknown")
@@ -4565,6 +4568,7 @@ async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
                 eval_method = "error"
                 rationale = str(exc)
                 scores = {}
+            _council_latency = int((_time.perf_counter() - _t0) * 1000)
 
             # Update allowlist
             if decision in ("allow", "deny", "quarantine"):
@@ -4579,8 +4583,10 @@ async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
             yield _sse_event("step", {
                 "phase": "council", "server": srv_name,
                 "decision": decision, "eval_method": eval_method,
-                "rationale": rationale[:120],
+                "rationale": rationale[:200],
                 "security_score": scores.get("security", 0),
+                "scores": {k: round(v, 2) for k, v in scores.items()} if scores else {},
+                "latency_ms": _council_latency,
                 "icon": "allow" if decision == "allow" else "deny",
             })
             total_events += 1
@@ -4617,14 +4623,45 @@ async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
                     },
                     path=_evidence_path(),
                 )
-                yield _sse_event("step", {
+                # Structured diff data for visual rendering
+                step_data: dict = {
                     "phase": "attack", "server": "suspicious-mcp",
                     "code": finding.get("code", ""),
                     "tool": finding.get("tool_name", ""),
                     "severity": finding.get("severity", ""),
-                    "message": finding.get("message", "")[:120],
+                    "message": finding.get("message", "")[:200],
+                    "confidence": finding.get("confidence", 0),
                     "icon": "attack",
-                })
+                }
+                # Add structured data for visual diff rendering
+                fcode = finding.get("code", "")
+                if fcode == "tool_shadowing":
+                    step_data["actual_name"] = finding.get("tool_name", "")
+                    step_data["legitimate_name"] = finding.get("legitimate_name", "read_file")
+                    # Parse similarity from message if not in finding
+                    _sim = finding.get("similarity", 0)
+                    if not _sim:
+                        import re as _re
+                        _sim_match = _re.search(r"similarity=(\d+)%", finding.get("message", ""))
+                        _sim = float(_sim_match.group(1)) / 100 if _sim_match else 0.88
+                    step_data["similarity"] = _sim
+                elif fcode == "signature_cloaking":
+                    msg = finding.get("message", "")
+                    # Parse "old_desc -> new_desc" from message
+                    if "'" in msg:
+                        parts = msg.split("'")
+                        if len(parts) >= 4:
+                            step_data["old_desc"] = parts[1]
+                            step_data["new_desc"] = parts[3]
+                elif fcode == "bait_and_switch":
+                    _sf = finding.get("sensitive_fields", [])
+                    if not _sf:
+                        import re as _re
+                        _sf_match = _re.search(r"\[([^\]]+)\]", finding.get("message", ""))
+                        if _sf_match:
+                            _sf = [s.strip() for s in _sf_match.group(1).split(",")]
+                    step_data["sensitive_fields"] = _sf
+                yield _sse_event("step", step_data)
                 total_events += 1
                 await asyncio.sleep(0.4)
 
@@ -4646,6 +4683,7 @@ async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
         ]
         for page in _demo_urls:
             page_url = page["url"]
+            _ws_t0 = _time.perf_counter()
             try:
                 # Async HTTP fetch from self-hosted test pages
                 import httpx as _httpx
@@ -4750,6 +4788,7 @@ async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
                 path=_evidence_path(),
             )
 
+            _ws_latency = int((_time.perf_counter() - _ws_t0) * 1000)
             yield _sse_event("step", {
                 "phase": "web_sandbox",
                 "url": page_url,
@@ -4760,6 +4799,9 @@ async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
                 "eval_method": eval_method,
                 "dom_threats": dom_count,
                 "network_traces": net_count,
+                "latency_ms": _ws_latency,
+                "risk_indicators": [str(r) for r in verdict.risk_indicators][:5],
+                "summary": verdict.summary[:150],
                 "icon": "block" if verdict.recommended_action == "block" else (
                     "warn" if verdict.recommended_action == "warn" else "pass"
                 ),

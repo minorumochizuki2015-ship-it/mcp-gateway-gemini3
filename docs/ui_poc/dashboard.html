@@ -569,6 +569,38 @@
           var statusPill = a.status === 'blocked'
             ? '<span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">BLOCKED</span>'
             : '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">FLAGGED</span>';
+          // Enhanced message rendering with visual diffs
+          var msgHtml = '';
+          if (a.code === 'tool_shadowing' && a.message) {
+            // Parse: "Suspiciously similar to well-known tool 'read_file' (similarity=88%)"
+            var match = a.message.match(/similar to.*?'(\w+)'/);
+            var legit = match ? match[1] : '';
+            if (legit && typeof charDiff === 'function') {
+              var df = charDiff(a.tool_name, legit);
+              msgHtml = '<div style="font-size:12px;color:var(--gray-700);"><code style="background:#fee2e2;padding:2px 6px;border-radius:4px;font-family:monospace">' + df.actual + '</code> <span style="color:var(--muted)">mimics</span> <code style="background:#d1fae5;padding:2px 6px;border-radius:4px;font-family:monospace">' + df.legit + '</code></div>';
+            } else {
+              msgHtml = '<div style="font-size:12px;color:var(--gray-700);">' + escapeHtml(a.message) + '</div>';
+            }
+          } else if (a.code === 'signature_cloaking' && a.message) {
+            // Parse: "Description changed X%: 'old' -> 'new'"
+            var parts = a.message.split("'");
+            if (parts.length >= 4) {
+              msgHtml = '<div style="font-size:12px;color:var(--gray-700);">'
+                + '<span style="text-decoration:line-through;color:var(--muted)">"' + escapeHtml(parts[1]) + '"</span>'
+                + ' <span style="color:#dc2626;font-weight:600">&rarr;</span> '
+                + '<span style="color:#dc2626;font-weight:600">"' + escapeHtml(parts[3]) + '"</span>'
+                + '</div>';
+            } else {
+              msgHtml = '<div style="font-size:12px;color:var(--gray-700);">' + escapeHtml(a.message) + '</div>';
+            }
+          } else if (a.code === 'bait_and_switch' && a.message) {
+            // Highlight sensitive field names in the message
+            var msg = escapeHtml(a.message);
+            msg = msg.replace(/\b(password|api_key|session_id|credential|token|secret)\b/gi, '<span style="background:#fee2e2;color:#991b1b;padding:0 4px;border-radius:2px;font-weight:600;font-family:monospace">$1</span>');
+            msgHtml = '<div style="font-size:12px;color:var(--gray-700);">' + msg + '</div>';
+          } else {
+            msgHtml = '<div style="font-size:12px;color:var(--gray-700);">' + escapeHtml(a.message) + '</div>';
+          }
           return '<div style="display:flex;align-items:flex-start;gap:12px;padding:10px 14px;background:var(--gray-50);border-radius:8px;border-left:3px solid ' + color + ';">'
             + '<div style="min-width:60px;font-size:11px;color:var(--muted);white-space:nowrap;">' + escapeHtml(formatTs(a.ts)) + '</div>'
             + '<div style="flex:1;">'
@@ -578,9 +610,9 @@
             + '<span style="font-size:12px;font-weight:600;">' + escapeHtml(a.tool_name) + '</span>'
             + '<span style="font-size:11px;color:var(--muted);">on ' + escapeHtml(a.server || '') + '</span>'
             + '</div>'
-            + '<div style="font-size:12px;color:var(--gray-700);">' + escapeHtml(a.message) + '</div>'
+            + msgHtml
             + '</div>'
-            + '<div style="font-size:11px;color:var(--muted);">' + Math.round((a.confidence || 0) * 100) + '%</div>'
+            + '<div style="font-size:11px;color:var(--muted);font-weight:600;">' + Math.round((a.confidence || 0) * 100) + '%</div>'
             + '</div>';
         }).join('');
         if (attackEmpty) attackEmpty.style.display = 'none';
@@ -683,10 +715,34 @@
       el('flowAllowed').textContent = _interceptStats.allowed + ' ' + d.flowAllowed;
       el('flowBlocked').textContent = _interceptStats.blocked + ' ' + d.flowBlocked;
     }
+    // Latency badge helper
+    function latencyBadge(ms) {
+      if (!ms && ms !== 0) return '';
+      var col = ms < 500 ? '#059669' : (ms < 2000 ? '#d97706' : '#dc2626');
+      var bg = ms < 500 ? '#d1fae5' : (ms < 2000 ? '#fef3c7' : '#fee2e2');
+      return ' <span style="background:' + bg + ';color:' + col + ';padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;font-family:monospace">\u26A1 ' + ms + 'ms</span>';
+    }
+    // Char-level diff for typosquatting
+    function charDiff(actual, legit) {
+      var result = { actual: '', legit: '' };
+      var maxLen = Math.max(actual.length, legit.length);
+      for (var i = 0; i < maxLen; i++) {
+        var a = actual[i] || '', l = legit[i] || '';
+        if (a !== l) {
+          result.actual += '<span style="background:#ef4444;color:#fff;padding:0 2px;border-radius:2px;font-weight:800">' + escapeHtml(a) + '</span>';
+          result.legit += '<span style="background:#10b981;color:#fff;padding:0 2px;border-radius:2px;font-weight:800">' + escapeHtml(l) + '</span>';
+        } else {
+          result.actual += escapeHtml(a);
+          result.legit += escapeHtml(l);
+        }
+      }
+      return result;
+    }
     function pipelineStepHtml(d) {
       var ts = new Date().toLocaleTimeString('en-US', {hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
       var icon = STEP_ICONS[d.icon] || '\u2022';
       var line = '';
+      var detail = '';
       if (d.phase === 'register') {
         var trust = d.trust === 'trusted' ? '<span style="color:var(--success);font-weight:600">trusted</span>' : '<span style="color:var(--danger);font-weight:600">untrusted</span>';
         line = icon + ' LLM requests <b>' + escapeHtml(d.server) + '</b> (' + trust + ', ' + d.tools_count + ' tools) &rarr; Gateway intercepts';
@@ -695,15 +751,72 @@
         line = icon + ' Scanned <b>' + escapeHtml(d.server) + '</b> &rarr; <span style="color:' + stcol + ';font-weight:700">' + escapeHtml(String(d.status).toUpperCase()) + '</span> (' + d.findings + ' findings)';
       } else if (d.phase === 'council') {
         var dcol = d.decision === 'allow' ? 'var(--success)' : (d.decision === 'quarantine' ? 'var(--warn)' : 'var(--danger)');
-        var method = d.eval_method === 'gemini3' ? ' <span style="background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600">Gemini</span>' : ' <span style="background:#f3f4f6;color:#6b7280;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600">Rule-based</span>';
-        line = icon + ' Council: <b>' + escapeHtml(d.server) + '</b> &rarr; <span style="color:' + dcol + ';font-weight:700">' + escapeHtml(String(d.decision).toUpperCase()) + '</span>' + method;
+        var method = (d.eval_method === 'gemini3' || d.eval_method === 'gemini') ? ' <span style="background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600">Gemini 3</span>' : ' <span style="background:#f3f4f6;color:#6b7280;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600">Rule-based</span>';
+        line = icon + ' Council: <b>' + escapeHtml(d.server) + '</b> &rarr; <span style="color:' + dcol + ';font-weight:700">' + escapeHtml(String(d.decision).toUpperCase()) + '</span>' + method + latencyBadge(d.latency_ms);
+        // Expandable rationale
+        if (d.rationale) {
+          var scoresHtml = '';
+          if (d.scores && typeof d.scores === 'object') {
+            var keys = Object.keys(d.scores);
+            if (keys.length > 0) {
+              scoresHtml = '<div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">';
+              keys.forEach(function(k) {
+                var v = d.scores[k];
+                var sc = v >= 0.7 ? '#059669' : (v >= 0.4 ? '#d97706' : '#dc2626');
+                scoresHtml += '<span style="font-size:10px;color:' + sc + ';font-weight:600">' + escapeHtml(k) + ': ' + (v * 100).toFixed(0) + '%</span>';
+              });
+              scoresHtml += '</div>';
+            }
+          }
+          detail = '<div style="margin:4px 0 2px 24px;padding:6px 10px;background:#f8fafc;border-radius:6px;border-left:2px solid #dbeafe;font-size:11px;color:var(--gray-700)">'
+            + '<span style="color:var(--muted);font-weight:600">Rationale:</span> ' + escapeHtml(d.rationale)
+            + scoresHtml + '</div>';
+        }
       } else if (d.phase === 'attack') {
-        line = icon + ' <span style="color:var(--danger);font-weight:700">' + escapeHtml(d.code) + '</span> on <b>' + escapeHtml(d.tool) + '</b>: ' + escapeHtml(d.message);
+        // ── Enhanced Attack Visualization ──
+        if (d.code === 'tool_shadowing' && d.actual_name && d.legitimate_name) {
+          var diff = charDiff(d.actual_name, d.legitimate_name);
+          line = icon + ' <span style="background:#dc2626;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">TOOL SHADOWING</span>'
+            + ' <code style="background:#fee2e2;padding:3px 8px;border-radius:4px;font-family:\'SF Mono\',monospace;font-size:12px">' + diff.actual + '</code>'
+            + ' <span style="color:var(--muted);margin:0 4px">mimics</span>'
+            + ' <code style="background:#d1fae5;padding:3px 8px;border-radius:4px;font-family:\'SF Mono\',monospace;font-size:12px">' + diff.legit + '</code>'
+            + ' <span style="font-size:11px;color:var(--muted)">(similarity: ' + Math.round((d.similarity || 0) * 100) + '%)</span>';
+        } else if (d.code === 'signature_cloaking' && d.old_desc && d.new_desc) {
+          line = icon + ' <span style="background:#dc2626;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">SIGNATURE CLOAKING</span>'
+            + ' on <b>' + escapeHtml(d.tool) + '</b>';
+          detail = '<div style="margin:4px 0 2px 24px;padding:8px 10px;background:#fef2f2;border-radius:6px;border-left:3px solid #dc2626;font-size:12px">'
+            + '<div style="margin-bottom:4px"><span style="text-decoration:line-through;color:var(--muted)">"' + escapeHtml(d.old_desc) + '"</span></div>'
+            + '<div><span style="color:#dc2626;font-weight:700">&darr; changed to</span></div>'
+            + '<div style="margin-top:4px"><span style="color:#dc2626;font-weight:600">"' + escapeHtml(d.new_desc) + '"</span></div>'
+            + '</div>';
+        } else if (d.code === 'bait_and_switch') {
+          var fields = (d.sensitive_fields || []).map(function(f) { return '<span style="background:#fee2e2;color:#991b1b;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600;font-family:monospace">' + escapeHtml(f) + '</span>'; }).join(' ');
+          line = icon + ' <span style="background:#ea580c;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">BAIT & SWITCH</span>'
+            + ' <b>' + escapeHtml(d.tool) + '</b> claims benign but requests: ' + (fields || escapeHtml(d.message));
+        } else {
+          line = icon + ' <span style="color:var(--danger);font-weight:700">' + escapeHtml(d.code) + '</span> on <b>' + escapeHtml(d.tool) + '</b>: ' + escapeHtml(d.message);
+        }
+        if (d.confidence) {
+          line += ' <span style="font-size:10px;color:var(--muted);font-weight:600">conf: ' + Math.round(d.confidence * 100) + '%</span>';
+        }
       } else if (d.phase === 'web_sandbox') {
         var cls = d.classification;
         var ccol = cls === 'benign' ? 'var(--success)' : (cls === 'phishing' ? 'var(--danger)' : 'var(--warn)');
-        var em = d.eval_method === 'gemini' ? ' <span style="background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600">Gemini</span>' : ' <span style="background:#f3f4f6;color:#6b7280;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600">Rule-based</span>';
-        line = icon + ' <b>' + escapeHtml(d.label || d.url) + '</b> &rarr; <span style="color:' + ccol + ';font-weight:700">' + escapeHtml(String(cls).toUpperCase()) + '</span> (conf: ' + (d.confidence * 100).toFixed(0) + '%, ' + d.dom_threats + ' DOM threats)' + em;
+        var em = d.eval_method === 'gemini' ? ' <span style="background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600">Gemini 3</span>' : ' <span style="background:#f3f4f6;color:#6b7280;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600">Rule-based</span>';
+        line = icon + ' <b>' + escapeHtml(d.label || d.url) + '</b> &rarr; <span style="color:' + ccol + ';font-weight:700">' + escapeHtml(String(cls).toUpperCase()) + '</span> (conf: ' + (d.confidence * 100).toFixed(0) + '%, ' + d.dom_threats + ' DOM threats, ' + (d.network_traces || 0) + ' network)' + em + latencyBadge(d.latency_ms);
+        // Show risk indicators and summary as expandable detail
+        if (d.summary || (d.risk_indicators && d.risk_indicators.length > 0)) {
+          var riHtml = '';
+          if (d.risk_indicators && d.risk_indicators.length > 0) {
+            riHtml = '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">';
+            d.risk_indicators.forEach(function(ri) {
+              riHtml += '<span style="background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600">' + escapeHtml(ri) + '</span>';
+            });
+            riHtml += '</div>';
+          }
+          detail = '<div style="margin:4px 0 2px 24px;padding:6px 10px;background:#f8fafc;border-radius:6px;border-left:2px solid ' + ccol + ';font-size:11px;color:var(--gray-700)">'
+            + (d.summary ? escapeHtml(d.summary) : '') + riHtml + '</div>';
+        }
       } else if (d.phase === 'intercept') {
         // ── Tool Call Interception Demo ──
         if (d.action === 'session_start') {
@@ -727,7 +840,9 @@
           line = icon + ' <span style="background:var(--gray-900);color:#fff;padding:3px 12px;border-radius:6px;font-size:11px;font-weight:700">SUMMARY</span> ' + escapeHtml(d.message);
         }
       }
-      return '<div style="padding: 3px 8px; animation: fadeSlideIn 0.3s ease-out; border-left: 2px solid transparent;" class="pipeline-step"><span style="color:var(--muted);margin-right:8px;">' + ts + '</span>' + line + '</div>';
+      var html = '<div style="padding: 3px 8px; animation: fadeSlideIn 0.3s ease-out; border-left: 2px solid transparent;" class="pipeline-step"><span style="color:var(--muted);margin-right:8px;">' + ts + '</span>' + line + '</div>';
+      if (detail) html += detail;
+      return html;
     }
 
     // Demo button handler — SSE live pipeline

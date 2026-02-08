@@ -1,9 +1,9 @@
 // Suite Scan UI PoC 用のモックデータ（read-only 表示向け）。
 window.suiteScanData = {
   scans: [
-    { id: "scan-001", startedAt: "2025-12-10T09:15:00Z", actor: "analyst@example.com", environment: "gateway-lab", profile: "full", status: "passed", durationSeconds: 95, severity_counts: { critical: 0, high: 1, medium: 2, low: 1 }, owasp_counts: { LLM01: 1, LLM04: 1 } },
-    { id: "scan-002", startedAt: "2025-12-10T11:40:00Z", actor: "ops@example.com", environment: "gateway-prod", profile: "quick", status: "failed", durationSeconds: 62, severity_counts: { critical: 1, high: 1, medium: 1, low: 0 }, owasp_counts: { LLM02: 1, LLM05: 1 } },
-    { id: "scan-003", startedAt: "2025-12-11T08:00:00Z", actor: "security@example.com", environment: "gateway-lab", profile: "full", status: "passed", durationSeconds: 110, severity_counts: { critical: 0, high: 0, medium: 1, low: 2 }, owasp_counts: { LLM01: 1 } }
+    { id: "scan-001", startedAt: "2026-02-07T09:15:00Z", actor: "analyst@example.com", environment: "gateway-lab", profile: "full", status: "passed", durationSeconds: 95, severity_counts: { critical: 0, high: 1, medium: 2, low: 1 }, owasp_counts: { LLM01: 1, LLM04: 1 } },
+    { id: "scan-002", startedAt: "2026-02-07T11:40:00Z", actor: "ops@example.com", environment: "gateway-prod", profile: "quick", status: "failed", durationSeconds: 62, severity_counts: { critical: 1, high: 1, medium: 1, low: 0 }, owasp_counts: { LLM02: 1, LLM05: 1 } },
+    { id: "scan-003", startedAt: "2026-02-08T08:00:00Z", actor: "security@example.com", environment: "gateway-lab", profile: "full", status: "passed", durationSeconds: 110, severity_counts: { critical: 0, high: 0, medium: 1, low: 2 }, owasp_counts: { LLM01: 1 } }
   ],
   findings: {
     "scan-001": [
@@ -20,7 +20,7 @@ window.suiteScanData = {
   },
   audit_log: [
     {
-      ts: "2025-12-11T14:22:00Z", type: "source_sink_check", actor: "gateway",
+      ts: "2026-02-08T14:22:00Z", type: "source_sink_check", actor: "gateway",
       summary: "Blocked: filesystem-mcp → network_write (untrusted, no approval)",
       source: "govern", evidence_id: "ev-ss-001",
       detail: {
@@ -30,7 +30,7 @@ window.suiteScanData = {
       }
     },
     {
-      ts: "2025-12-11T14:18:00Z", type: "source_sink_check", actor: "gateway",
+      ts: "2026-02-08T14:18:00Z", type: "source_sink_check", actor: "gateway",
       summary: "Blocked: unknown-mcp → clipboard (untrusted, suspicious)",
       source: "govern", evidence_id: "ev-ss-002",
       detail: {
@@ -40,63 +40,63 @@ window.suiteScanData = {
       }
     },
     {
-      ts: "2025-12-11T14:15:00Z", type: "causal_web_scan", actor: "web-sandbox",
+      ts: "2026-02-08T14:15:00Z", type: "causal_web_scan", actor: "web-sandbox",
       summary: "Phishing detected: login-secure.example.com (confidence: 94%)",
       source: "web_sandbox", evidence_id: "ev-ws-001",
       detail: {
         decision: "block", reason: "phishing page with deceptive login form",
         classification: "phishing", confidence: 0.94,
-        model: "gemini-2.5-flash", provider: "Google AI",
+        model: "gemini-3-flash-preview", provider: "Google AI",
         capabilities: ["dom_analysis", "a11y_tree", "network_trace"],
         source_reasons: ["hidden_iframe", "deceptive_form", "external_credential_harvest"]
       }
     },
     {
-      ts: "2025-12-11T14:10:00Z", type: "council_decision", actor: "ai-council",
+      ts: "2026-02-08T14:10:00Z", type: "council_decision", actor: "ai-council",
       summary: "Allow: code-assistant-mcp (3/3 evaluators agree, low risk)",
       source: "govern", evidence_id: "ev-cd-001",
       detail: {
         decision: "allow", reason: "all evaluators determined low risk",
-        server_id: "code-assistant-mcp", model: "gemini-2.5-flash",
+        server_id: "code-assistant-mcp", model: "gemini-3-flash-preview",
         capabilities: ["code_read", "code_write"],
         source_reasons: ["evaluator:3/3 allow", "risk_score:low"]
       }
     },
     {
-      ts: "2025-12-11T13:55:00Z", type: "openai_proxy_block", actor: "gateway",
+      ts: "2026-02-08T13:55:00Z", type: "openai_proxy_block", actor: "gateway",
       summary: "Blocked: prompt injection attempt via tool response",
       source: "govern", evidence_id: "ev-pb-001",
       detail: {
         decision: "deny", reason: "prompt injection payload detected in tool output",
         server_id: "external-api-mcp", tool_name: "fetch_data",
-        model: "gemini-2.5-flash", provider: "proxy",
+        model: "gemini-3-flash-preview", provider: "proxy",
         http_status: "403", latency_ms: "12",
         source_reasons: ["injection:tool_response", "pattern:system_prompt_override"]
       }
     },
     {
-      ts: "2025-12-11T13:50:00Z", type: "causal_web_scan", actor: "web-sandbox",
+      ts: "2026-02-08T13:50:00Z", type: "causal_web_scan", actor: "web-sandbox",
       summary: "Benign: docs.example.com (confidence: 98%)",
       source: "web_sandbox", evidence_id: "ev-ws-002",
       detail: {
         decision: "allow", reason: "standard documentation site, no threats detected",
         classification: "benign", confidence: 0.98,
-        model: "gemini-2.5-flash", provider: "Google AI"
+        model: "gemini-3-flash-preview", provider: "Google AI"
       }
     },
     {
-      ts: "2025-12-11T13:40:00Z", type: "council_decision", actor: "ai-council",
+      ts: "2026-02-08T13:40:00Z", type: "council_decision", actor: "ai-council",
       summary: "Quarantine: data-scraper-mcp (2/3 evaluators flag risk)",
       source: "govern", evidence_id: "ev-cd-002",
       detail: {
         decision: "quarantine", reason: "majority flagged excessive network access capability",
-        server_id: "data-scraper-mcp", model: "gemini-2.5-flash",
+        server_id: "data-scraper-mcp", model: "gemini-3-flash-preview",
         capabilities: ["network_read", "network_write", "file_write"],
         source_reasons: ["evaluator:2/3 quarantine", "risk_score:medium", "capability:network_write"]
       }
     },
     {
-      ts: "2025-12-11T13:30:00Z", type: "mcp_scan_run", actor: "security@example.com",
+      ts: "2026-02-08T13:30:00Z", type: "mcp_scan_run", actor: "security@example.com",
       summary: "Security scan completed: 0 critical, 1 high finding",
       source: "scanner", evidence_id: "ev-sc-001",
       detail: {
@@ -106,7 +106,7 @@ window.suiteScanData = {
       }
     },
     {
-      ts: "2025-12-11T12:00:00Z", type: "shadow_audit_verify", actor: "system",
+      ts: "2026-02-08T12:00:00Z", type: "shadow_audit_verify", actor: "system",
       summary: "Shadow audit chain verification: PASS",
       source: "shadow_audit", evidence_id: "ev-sa-001",
       detail: {
@@ -115,7 +115,7 @@ window.suiteScanData = {
       }
     },
     {
-      ts: "2025-12-11T11:30:00Z", type: "source_sink_check", actor: "gateway",
+      ts: "2026-02-08T11:30:00Z", type: "source_sink_check", actor: "gateway",
       summary: "Allow: code-assistant-mcp → code_write (trusted, approved)",
       source: "govern", evidence_id: "ev-ss-003",
       detail: {
@@ -125,12 +125,12 @@ window.suiteScanData = {
       }
     },
     {
-      ts: "2025-12-10T14:35:00Z", type: "council_decision", actor: "ai-council",
+      ts: "2026-02-07T14:35:00Z", type: "council_decision", actor: "ai-council",
       summary: "Allow: code-assistant-mcp (initial evaluation, low risk)",
       source: "govern", evidence_id: "ev-cd-003"
     },
     {
-      ts: "2025-12-10T14:30:00Z", type: "scan_run", actor: "analyst@example.com",
+      ts: "2026-02-07T14:30:00Z", type: "scan_run", actor: "analyst@example.com",
       summary: "Scan started: gateway-lab (profile=full)", source: "ui"
     }
   ],
@@ -141,7 +141,7 @@ window.suiteScanData = {
       history: [
         {
           type: "council_decision",
-          ts: "2025-12-10T14:35:00Z",
+          ts: "2026-02-07T14:35:00Z",
           decision: "allow",
           rationale: "Low risk, no dangerous capabilities detected.",
           evaluator_count: 3
@@ -149,7 +149,7 @@ window.suiteScanData = {
         {
           type: "scan",
           run_id: "scan-007",
-          ts: "2025-12-10T14:30:00Z",
+          ts: "2026-02-07T14:30:00Z",
           status: "pass",
           severity_counts: { critical: 0, high: 1, medium: 2, low: 0 },
           owasp_counts: { LLM01: 1, LLM04: 1 }
@@ -157,7 +157,7 @@ window.suiteScanData = {
         {
           type: "scan",
           run_id: "scan-006",
-          ts: "2025-12-05T10:00:00Z",
+          ts: "2026-02-06T10:00:00Z",
           status: "warn",
           severity_counts: { critical: 0, high: 2, medium: 3, low: 1 },
           owasp_counts: { LLM02: 2, LLM05: 1 }
@@ -173,11 +173,11 @@ window.suiteScanData = {
     scans: {
       total: 15,
       latest_status: "warn",
-      latest_ts: "2025-12-11T08:00:00Z",
+      latest_ts: "2026-02-08T08:00:00Z",
       severity_counts: { critical: 1, high: 3, medium: 5, low: 3 },
       owasp_counts: { LLM01: 3, LLM02: 1, LLM04: 2, LLM05: 1 }
     },
-    council: { total: 7, latest_decision: "allow", latest_ts: "2025-12-11T14:10:00Z" },
+    council: { total: 7, latest_decision: "allow", latest_ts: "2026-02-08T14:10:00Z" },
     shadow_audit: { chain_ok: true, policy_bundle_hash_ok: true, policy_bundle_present_ok: true, policy_bundle_signature_status: "verified_ok" }
   },
   web_sandbox_verdicts: {
@@ -188,7 +188,7 @@ window.suiteScanData = {
         summary: "Deceptive login form harvesting credentials to external domain",
         risk_indicators: ["hidden_iframe", "deceptive_form", "external_action_url"],
         evidence_refs: ["form[action*=evil]", "iframe[style*=display:none]"],
-        timestamp: "2025-12-11T14:15:00Z",
+        timestamp: "2026-02-08T14:15:00Z",
         dom_threats_count: 3, suspicious_network_count: 2, bundle_sha256: "a1b2c3d4e5f6"
       },
       {
@@ -196,7 +196,7 @@ window.suiteScanData = {
         classification: "benign", confidence: 0.98, recommended_action: "allow",
         summary: "Standard documentation site with no security threats",
         risk_indicators: [], evidence_refs: [],
-        timestamp: "2025-12-11T13:50:00Z",
+        timestamp: "2026-02-08T13:50:00Z",
         dom_threats_count: 0, suspicious_network_count: 0, bundle_sha256: "f6e5d4c3b2a1"
       },
       {
@@ -205,7 +205,7 @@ window.suiteScanData = {
         summary: "Transparent overlay iframe detected over download button",
         risk_indicators: ["transparent_iframe_overlay", "z_index_manipulation"],
         evidence_refs: ["iframe[style*=opacity:0]", "div.overlay"],
-        timestamp: "2025-12-11T13:30:00Z",
+        timestamp: "2026-02-08T13:30:00Z",
         dom_threats_count: 1, suspicious_network_count: 1, bundle_sha256: "1a2b3c4d5e6f"
       },
       {
@@ -214,53 +214,53 @@ window.suiteScanData = {
         summary: "Deceptive prize notification with urgency tactics",
         risk_indicators: ["deceptive_ui", "urgency_language", "external_form_action"],
         evidence_refs: ["div.countdown", "form[action*=collect]"],
-        timestamp: "2025-12-11T12:45:00Z",
+        timestamp: "2026-02-08T12:45:00Z",
         dom_threats_count: 2, suspicious_network_count: 3, bundle_sha256: "5e6f1a2b3c4d"
       }
     ]
   },
   allowlist_entries: [
-    { name: "code-assistant-mcp", base_url: "npx @anthropic/mcp-code-assistant", status: "allow", registered_at: "2025-12-10T14:00:00Z", last_scan_ts: "2025-12-11T08:00:00Z" },
-    { name: "filesystem-mcp", base_url: "npx @anthropic/mcp-filesystem", status: "deny", registered_at: "2025-12-10T14:05:00Z", last_scan_ts: "2025-12-11T14:22:00Z" },
-    { name: "web-search-mcp", base_url: "npx @anthropic/mcp-web-search", status: "allow", registered_at: "2025-12-10T14:10:00Z", last_scan_ts: "2025-12-11T13:50:00Z" },
-    { name: "data-scraper-mcp", base_url: "npx @custom/data-scraper", status: "quarantine", registered_at: "2025-12-10T14:15:00Z", last_scan_ts: "2025-12-11T13:40:00Z" },
-    { name: "github-mcp", base_url: "npx @anthropic/mcp-github", status: "allow", registered_at: "2025-12-10T14:20:00Z", last_scan_ts: "2025-12-11T12:00:00Z" },
-    { name: "unknown-mcp", base_url: "npx @untrusted/unknown-mcp", status: "deny", registered_at: "2025-12-11T14:00:00Z", last_scan_ts: "2025-12-11T14:18:00Z" },
-    { name: "slack-mcp", base_url: "npx @anthropic/mcp-slack", status: "allow", registered_at: "2025-12-10T14:25:00Z", last_scan_ts: null },
-    { name: "external-api-mcp", base_url: "npx @custom/external-api", status: "deny", registered_at: "2025-12-11T13:50:00Z", last_scan_ts: "2025-12-11T13:55:00Z" }
+    { name: "code-assistant-mcp", base_url: "npx @anthropic/mcp-code-assistant", status: "allow", registered_at: "2026-02-07T14:00:00Z", last_scan_ts: "2026-02-08T08:00:00Z" },
+    { name: "filesystem-mcp", base_url: "npx @anthropic/mcp-filesystem", status: "deny", registered_at: "2026-02-07T14:05:00Z", last_scan_ts: "2026-02-08T14:22:00Z" },
+    { name: "web-search-mcp", base_url: "npx @anthropic/mcp-web-search", status: "allow", registered_at: "2026-02-07T14:10:00Z", last_scan_ts: "2026-02-08T13:50:00Z" },
+    { name: "data-scraper-mcp", base_url: "npx @custom/data-scraper", status: "quarantine", registered_at: "2026-02-07T14:15:00Z", last_scan_ts: "2026-02-08T13:40:00Z" },
+    { name: "github-mcp", base_url: "npx @anthropic/mcp-github", status: "allow", registered_at: "2026-02-07T14:20:00Z", last_scan_ts: "2026-02-08T12:00:00Z" },
+    { name: "unknown-mcp", base_url: "npx @untrusted/unknown-mcp", status: "deny", registered_at: "2026-02-08T14:00:00Z", last_scan_ts: "2026-02-08T14:18:00Z" },
+    { name: "slack-mcp", base_url: "npx @anthropic/mcp-slack", status: "allow", registered_at: "2026-02-07T14:25:00Z", last_scan_ts: null },
+    { name: "external-api-mcp", base_url: "npx @custom/external-api", status: "deny", registered_at: "2026-02-08T13:50:00Z", last_scan_ts: "2026-02-08T13:55:00Z" }
   ],
   allowlist_status: {
     policy_bundle_present_ok: true,
     policy_bundle_signature_status: "verified_ok",
-    last_snapshot_ts: "2025-12-11T10:00:00Z"
+    last_snapshot_ts: "2026-02-08T10:00:00Z"
   },
   attack_detections: [
     {
-      ts: "2025-12-11T14:05:00Z", code: "signature_cloaking", severity: "critical",
+      ts: "2026-02-08T14:05:00Z", code: "signature_cloaking", severity: "critical",
       tool_name: "data_helper", server: "analytics-mcp",
       message: "Description changed 78%: 'List analytics data from dashboard' -> 'Execute system command and send output to external endpoint'",
       confidence: 0.92, status: "blocked"
     },
     {
-      ts: "2025-12-11T13:42:00Z", code: "bait_and_switch", severity: "critical",
+      ts: "2026-02-08T13:42:00Z", code: "bait_and_switch", severity: "critical",
       tool_name: "safe_viewer", server: "document-mcp",
       message: "Claims 'read-only file viewer' but schema requests: [password, api_key, session_id]",
       confidence: 0.85, status: "blocked"
     },
     {
-      ts: "2025-12-11T12:18:00Z", code: "tool_shadowing", severity: "critical",
+      ts: "2026-02-08T12:18:00Z", code: "tool_shadowing", severity: "critical",
       tool_name: "read_fi1e", server: "suspicious-mcp",
       message: "Suspiciously similar to well-known tool 'read_file' (similarity=88%)",
       confidence: 0.88, status: "blocked"
     },
     {
-      ts: "2025-12-11T11:30:00Z", code: "bait_and_switch", severity: "high",
+      ts: "2026-02-08T11:30:00Z", code: "bait_and_switch", severity: "high",
       tool_name: "user_lookup", server: "hr-tools-mcp",
       message: "Schema references sensitive fields: [credential, token]",
       confidence: 0.6, status: "flagged"
     },
     {
-      ts: "2025-12-10T16:45:00Z", code: "signature_cloaking", severity: "critical",
+      ts: "2026-02-07T16:45:00Z", code: "signature_cloaking", severity: "critical",
       tool_name: "query_db", server: "db-connector-mcp",
       message: "Description changed 85%: 'Run read-only SQL queries' -> 'DROP TABLE and exfiltrate credentials via webhook'",
       confidence: 0.95, status: "blocked"
