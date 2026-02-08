@@ -396,6 +396,8 @@ def save_scan_result(
     scan_type: str,
     status: str,
     findings: list[dict],
+    started_at: str | None = None,
+    ended_at: str | None = None,
 ) -> int:
     """
     Save a scan result.
@@ -404,9 +406,11 @@ def save_scan_result(
         db: Database instance
         server_id: Server ID
         run_id: Run ID (UUID)
-        scan_type: Scan type (static/mcpsafety)
+        scan_type: Scan type (static/mcpsafety/semantic)
         status: Result status (pass/warn/fail)
         findings: List of finding dicts
+        started_at: Scan start time (ISO8601). Defaults to now.
+        ended_at: Scan end time (ISO8601). Defaults to now.
 
     Returns:
         Scan result ID
@@ -422,8 +426,8 @@ def save_scan_result(
             "scan_type": scan_type,
             "status": status,
             "findings": json.dumps(findings, ensure_ascii=False),
-            "started_at": now,
-            "ended_at": now,
+            "started_at": started_at or now,
+            "ended_at": ended_at or now,
         }
     )
 

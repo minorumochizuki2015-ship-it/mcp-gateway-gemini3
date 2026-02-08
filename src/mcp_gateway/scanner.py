@@ -482,14 +482,45 @@ def run_scan(
     results = []
 
     for scan_type in scan_types:
+        import time as _time
+
+        _scan_t0 = _time.perf_counter()
+        started_at = datetime.now(timezone.utc).isoformat()
+
         if scan_type == "static":
             result = static_scan(server)
         elif scan_type == "mcpsafety":
             result = safety_scan(server, run_id=run_id, artifacts_root=artifacts_root)
+        elif scan_type == "semantic":
+            # Gemini-powered semantic scan (requires GOOGLE_API_KEY)
+            tools_exposed = []
+            try:
+                import sqlite_utils as _su
+
+                allowlist_row = next(
+                    db["allowlist"].rows_where(
+                        "server_id = ?", [server_id]
+                    ),
+                    None,
+                )
+                if allowlist_row and allowlist_row.get("tools_exposed"):
+                    import json as _json
+
+                    raw = allowlist_row["tools_exposed"]
+                    tools_exposed = (
+                        _json.loads(raw) if isinstance(raw, str) else raw
+                    )
+            except Exception:
+                pass
+            # Wrap tools_exposed as a manifest-like dict for semantic_scan
+            manifest_like = {"tools": tools_exposed} if tools_exposed else None
+            result = semantic_scan(server, manifest_like)
         else:
             raise ValueError(f"Unknown scan type: {scan_type}")
 
-        # Save to registry
+        ended_at = datetime.now(timezone.utc).isoformat()
+
+        # Save to registry with actual timestamps
         registry.save_scan_result(
             db,
             server_id=server_id,
@@ -497,6 +528,8 @@ def run_scan(
             scan_type=scan_type,
             status=result["status"],
             findings=result.get("findings", []),
+            started_at=started_at,
+            ended_at=ended_at,
         )
 
         results.append(result)

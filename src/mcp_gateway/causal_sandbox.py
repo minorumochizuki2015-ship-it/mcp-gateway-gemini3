@@ -580,6 +580,10 @@ def validate_url_ssrf(url: str) -> tuple[str, str]:
     Raises:
         SSRFError: If the URL targets a blocked network or port.
     """
+    # Auto-fix common URL issues (missing //)
+    if url and "://" not in url and url.startswith(("http:", "https:")):
+        url = url.replace("http:", "http://", 1).replace("https:", "https://", 1)
+
     parsed = urlparse(url)
 
     if parsed.scheme not in ALLOWED_SCHEMES:
@@ -587,7 +591,7 @@ def validate_url_ssrf(url: str) -> tuple[str, str]:
 
     hostname = parsed.hostname
     if not hostname:
-        raise SSRFError("No hostname in URL")
+        raise SSRFError(f"Invalid URL format (no hostname): {url}")
 
     port = parsed.port
     if port and port in BLOCKED_PORTS:

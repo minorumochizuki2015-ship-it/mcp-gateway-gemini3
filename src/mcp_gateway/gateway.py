@@ -2324,8 +2324,10 @@ async def trigger_scan(req: ScanRequest, db_path: str = str(DEFAULT_DB_PATH)):
             {"detail": f"server_id {req.server_id} not found"}, status_code=404
         )
 
-    # mcpsafety は必須（skip は fail 扱い）
+    # mcpsafety は必須（skip は fail 扱い）, semantic は Gemini 利用可能時
     scan_types = ["static", "mcpsafety"]
+    if os.getenv("GOOGLE_API_KEY"):
+        scan_types.append("semantic")
 
     # Execute scan
     try:
@@ -4037,12 +4039,41 @@ async def web_sandbox_scan(request: Request, body: WebSandboxScanRequest) -> JSO
     try:
         result = causal_sandbox.run_causal_scan(body.url)
     except causal_sandbox.SSRFError as exc:
+        err_msg = str(exc)
+        # DNS failure: fall back to fast_scan (rule-based analysis only)
+        if "DNS resolution failed" in err_msg:
+            fast_verdict = causal_sandbox.fast_scan(body.url)
+            fast_dict = fast_verdict.model_dump()
+            fast_dict["classification"] = fast_verdict.classification.value
+            fast_dict["causal_chain"] = [
+                s.model_dump() for s in fast_verdict.causal_chain
+            ]
+            resp = {
+                "url": body.url,
+                "verdict": fast_dict,
+                "eval_method": "rule_based (DNS unreachable)",
+                "note": f"Could not fetch page: {err_msg}. Showing rule-based analysis only.",
+                "run_id": f"fast-{uuid.uuid4().hex[:8]}",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "bundle": None,
+            }
+            _WEB_SANDBOX_VERDICTS.append({
+                "url": body.url,
+                "classification": fast_verdict.classification.value,
+                "confidence": fast_verdict.confidence,
+                "recommended_action": fast_verdict.recommended_action,
+                "summary": fast_verdict.summary,
+                "eval_method": "rule_based (DNS unreachable)",
+            })
+            return JSONResponse(resp)
+        # Actual SSRF block (private IP, blocked port, etc.)
         return JSONResponse(
-            {"detail": f"SSRF blocked: {exc}"}, status_code=400
+            {"detail": f"Blocked: {exc}", "type": "ssrf"}, status_code=400
         )
     except causal_sandbox.ResourceLimitError as exc:
         return JSONResponse(
-            {"detail": f"Resource limit: {exc}"}, status_code=400
+            {"detail": f"Resource limit: {exc}", "type": "resource_limit"},
+            status_code=400,
         )
 
     result_dict = result.model_dump()
