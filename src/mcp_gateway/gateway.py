@@ -26,7 +26,8 @@ import httpx
 import sqlite_utils  # type: ignore[import-not-found]
 import yaml
 from fastapi import FastAPI, Request, Response
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import evidence, registry, scanner
@@ -4770,3 +4771,20 @@ async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
             "X-Accel-Buffering": "no",
         },
     )
+
+
+# ---------------------------------------------------------------------------
+# Static file serving — Dashboard UI
+# ---------------------------------------------------------------------------
+
+_UI_DIR = Path(__file__).resolve().parent.parent.parent / "docs" / "ui_poc"
+
+
+@app.get("/")
+async def root_redirect() -> RedirectResponse:
+    """Redirect root to dashboard."""
+    return RedirectResponse(url="/ui/dashboard.html")
+
+
+if _UI_DIR.is_dir():
+    app.mount("/ui", StaticFiles(directory=str(_UI_DIR), html=True), name="ui")
