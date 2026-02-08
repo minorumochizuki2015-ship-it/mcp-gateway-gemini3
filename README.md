@@ -35,14 +35,14 @@ AI Client ──► MCP Gateway ──► MCP Servers
 
 ## Why Gemini 3? (Not Just "Any LLM")
 
-MCP Gateway uses **4 Gemini 3 exclusive features** that cannot be replicated by other models:
+MCP Gateway uses **4 Gemini 3 exclusive features** across **all 5 integration points** — not just one component:
 
-| Gemini 3 Feature | How We Use It | Why Only Gemini 3 |
-|-----------|---------------|---------------|
-| **Thinking Levels** | `thinking_level="high"` for deep scan, `"low"` for fast scan | 2-tier security: deep reasoning for threats, minimal latency for safe URLs |
-| **URL Context** | `Tool(url_context=UrlContext())` | Gemini 3 **browses the URL itself** — multimodal page analysis without our own renderer |
-| **Google Search Grounding** | `Tool(google_search=GoogleSearch())` | Real-time threat intelligence: "Has this domain been reported as phishing?" |
-| **Structured Output + Tools** | `response_schema=WebSecurityVerdict` with built-in tools | Combine URL browsing + search + typed JSON verdict in a single API call |
+| Gemini 3 Feature | Used In | Why Only Gemini 3 |
+|-----------|--------|---------------|
+| **Thinking Levels** | All 5 components (`high` for security, `low` for speed) | 2-tier reasoning: deep analysis for threats, fast triage for safe content |
+| **URL Context** | Web Sandbox | Gemini 3 **browses the URL itself** — multimodal page analysis without our own renderer |
+| **Google Search Grounding** | AI Council + Web Sandbox | Real-time threat intel: "Has this server/domain been reported as malicious?" |
+| **Structured Output + Tools** | All 5 components (typed JSON schemas) | Combine browsing + search + typed verdict in a single API call |
 
 **Architecture**: Gemini 3 is not a "classifier at the end" — it is the **reasoning engine** that browses, searches, thinks, and decides:
 
