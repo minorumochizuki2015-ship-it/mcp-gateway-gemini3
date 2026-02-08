@@ -1472,6 +1472,7 @@ async def about() -> JSONResponse:
                 "schema": "SemanticScanResult",
                 "gemini_features": [
                     "thinking_level_high",
+                    "google_search",
                     "structured_output",
                 ],
             },

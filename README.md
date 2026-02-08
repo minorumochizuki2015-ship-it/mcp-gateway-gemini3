@@ -41,7 +41,7 @@ MCP Gateway uses **4 Gemini 3 exclusive features** across **all 5 integration po
 |-----------|--------|---------------|
 | **Thinking Levels** | All 5 components (`high` for security, `low` for speed) | 2-tier reasoning: deep analysis for threats, fast triage for safe content |
 | **URL Context** | Web Sandbox | Gemini 3 **browses the URL itself** — multimodal page analysis without our own renderer |
-| **Google Search Grounding** | AI Council + Web Sandbox | Real-time threat intel: "Has this server/domain been reported as malicious?" |
+| **Google Search Grounding** | AI Council + Semantic Scanner + Web Sandbox | Real-time threat intel: "Has this server/domain/package been reported as malicious?" |
 | **Structured Output + Tools** | All 5 components (typed JSON schemas) | Combine browsing + search + typed verdict in a single API call |
 
 **Architecture**: Gemini 3 is not a "classifier at the end" — it is the **reasoning engine** that browses, searches, thinks, and decides:
@@ -74,7 +74,7 @@ verdict = WebSecurityVerdict.model_validate_json(response.text)
 | # | Component | Schema | Gemini 3 Features Used |
 |---|-----------|--------|-------------|
 | 1 | **AI Council** | `CouncilVerdict` | **thinking_level=high** + **Google Search grounding** + structured output |
-| 2 | **Semantic Scanner** | `SemanticScanResult` | **thinking_level=high** + structured output for hidden threat detection |
+| 2 | **Semantic Scanner** | `SemanticScanResult` | **thinking_level=high** + **Google Search** + structured output |
 | 3 | **RedTeam Generator** | `RedTeamGeneration` | **thinking_level=low** + structured output for fast attack generation |
 | 4 | **RedTeam Evaluator** | `PayloadSafetyVerdict` | **thinking_level=high** + structured output for safety assessment |
 | 5 | **Causal Web Sandbox** | `WebSecurityVerdict` | **thinking_level + URL Context + Google Search + structured output** |
