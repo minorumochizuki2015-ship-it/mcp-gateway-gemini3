@@ -1567,6 +1567,29 @@ window.escapeHtml = function escapeHtml(str) {
   window.getSetupCompletion = getSetupCompletion;
   window.applyNavOrder = applyNavOrder;
 
+	  // Demo mode auto-detection: skip auth when MCP_GATEWAY_DEMO_MODE=true
+	  async function detectDemoMode() {
+	    try {
+	      const res = await fetch(`${BASE}/demo/status`, { method: "GET" });
+	      if (!res.ok) return;
+	      const data = await res.json();
+	      if (data && data.demo_mode === true) {
+	        adminSessionRequired = false;
+	        window.SUITE_DEMO_MODE = true;
+	        // Auto-create admin session so all auth: true calls succeed
+	        try {
+	          await fetch(`${CONTROL_BASE}/control/session`, {
+	            method: "POST",
+	            headers: { Accept: "application/json", Authorization: "Bearer demo" },
+	            mode: "cors",
+	            credentials: "include",
+	          });
+	        } catch (_) { /* best-effort session bootstrap */ }
+	        updateAdminSessionBanner();
+	      }
+	    } catch (_) { /* gateway unreachable, ignore */ }
+	  }
+
 	  if (typeof document !== "undefined") {
 	    if (document.readyState === "loading") {
 	      document.addEventListener("DOMContentLoaded", () => {
@@ -1574,12 +1597,14 @@ window.escapeHtml = function escapeHtml(str) {
 	        updateDangerBanner();
 	        updateAdminSessionBanner();
 	        setInterval(tickBanners, 1000);
+	        detectDemoMode();
 	      });
 	    } else {
 	      applyNavOrder();
 	      updateDangerBanner();
 	      updateAdminSessionBanner();
 	      setInterval(tickBanners, 1000);
+	      detectDemoMode();
 	    }
 	  }
 

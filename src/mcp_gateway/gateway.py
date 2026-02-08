@@ -76,6 +76,7 @@ UPSTREAM_BASE_ENV = "MCP_GATEWAY_UPSTREAM_BASE_URL"
 UPSTREAM_API_KEY_ENV = "MCP_GATEWAY_UPSTREAM_API_KEY"
 ADMIN_TOKEN_ENV = "MCP_GATEWAY_ADMIN_TOKEN"
 ADMIN_TOKEN_FILE_ENV = "MCP_GATEWAY_ADMIN_TOKEN_FILE"
+DEMO_MODE_ENV = "MCP_GATEWAY_DEMO_MODE"
 ADMIN_SESSION_COOKIE_NAME = "mcp_gateway_admin_session"
 ADMIN_SESSION_TTL_ENV = "MCP_GATEWAY_ADMIN_SESSION_TTL_S"
 ADMIN_SESSION_SECURE_ENV = "MCP_GATEWAY_ADMIN_SESSION_SECURE"
@@ -676,7 +677,14 @@ def _csrf_guard(request: Request) -> JSONResponse | None:
     return None
 
 
+def _is_demo_mode() -> bool:
+    """Check if demo mode is enabled (skips all auth)."""
+    return _env_bool(DEMO_MODE_ENV, default=False)
+
+
 def _admin_auth_guard(request: Request) -> JSONResponse | None:
+    if _is_demo_mode():
+        return None  # Demo mode: skip all auth
     token = _read_secret(ADMIN_TOKEN_ENV, ADMIN_TOKEN_FILE_ENV)
     if not token:
         return JSONResponse({"detail": "admin token not configured"}, status_code=503)
@@ -852,6 +860,8 @@ def _client_auth_info(
 def _proxy_auth_guard(
     request: Request, *, path: str, db_path: str | Path | None = None
 ) -> JSONResponse | None:
+    if _is_demo_mode():
+        return None  # Demo mode: skip proxy auth
     allowed, status, message = _client_auth_info(request, db_path)
     if allowed:
         return None
@@ -4001,6 +4011,17 @@ _DEMO_SERVERS = [
 ]
 
 
+@app.get("/api/demo/status")
+async def demo_status() -> JSONResponse:
+    """Return demo mode status — used by UI to auto-configure."""
+    return JSONResponse({
+        "demo_mode": _is_demo_mode(),
+        "auth_required": not _is_demo_mode(),
+        "admin_token_configured": bool(_read_secret(ADMIN_TOKEN_ENV, ADMIN_TOKEN_FILE_ENV)),
+        "gemini_configured": bool(os.getenv("GOOGLE_API_KEY", "")),
+    })
+
+
 @app.post("/api/demo/run-scenario")
 async def demo_run_scenario(db_path: str = str(DEFAULT_DB_PATH)) -> JSONResponse:
     """Run a live demo scenario that populates all dashboard panels.
@@ -4428,12 +4449,13 @@ async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
     Accepts admin auth via session cookie, Bearer header, or ?token= query param
     (EventSource API cannot set custom headers).
     """
-    # SSE-compatible auth: check query param token first (EventSource workaround)
-    admin_token = _read_secret(ADMIN_TOKEN_ENV, ADMIN_TOKEN_FILE_ENV)
-    if admin_token and token and token == admin_token:
-        pass  # query param token valid
-    elif guard := _admin_auth_guard(request):
-        return guard  # type: ignore[return-value]
+    # SSE-compatible auth: demo mode skips all auth
+    if not _is_demo_mode():
+        admin_token = _read_secret(ADMIN_TOKEN_ENV, ADMIN_TOKEN_FILE_ENV)
+        if admin_token and token and token == admin_token:
+            pass  # query param token valid
+        elif guard := _admin_auth_guard(request):
+            return guard  # type: ignore[return-value]
 
     async def event_stream():  # noqa: C901
         from . import ai_council
