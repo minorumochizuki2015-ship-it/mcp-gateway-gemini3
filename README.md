@@ -150,6 +150,9 @@ Three novel detectors targeting MCP supply-chain threats:
 | **Signature Cloaking** | Tool description changes post-registration | Jaccard word-set similarity (<40% = cloaking) |
 | **Bait-and-Switch** | Benign description + malicious schema | Schema field vs description claim analysis |
 | **Tool Shadowing** | Names mimicking trusted tools | Character-level similarity vs 20 well-known MCP tools |
+| **DGA Detection** | Algorithmically generated domains | Shannon entropy + consonant ratio + cluster analysis |
+| **Brand Impersonation** | Domain mimicking known brands | 500+ brand database, compound TLD support |
+| **MCP Zero-Day** | JSON-RPC injection in web content | 7 MCP-specific threat patterns in DOM/scripts |
 
 ## Causal Web Sandbox
 
@@ -272,7 +275,7 @@ gcloud run services describe mcp-gateway --format='value(status.url)'
 ## Test Suite
 
 ```bash
-# 339 tests
+# 345 tests
 python -m pytest tests/ -v
 
 # Gemini integration tests only
@@ -338,14 +341,60 @@ src/mcp_gateway/
   scanner.py          # Static + Semantic + Advanced Attack Detection
   redteam.py          # Attack generation + safety evaluation
   causal_sandbox.py   # Evidence-based web security (Gemini 3)
+  mcp_security_server.py # MCP Security Server (stdio + HTTP transport)
   sanitizer.py        # Multi-level prompt injection defense
   evidence.py         # JSONL evidence trail + Memory Ledger
   ssot/               # Memory Ledger (persistent SSOT) + Durable Streams
   registry.py         # MCP server registration and management
 
 docs/ui_poc/          # Dashboard UI (9 pages, bilingual EN/JA)
-acl-proxy/            # Rust ACL-aware HTTP/HTTPS proxy
+Dockerfile            # Cloud Run deployment
 docker-compose.yml    # One-command full stack deployment
+cloudbuild.yaml       # Google Cloud Build config
+```
+
+## Connecting AI Agents
+
+### MCP over HTTP (Streamable HTTP Transport)
+
+Any MCP-compatible client can connect to the security gateway over HTTP:
+
+```bash
+# Initialize
+curl -X POST http://localhost:4100/mcp/security \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'
+
+# Check URL safety (fast scan)
+curl -X POST http://localhost:4100/mcp/security \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"check_url","arguments":{"url":"https://example.com"}}}'
+
+# Full security scan with Gemini causal analysis
+curl -X POST http://localhost:4100/mcp/security \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"scan_report","arguments":{"url":"https://suspicious-site.tk"}}}'
+```
+
+### MCP over stdio (for local AI agents)
+
+```bash
+python -m src.mcp_gateway.mcp_security_server
+# Reads/writes JSON-RPC 2.0 with Content-Length framing (LSP-style)
+```
+
+### REST API (for non-MCP integrations)
+
+```bash
+# Quick URL check via REST
+curl -X POST http://localhost:4100/api/web-sandbox/scan \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://suspicious-site.tk"}'
+
+# MCP tool call interception
+curl -X POST http://localhost:4100/api/mcp/intercept \
+  -H "Content-Type: application/json" \
+  -d '{"method":"tools/call","params":{"name":"fetch","arguments":{"url":"https://evil.tk"}}}'
 ```
 
 ## Security Notice
