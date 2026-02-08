@@ -1459,25 +1459,38 @@ async def about() -> JSONResponse:
                 "id": 1,
                 "component": "AI Council",
                 "schema": "CouncilVerdict",
-                "gemini_features": ["structured_output", "seed_reproducibility"],
+                "gemini_features": [
+                    "thinking_level_high",
+                    "structured_output",
+                    "seed_reproducibility",
+                ],
             },
             {
                 "id": 2,
                 "component": "Semantic Scanner",
                 "schema": "SemanticScanResult",
-                "gemini_features": ["structured_output"],
+                "gemini_features": [
+                    "thinking_level_high",
+                    "structured_output",
+                ],
             },
             {
                 "id": 3,
                 "component": "RedTeam Generator",
                 "schema": "RedTeamGeneration",
-                "gemini_features": ["structured_output"],
+                "gemini_features": [
+                    "thinking_level_low",
+                    "structured_output",
+                ],
             },
             {
                 "id": 4,
                 "component": "RedTeam Evaluator",
                 "schema": "PayloadSafetyVerdict",
-                "gemini_features": ["structured_output"],
+                "gemini_features": [
+                    "thinking_level_high",
+                    "structured_output",
+                ],
             },
             {
                 "id": 5,
@@ -4877,7 +4890,7 @@ async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
                 )
 
             _council_gemini = (
-                ["structured_output", "seed_reproducibility"]
+                ["thinking_level=high", "structured_output", "seed_reproducibility"]
                 if eval_method == "gemini" else []
             )
             yield _sse_event("step", {

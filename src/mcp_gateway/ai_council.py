@@ -171,6 +171,7 @@ def _evaluate_with_gemini(
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_schema=CouncilVerdict,
+                thinking_config=types.ThinkingConfig(thinking_level="high"),
                 temperature=META_TEMPERATURE,
                 max_output_tokens=META_MAX_TOKENS,
                 seed=META_SEED,

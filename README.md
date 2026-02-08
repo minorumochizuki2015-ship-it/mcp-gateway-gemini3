@@ -73,10 +73,10 @@ verdict = WebSecurityVerdict.model_validate_json(response.text)
 
 | # | Component | Schema | Gemini 3 Features Used |
 |---|-----------|--------|-------------|
-| 1 | **AI Council** | `CouncilVerdict` | Structured output + seed reproducibility |
-| 2 | **Semantic Scanner** | `SemanticScanResult` | Deep analysis of tool descriptions for hidden threats |
-| 3 | **RedTeam Generator** | `RedTeamGeneration` | Dynamic attack scenario generation |
-| 4 | **RedTeam Evaluator** | `PayloadSafetyVerdict` | AI-powered safety assessment |
+| 1 | **AI Council** | `CouncilVerdict` | **thinking_level=high** + structured output + seed reproducibility |
+| 2 | **Semantic Scanner** | `SemanticScanResult` | **thinking_level=high** + structured output for hidden threat detection |
+| 3 | **RedTeam Generator** | `RedTeamGeneration` | **thinking_level=low** + structured output for fast attack generation |
+| 4 | **RedTeam Evaluator** | `PayloadSafetyVerdict` | **thinking_level=high** + structured output for safety assessment |
 | 5 | **Causal Web Sandbox** | `WebSecurityVerdict` | **thinking_level + URL Context + Google Search + structured output** |
 
 ### Causal Web Sandbox: The "Only Gemini 3 Can Do This" Feature

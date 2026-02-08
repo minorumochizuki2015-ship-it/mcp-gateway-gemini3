@@ -155,6 +155,7 @@ def generate_attack_scenarios(
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_schema=RedTeamGeneration,
+                thinking_config=types.ThinkingConfig(thinking_level="low"),
                 temperature=0.7,
                 max_output_tokens=2048,
                 seed=42,
@@ -207,6 +208,7 @@ def evaluate_response_safety(
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_schema=PayloadSafetyVerdict,
+                thinking_config=types.ThinkingConfig(thinking_level="high"),
                 temperature=0.0,
                 max_output_tokens=512,
                 seed=42,

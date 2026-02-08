@@ -654,6 +654,7 @@ def semantic_scan(server: dict, manifest: dict | None = None) -> dict:
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_schema=SemanticScanResult,
+                thinking_config=types.ThinkingConfig(thinking_level="high"),
                 temperature=0.0,
                 max_output_tokens=2048,
                 seed=42,
