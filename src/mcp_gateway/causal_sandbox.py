@@ -123,16 +123,85 @@ SUSPICIOUS_DOMAINS = {
     "shorturl.at",
 }
 
-# TLDs frequently abused in phishing/scam (Spamhaus + APWG data)
+# TLDs frequently abused in phishing/scam
+# Sources: Spamhaus Domain Report 2025, Stobbs TLD Threat Analysis,
+#   Unit42 TLD Tracker, APWG Phishing Trends
 SUSPICIOUS_TLDS = {
-    "tk", "ml", "ga", "cf", "gq",  # Freenom free domains
+    # Freenom free domains (historically #1 abuse)
+    "tk", "ml", "ga", "cf", "gq",
+    # Spamhaus Top 20 most abused gTLDs
     "top", "xyz", "buzz", "icu", "click", "link", "work",
     "surf", "rest", "monster", "sbs", "cfd", "cyou",
+    "bond", "mom", "vip", "lol", "fun", "skin", "cam",
+    # Stobbs highest-threat TLDs (>35% malicious domains)
+    "xin", "qpon", "locker", "town", "pizza", "pictures",
+    "loan", "poker", "bid",
+    # Additional high-abuse gTLDs (Unit42 / APWG)
+    "autos", "hair", "beauty", "quest", "makeup", "boats",
+    "stream", "download", "racing", "win", "gdn", "review",
+    "accountant", "date", "faith", "party", "science", "trade",
+    "cricket", "webcam",
 }
 
 # Country-code TLDs with elevated abuse rates (combined with DGA = high risk)
 ELEVATED_CC_TLDS = {
     "my", "pw", "ws", "cc", "vu", "to", "nu", "su",
+    "st", "ng", "tv", "ru", "me", "cn", "tw",
+}
+
+# Well-known safe TLDs - anything NOT in this set gets flagged as "rare TLD"
+KNOWN_SAFE_TLDS = {
+    # Legacy gTLDs
+    "com", "net", "org", "edu", "gov", "mil", "int",
+    # Major ccTLDs (low abuse rate per Spamhaus)
+    "jp", "uk", "de", "fr", "au", "ca", "nl", "se", "no", "fi",
+    "dk", "at", "ch", "be", "ie", "nz", "sg", "kr", "it", "es",
+    "pt", "pl", "cz", "hu", "br", "mx", "ar", "cl", "co",
+    "in", "za", "il", "ae", "hk", "tw",
+    # Established gTLDs with good reputation
+    "io", "dev", "app", "page", "ai", "cloud", "tech", "info",
+    "biz", "pro", "name", "museum", "coop", "aero", "travel",
+    "jobs", "mobi", "asia", "cat", "tel",
+}
+
+# Compound TLD suffixes (two-part TLDs where SLD is one level deeper)
+COMPOUND_TLD_SUFFIXES = {
+    "co.jp", "or.jp", "ne.jp", "ac.jp", "go.jp", "ed.jp", "ad.jp",
+    "co.uk", "org.uk", "ac.uk", "gov.uk",
+    "co.kr", "or.kr", "ac.kr",
+    "co.in", "org.in", "ac.in", "gov.in",
+    "co.za", "org.za", "ac.za",
+    "co.nz", "org.nz", "ac.nz",
+    "com.au", "org.au", "edu.au", "gov.au",
+    "com.br", "org.br", "edu.br", "gov.br",
+    "com.sg", "org.sg", "edu.sg", "gov.sg",
+    "com.tw", "org.tw", "edu.tw", "gov.tw",
+    "com.hk", "org.hk", "edu.hk", "gov.hk",
+    "com.mx", "org.mx", "edu.mx", "gob.mx",
+    "com.ar", "org.ar", "edu.ar", "gob.ar",
+    "com.cn", "org.cn", "edu.cn", "gov.cn",
+}
+
+# Brand names commonly impersonated in phishing (JP + Global)
+IMPERSONATED_BRANDS = {
+    # Japanese railway / transport
+    "odakyu", "keio", "tokyu", "seibu", "tobu", "hankyu", "hanshin",
+    "kintetsu", "meitetsu", "nankai", "sotetsu", "jreast", "jrwest",
+    "shinkansen", "suica", "pasmo", "ekinet",
+    # Japanese banks / finance
+    "mufg", "smbc", "mizuho", "rakuten", "aeon", "saison",
+    "orico", "jaccs", "nicos", "aplus",
+    # Japanese e-commerce / services
+    "mercari", "yahoo", "docomo", "softbank", "kddi",
+    "mynavi", "recruit", "zozo", "askul",
+    # Global tech
+    "google", "microsoft", "apple", "amazon", "meta", "facebook",
+    "instagram", "twitter", "netflix", "spotify", "paypal",
+    "linkedin", "github", "openai", "anthropic",
+    # Global banks
+    "chase", "citibank", "hsbc", "barclays", "wellsfargo",
+    # Delivery / logistics
+    "sagawa", "yamato", "kuroneko", "jppost", "fedex", "ups", "dhl",
 }
 
 # MCP / JSON-RPC zero-day injection patterns in web content
@@ -1241,12 +1310,54 @@ def _rule_based_verdict(
     tld = parts[-1] if parts else ""
     on_suspicious_tld = tld in SUSPICIOUS_TLDS
     on_elevated_cc = tld in ELEVATED_CC_TLDS
+    on_rare_tld = tld and tld not in KNOWN_SAFE_TLDS and tld not in SUSPICIOUS_TLDS and tld not in ELEVATED_CC_TLDS
     if on_suspicious_tld:
         risk_indicators.append(f"URL: suspicious_tld (.{tld})")
         evidence_refs.append(url)
     elif on_elevated_cc and is_dga:
         risk_indicators.append(f"URL: dga_on_abused_cctld (.{tld})")
         evidence_refs.append(url)
+    elif on_elevated_cc:
+        risk_indicators.append(f"URL: elevated_abuse_cctld (.{tld})")
+        evidence_refs.append(url)
+    if on_rare_tld:
+        risk_indicators.append(f"URL: rare_unknown_tld (.{tld})")
+        evidence_refs.append(url)
+
+    # --- Brand impersonation detection ---
+    has_brand_impersonation = False
+    impersonated_brand = ""
+    # Find effective SLD (registrable domain, accounting for compound TLDs)
+    _compound = ".".join(parts[-2:]) if len(parts) >= 2 else ""
+    _is_compound_tld = _compound in COMPOUND_TLD_SUFFIXES
+    _sld_index = -3 if _is_compound_tld and len(parts) >= 3 else -2
+    _sld = parts[_sld_index] if abs(_sld_index) <= len(parts) else ""
+    domain_without_tld = ".".join(parts[:-1]) if len(parts) > 1 else ""
+    domain_labels = domain_without_tld.split(".")
+    _legit_tlds = {"com", "co", "jp", "org", "net", "io", "dev"}
+    for label in domain_labels:
+        label_lower = label.lower()
+        if label_lower in IMPERSONATED_BRANDS:
+            # If brand IS the SLD AND TLD is legitimate → skip
+            if label_lower == _sld and tld in _legit_tlds:
+                continue
+            # Brand on suspicious/rare TLD (e.g. odakyu.qpon, paypal.xyz)
+            if tld not in _legit_tlds:
+                has_brand_impersonation = True
+                impersonated_brand = label_lower
+                risk_indicators.append(
+                    f"Brand: impersonation_detected ({label_lower} on .{tld})"
+                )
+                evidence_refs.append(hostname)
+                break
+            # Brand in subdomain of unrelated domain (e.g. amazon.evil.com)
+            has_brand_impersonation = True
+            impersonated_brand = label_lower
+            risk_indicators.append(
+                f"Brand: subdomain_impersonation ({label_lower})"
+            )
+            evidence_refs.append(hostname)
+            break
 
     # --- MCP injection detection ---
     has_mcp_injection = any(t.threat_type == "mcp_injection" for t in dom_threats)
@@ -1309,6 +1420,14 @@ def _rule_based_verdict(
         scam_score += 2
     elif on_elevated_cc and is_dga:
         scam_score += 2  # DGA + abused ccTLD combination
+    elif on_elevated_cc:
+        scam_score += 1  # Elevated ccTLD alone
+    if on_rare_tld:
+        scam_score += 1  # Unknown/rare TLD is a minor signal
+    if has_brand_impersonation:
+        scam_score += 4  # Brand impersonation is critical
+    if has_brand_impersonation and on_suspicious_tld:
+        scam_score += 2  # Combo: brand on bad TLD
     if dga_resource_count > 0:
         scam_score += 1
     if has_mcp_injection:
@@ -1322,6 +1441,14 @@ def _rule_based_verdict(
     # --- Classification logic ---
     if has_mcp_injection:
         classification = ThreatClassification.malware
+        confidence = min(0.7 + scam_score * 0.03, 0.95)
+        action = "block"
+    elif has_brand_impersonation and on_suspicious_tld:
+        classification = ThreatClassification.phishing
+        confidence = min(0.85 + scam_score * 0.01, 0.95)
+        action = "block"
+    elif has_brand_impersonation:
+        classification = ThreatClassification.phishing
         confidence = min(0.7 + scam_score * 0.03, 0.95)
         action = "block"
     elif has_phishing_form:
@@ -1373,11 +1500,13 @@ def _rule_based_verdict(
     causal_chain = _build_causal_chain(
         url, dom_threats, a11y_issues, network_traces,
         is_dga, on_suspicious_tld, on_elevated_cc, has_mcp_injection,
+        has_brand_impersonation, impersonated_brand,
     )
 
     # Build attack narrative
     narrative = _build_attack_narrative(
         classification, causal_chain, is_dga, has_mcp_injection, hostname,
+        has_brand_impersonation, impersonated_brand,
     )
 
     # MCP-specific threats
@@ -1386,6 +1515,11 @@ def _rule_based_verdict(
         mcp_threats.append(
             "JSON-RPC/MCP protocol injection detected in page content. "
             "An AI agent browsing this page could execute attacker-controlled tool calls."
+        )
+    if has_brand_impersonation:
+        mcp_threats.append(
+            f"Brand impersonation detected: '{impersonated_brand}' on .{tld} domain. "
+            "AI agents should not trust credentials or data from impersonation sites."
         )
     if is_dga:
         mcp_threats.append(
@@ -1425,6 +1559,8 @@ def _build_causal_chain(
     on_suspicious_tld: bool,
     on_elevated_cc: bool,
     has_mcp_injection: bool,
+    has_brand_impersonation: bool = False,
+    impersonated_brand: str = "",
 ) -> list[CausalChainStep]:
     """Build a causal chain explaining the attack progression."""
     steps: list[CausalChainStep] = []
@@ -1492,6 +1628,20 @@ def _build_causal_chain(
             risk_level="critical",
         ))
 
+    # Step: Brand impersonation
+    if has_brand_impersonation:
+        step_num += 1
+        steps.append(CausalChainStep(
+            step=step_num,
+            action=f"Domain impersonates known brand '{impersonated_brand}'",
+            consequence=(
+                f"Users/agents trust '{impersonated_brand}' brand, "
+                f"but this domain is NOT the legitimate site"
+            ),
+            evidence=f"hostname={hostname}, brand={impersonated_brand}",
+            risk_level="critical",
+        ))
+
     # Step: MCP injection
     if has_mcp_injection:
         mcp_nodes = [t for t in dom_threats if t.threat_type == "mcp_injection"]
@@ -1551,6 +1701,8 @@ def _build_attack_narrative(
     is_dga: bool,
     has_mcp_injection: bool,
     hostname: str,
+    has_brand_impersonation: bool = False,
+    impersonated_brand: str = "",
 ) -> str:
     """Build natural language attack narrative from causal chain."""
     if not causal_chain:
@@ -1560,7 +1712,20 @@ def _build_attack_narrative(
 
     parts: list[str] = []
 
-    if is_dga and has_mcp_injection:
+    if has_brand_impersonation and has_mcp_injection:
+        parts.append(
+            f"CRITICAL: '{hostname}' impersonates '{impersonated_brand}' and "
+            f"hosts MCP protocol injection payloads. AI agents trusting this brand "
+            f"would be exposed to tool_call hijacking through their MCP connection."
+        )
+    elif has_brand_impersonation:
+        tld = hostname.rsplit(".", 1)[-1] if "." in hostname else ""
+        parts.append(
+            f"PHISHING: '{hostname}' impersonates the brand '{impersonated_brand}' "
+            f"on a .{tld} domain (not the legitimate site). This is a classic "
+            f"brand spoofing attack targeting users who trust '{impersonated_brand}'."
+        )
+    elif is_dga and has_mcp_injection:
         parts.append(
             f"CRITICAL: '{hostname}' is an algorithmically generated domain hosting "
             f"MCP protocol injection payloads. An AI agent browsing this page would be "
@@ -1641,10 +1806,47 @@ def fast_scan(url: str) -> WebSecurityVerdict:
     on_suspicious_tld = tld in SUSPICIOUS_TLDS
     on_elevated_cc = tld in ELEVATED_CC_TLDS
 
+    on_rare_tld = (
+        tld and tld not in KNOWN_SAFE_TLDS
+        and tld not in SUSPICIOUS_TLDS and tld not in ELEVATED_CC_TLDS
+    )
+
     if on_suspicious_tld:
         risk_indicators.append(f"URL: suspicious_tld (.{tld})")
     if on_elevated_cc and is_dga:
         risk_indicators.append(f"URL: dga_on_abused_cctld (.{tld})")
+    if on_rare_tld:
+        risk_indicators.append(f"URL: rare_unknown_tld (.{tld})")
+
+    # Brand impersonation check
+    has_brand_impersonation = False
+    impersonated_brand = ""
+    _compound_fs = ".".join(parts[-2:]) if len(parts) >= 2 else ""
+    _is_compound_fs = _compound_fs in COMPOUND_TLD_SUFFIXES
+    _sld_idx_fs = -3 if _is_compound_fs and len(parts) >= 3 else -2
+    _sld_fs = parts[_sld_idx_fs] if abs(_sld_idx_fs) <= len(parts) else ""
+    domain_without_tld = ".".join(parts[:-1]) if len(parts) > 1 else ""
+    _legit_tlds_fs = {"com", "co", "jp", "org", "net", "io", "dev"}
+    for label in domain_without_tld.split("."):
+        label_lower = label.lower()
+        if label_lower in IMPERSONATED_BRANDS:
+            if label_lower == _sld_fs and tld in _legit_tlds_fs:
+                continue
+            if tld not in _legit_tlds_fs:
+                has_brand_impersonation = True
+                impersonated_brand = label_lower
+                risk_indicators.append(
+                    f"Brand: impersonation_detected ({label_lower} on .{tld})"
+                )
+                evidence_refs.append(hostname)
+                break
+            has_brand_impersonation = True
+            impersonated_brand = label_lower
+            risk_indicators.append(
+                f"Brand: subdomain_impersonation ({label_lower})"
+            )
+            evidence_refs.append(hostname)
+            break
 
     # HTTP-only
     if parsed.scheme == "http":
@@ -1658,10 +1860,27 @@ def fast_scan(url: str) -> WebSecurityVerdict:
         score += 2
     elif on_elevated_cc and is_dga:
         score += 2
+    elif on_elevated_cc:
+        score += 1
+    if on_rare_tld:
+        score += 1
+    if has_brand_impersonation:
+        score += 4
+    if has_brand_impersonation and on_suspicious_tld:
+        score += 2
     if parsed.scheme == "http":
         score += 1
 
-    if is_dga and score >= 4:
+    # Classification
+    if has_brand_impersonation and on_suspicious_tld:
+        classification = ThreatClassification.phishing
+        confidence = min(0.85 + score * 0.01, 0.95)
+        action = "block"
+    elif has_brand_impersonation:
+        classification = ThreatClassification.phishing
+        confidence = min(0.7 + score * 0.03, 0.95)
+        action = "block"
+    elif is_dga and score >= 4:
         classification = ThreatClassification.phishing
         confidence = min(0.5 + dga_score * 0.3, 0.85)
         action = "block"
@@ -1679,14 +1898,39 @@ def fast_scan(url: str) -> WebSecurityVerdict:
         action = "allow"
 
     causal_chain: list[CausalChainStep] = []
-    if is_dga:
+    step_num = 0
+    if has_brand_impersonation:
+        step_num += 1
         causal_chain.append(CausalChainStep(
-            step=1,
+            step=step_num,
+            action=f"Domain impersonates brand '{impersonated_brand}'",
+            consequence=f"Not the legitimate {impersonated_brand} site",
+            evidence=hostname,
+            risk_level="critical",
+        ))
+    if is_dga:
+        step_num += 1
+        causal_chain.append(CausalChainStep(
+            step=step_num,
             action=f"URL contains DGA domain '{hostname}'",
             consequence="Ephemeral infrastructure, likely malicious",
             evidence=hostname,
             risk_level="high",
         ))
+    if on_suspicious_tld:
+        step_num += 1
+        causal_chain.append(CausalChainStep(
+            step=step_num,
+            action=f"Domain uses high-abuse TLD '.{tld}'",
+            consequence="TLD has elevated abuse rates per Spamhaus/APWG data",
+            evidence=f"tld=.{tld}",
+            risk_level="medium",
+        ))
+
+    narrative = _build_attack_narrative(
+        classification, causal_chain, is_dga, False, hostname,
+        has_brand_impersonation, impersonated_brand,
+    )
 
     return WebSecurityVerdict(
         classification=classification,
@@ -1696,8 +1940,11 @@ def fast_scan(url: str) -> WebSecurityVerdict:
         recommended_action=action,
         summary=f"Fast-scan: {classification.value} ({len(risk_indicators)} indicators)",
         causal_chain=causal_chain,
-        attack_narrative=(
-            f"Fast pre-check: {'DGA domain detected' if is_dga else 'URL structure analysis'}"
+        attack_narrative=narrative,
+        mcp_specific_threats=(
+            [f"Brand impersonation: '{impersonated_brand}' on .{tld}. "
+             "AI agents must not trust credentials from impersonation sites."]
+            if has_brand_impersonation else []
         ),
     )
 

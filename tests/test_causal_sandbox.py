@@ -13,8 +13,11 @@ from mcp_gateway import causal_sandbox
 from mcp_gateway.causal_sandbox import (
     ANALYTICS_IFRAME_DOMAINS,
     BENIGN_ARIA_LABELS,
+    COMPOUND_TLD_SUFFIXES,
     ELEVATED_CC_TLDS,
     FREE_HOSTING_DOMAINS,
+    IMPERSONATED_BRANDS,
+    KNOWN_SAFE_TLDS,
     MCP_THREAT_PATTERNS,
     SUSPICIOUS_TLDS,
     A11yNode,
@@ -1479,3 +1482,119 @@ class TestMCPSecurityServer:
         resp = json.loads(handle_message(msg, session_id="test-browse"))
         content = json.loads(resp["result"]["content"][0]["text"])
         assert content.get("blocked") is False
+
+
+# ---- Brand Impersonation Detection ----
+
+
+class TestBrandImpersonation:
+    """Brand impersonation and TLD detection tests."""
+
+    def test_odakyu_qpon_detected_as_phishing(self) -> None:
+        """rope.odakyu.qpon → phishing/block (original false negative)."""
+        verdict = _rule_based_verdict(
+            "https://rope.odakyu.qpon/", [], [], [],
+        )
+        assert verdict.classification == ThreatClassification.phishing
+        assert verdict.recommended_action == "block"
+        assert any("odakyu" in i for i in verdict.risk_indicators)
+
+    def test_odakyu_qpon_fast_scan_detected(self) -> None:
+        """fast_scan also detects rope.odakyu.qpon."""
+        verdict = fast_scan("https://rope.odakyu.qpon/")
+        assert verdict.classification == ThreatClassification.phishing
+        assert verdict.recommended_action == "block"
+
+    def test_amazon_co_jp_benign(self) -> None:
+        """www.amazon.co.jp → benign (compound TLD, legitimate)."""
+        verdict = _rule_based_verdict(
+            "https://www.amazon.co.jp/", [], [], [],
+        )
+        assert verdict.classification == ThreatClassification.benign
+
+    def test_amazon_co_jp_fast_scan_benign(self) -> None:
+        """fast_scan: www.amazon.co.jp → benign."""
+        verdict = fast_scan("https://www.amazon.co.jp/")
+        assert verdict.classification == ThreatClassification.benign
+
+    def test_google_com_benign(self) -> None:
+        """www.google.com → benign (brand IS the SLD)."""
+        verdict = _rule_based_verdict(
+            "https://www.google.com/", [], [], [],
+        )
+        assert verdict.classification == ThreatClassification.benign
+
+    def test_amazon_evil_com_detected(self) -> None:
+        """amazon.evil.com → phishing (brand in subdomain)."""
+        verdict = _rule_based_verdict(
+            "https://amazon.evil.com/", [], [], [],
+        )
+        assert verdict.classification == ThreatClassification.phishing
+        assert any("subdomain_impersonation" in i for i in verdict.risk_indicators)
+
+    def test_paypal_xyz_detected(self) -> None:
+        """paypal.xyz → phishing (brand on suspicious TLD)."""
+        verdict = _rule_based_verdict(
+            "https://paypal.xyz/", [], [], [],
+        )
+        assert verdict.classification == ThreatClassification.phishing
+        assert verdict.recommended_action == "block"
+
+    def test_mercari_tk_detected(self) -> None:
+        """login.mercari.tk → phishing (JP brand on Freenom TLD)."""
+        verdict = fast_scan("https://login.mercari.tk/")
+        assert verdict.classification == ThreatClassification.phishing
+        assert verdict.recommended_action == "block"
+
+    def test_brand_impersonation_causal_chain(self) -> None:
+        """Brand impersonation generates causal chain step."""
+        verdict = _rule_based_verdict(
+            "https://rope.odakyu.qpon/", [], [], [],
+        )
+        assert len(verdict.causal_chain) > 0
+        brand_steps = [
+            s for s in verdict.causal_chain if "impersonat" in s.action.lower()
+        ]
+        assert len(brand_steps) > 0
+        assert brand_steps[0].risk_level == "critical"
+
+    def test_brand_impersonation_attack_narrative(self) -> None:
+        """Brand impersonation generates attack narrative."""
+        verdict = _rule_based_verdict(
+            "https://rope.odakyu.qpon/", [], [], [],
+        )
+        assert "odakyu" in verdict.attack_narrative.lower()
+        assert "phishing" in verdict.attack_narrative.lower()
+
+    def test_brand_impersonation_mcp_threats(self) -> None:
+        """Brand impersonation adds MCP threat."""
+        verdict = _rule_based_verdict(
+            "https://rope.odakyu.qpon/", [], [], [],
+        )
+        assert any("impersonation" in t.lower() for t in verdict.mcp_specific_threats)
+
+    def test_qpon_in_suspicious_tlds(self) -> None:
+        """TLD .qpon must be in SUSPICIOUS_TLDS."""
+        assert "qpon" in SUSPICIOUS_TLDS
+
+    def test_rare_tld_detection(self) -> None:
+        """Unknown TLD that is not in any list → rare_unknown_tld."""
+        verdict = _rule_based_verdict(
+            "https://example.zzzzz/", [], [], [],
+        )
+        assert any("rare_unknown_tld" in i for i in verdict.risk_indicators)
+
+    def test_compound_tld_suffixes_coverage(self) -> None:
+        """Key compound TLD suffixes must be present."""
+        for suffix in ["co.jp", "co.uk", "com.au", "com.br"]:
+            assert suffix in COMPOUND_TLD_SUFFIXES, f"{suffix} missing"
+
+    def test_known_safe_tlds_coverage(self) -> None:
+        """Key safe TLDs must be present."""
+        for tld in ["com", "net", "org", "jp", "uk", "de"]:
+            assert tld in KNOWN_SAFE_TLDS, f"{tld} missing"
+
+    def test_impersonated_brands_coverage(self) -> None:
+        """Key brands must be present."""
+        for brand in ["odakyu", "amazon", "google", "mercari", "paypal"]:
+            assert brand in IMPERSONATED_BRANDS, f"{brand} missing"
