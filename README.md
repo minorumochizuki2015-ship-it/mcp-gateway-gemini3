@@ -73,7 +73,7 @@ verdict = WebSecurityVerdict.model_validate_json(response.text)
 
 | # | Component | Schema | Gemini 3 Features Used |
 |---|-----------|--------|-------------|
-| 1 | **AI Council** | `CouncilVerdict` | **thinking_level=high** + structured output + seed reproducibility |
+| 1 | **AI Council** | `CouncilVerdict` | **thinking_level=high** + **Google Search grounding** + structured output |
 | 2 | **Semantic Scanner** | `SemanticScanResult` | **thinking_level=high** + structured output for hidden threat detection |
 | 3 | **RedTeam Generator** | `RedTeamGeneration` | **thinking_level=low** + structured output for fast attack generation |
 | 4 | **RedTeam Evaluator** | `PayloadSafetyVerdict` | **thinking_level=high** + structured output for safety assessment |

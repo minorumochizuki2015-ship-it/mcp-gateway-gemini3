@@ -1461,6 +1461,7 @@ async def about() -> JSONResponse:
                 "schema": "CouncilVerdict",
                 "gemini_features": [
                     "thinking_level_high",
+                    "google_search",
                     "structured_output",
                     "seed_reproducibility",
                 ],
@@ -4890,7 +4891,10 @@ async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
                 )
 
             _council_gemini = (
-                ["thinking_level=high", "structured_output", "seed_reproducibility"]
+                [
+                    "thinking_level=high", "google_search",
+                    "structured_output", "seed_reproducibility",
+                ]
                 if eval_method == "gemini" else []
             )
             yield _sse_event("step", {

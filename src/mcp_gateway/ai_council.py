@@ -140,6 +140,8 @@ def _build_gemini_prompt(
 4. Weighted score >= 0.8 with no warnings → allow
 5. Otherwise → quarantine for manual review
 
+Use Google Search to check if the server name, its base URL, or related domains have been reported as malicious, compromised, or involved in security incidents. Incorporate any real-time threat intelligence into your analysis.
+
 Analyze the findings and provide your verdict."""
 
 
@@ -172,6 +174,7 @@ def _evaluate_with_gemini(
                 response_mime_type="application/json",
                 response_schema=CouncilVerdict,
                 thinking_config=types.ThinkingConfig(thinking_level="high"),
+                tools=[types.Tool(google_search=types.GoogleSearch())],
                 temperature=META_TEMPERATURE,
                 max_output_tokens=META_MAX_TOKENS,
                 seed=META_SEED,
