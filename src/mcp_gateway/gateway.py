@@ -4974,7 +4974,7 @@ async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
         from . import ai_council
         from . import causal_sandbox as _sandbox
 
-        db = registry.init_db(str(DEFAULT_DB_PATH))
+        db = registry.init_db(":memory:")
         now = datetime.now(timezone.utc)
         ts = now.isoformat()
         total_events = 0
