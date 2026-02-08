@@ -664,13 +664,15 @@ def extract_accessibility_tree(html: str) -> list[A11yNode]:
             # Guard: requires visible_text words to appear in aria_label
             # to prevent attackers crafting long unrelated aria-labels.
             elif len(aria_lower) > len(visible_lower) * 3 and len(aria_lower) > 20:
-                visible_tokens = set(visible_lower.split())
+                # Extract alphabetic words (len >= 2) from visible text
+                # to handle concatenated text like "Star13.4k" → {"star"}
+                visible_words = {w for w in re.findall(r"[a-z]{2,}", visible_lower)}
                 aria_tokens = set(aria_lower.split())
-                if visible_tokens and visible_tokens.issubset(aria_tokens):
+                if visible_words and visible_words.issubset(aria_tokens):
                     deceptive = False
                 else:
                     # Guard failed: visible text not contained → check overlap
-                    overlap = len(visible_tokens & aria_tokens)
+                    overlap = len(visible_words & aria_tokens)
                     total = max(len(aria_tokens), 1)
                     if overlap / total < 0.3:
                         deceptive = True

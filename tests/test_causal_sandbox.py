@@ -695,6 +695,19 @@ class TestDescriptiveLabelPattern:
         deceptive = [n for n in nodes if n.deceptive_label]
         assert deceptive == []
 
+    def test_tooltip_label_with_concatenated_count_not_deceptive(self) -> None:
+        """Star button with count like 'Star13.4k' is benign (alpha word extraction)."""
+        html = (
+            '<html><body>'
+            '<a aria-label="You must be signed in to star a repository">'
+            'Star13.4k'
+            '</a>'
+            '</body></html>'
+        )
+        nodes = extract_accessibility_tree(html)
+        deceptive = [n for n in nodes if n.deceptive_label]
+        assert deceptive == [], "GitHub star button with count should not be deceptive"
+
     def test_long_malicious_aria_label_still_detected(self) -> None:
         """Long aria-label NOT containing visible text IS flagged (QE-003 guard)."""
         html = (
