@@ -2037,6 +2037,56 @@ async def run_tool(
             _evidence_path(),
         )
 
+    # ── Causal Web Sandbox: auto-scan URL-bearing tool calls ──
+    from .causal_sandbox import (
+        MCPInterceptRequest,
+        _MCP_URL_PARAMS,
+        intercept_mcp_tool_call,
+    )
+
+    _extracted_urls = [
+        str(arguments[p])
+        for p in _MCP_URL_PARAMS
+        if p in arguments and isinstance(arguments[p], str)
+    ]
+    if _extracted_urls:
+        _intercept_req = MCPInterceptRequest(
+            method=f"tools/{tool_name}",
+            params=arguments,
+        )
+        _intercept_result = intercept_mcp_tool_call(_intercept_req)
+        evidence.append(
+            {
+                "event": "run_url_intercept",
+                "actor": "WORK",
+                "server_id": server_id,
+                "tool_name": tool_name,
+                "urls": _extracted_urls,
+                "allowed": _intercept_result.allowed,
+                "reason": _intercept_result.reason,
+                "tier": _intercept_result.tier,
+                "latency_ms": round(_intercept_result.latency_ms, 2),
+            },
+            _evidence_path(),
+        )
+        if not _intercept_result.allowed:
+            _verdict_summary = ""
+            if _intercept_result.verdict:
+                _verdict_summary = _intercept_result.verdict.summary
+            return _error(
+                403,
+                "URL blocked by Causal Web Sandbox",
+                status="blocked",
+                extra={
+                    "server_id": server_id,
+                    "tool_name": tool_name,
+                    "urls": _extracted_urls,
+                    "reason": _intercept_result.reason,
+                    "verdict": _verdict_summary,
+                    "tier": _intercept_result.tier,
+                },
+            )
+
     base_url = str(server.get("base_url") or "").strip()
     mcp_endpoint = _mcp_streamable_endpoint(base_url)
     if mcp_endpoint:

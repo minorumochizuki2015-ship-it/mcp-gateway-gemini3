@@ -3393,3 +3393,190 @@ class TestGemini3Integration:
         assert "GoogleSearch" in scanner_src
 
 
+class TestRunURLInterception:
+    """Tests for automatic URL security scanning in /run endpoint."""
+
+    def test_run_blocks_phishing_url(self, tmp_path: Path) -> None:
+        """Tool call with phishing URL is blocked by causal sandbox."""
+        db_file = tmp_path / "g.db"
+        db = registry.init_db(db_file)
+        server_id = upsert_server(
+            db, "browser", "http://backend", "approved",
+        )
+        _insert_allowlist(db, server_id, [{"name": "browser_navigate"}])
+        _insert_scan_result(db, server_id, status="pass")
+        evidence_file = tmp_path / "evidence.jsonl"
+        with TestClient(app) as client:
+            resp = client.post(
+                f"/run?db_path={db_file}",
+                json={
+                    "server_id": server_id,
+                    "tool_name": "browser_navigate",
+                    "arguments": {
+                        "url": "http://xyzqwkjhgfds.tk/login",
+                    },
+                },
+            )
+            # DGA domain on suspicious TLD -> should be blocked
+            assert resp.status_code == 403
+            body = resp.json()
+            assert body["status"] == "blocked"
+            assert "Causal Web Sandbox" in body["error"]
+
+    def test_run_allows_safe_url(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    ) -> None:
+        """Tool call with safe URL passes sandbox and reaches upstream."""
+        db_file = tmp_path / "g.db"
+        db = registry.init_db(db_file)
+        server_id = upsert_server(
+            db, "browser", "http://backend", "approved",
+        )
+        _insert_allowlist(db, server_id, [{"name": "fetch"}])
+        _insert_scan_result(db, server_id, status="pass")
+
+        called: dict = {}
+
+        class DummyClient:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                return False
+
+            async def post(self, url: str, json: dict):
+                called["url"] = url
+                return type(
+                    "R", (),
+                    {"status_code": 200,
+                     "json": staticmethod(lambda: {"content": "ok"})},
+                )()
+
+        monkeypatch.setattr(httpx, "AsyncClient", lambda *a, **k: DummyClient())
+
+        with TestClient(app) as client:
+            resp = client.post(
+                f"/run?db_path={db_file}",
+                json={
+                    "server_id": server_id,
+                    "tool_name": "fetch",
+                    "arguments": {"url": "https://example.com/page"},
+                },
+            )
+            assert resp.status_code == 200
+            assert called.get("url") == "http://backend/run"
+
+    def test_run_no_url_param_skips_scan(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    ) -> None:
+        """Tool call without URL params skips sandbox entirely."""
+        db_file = tmp_path / "g.db"
+        db = registry.init_db(db_file)
+        server_id = upsert_server(
+            db, "math", "http://backend", "approved",
+        )
+        _insert_allowlist(db, server_id, [{"name": "calculate"}])
+        _insert_scan_result(db, server_id, status="pass")
+
+        class DummyClient:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                return False
+
+            async def post(self, url: str, json: dict):
+                return type(
+                    "R", (),
+                    {"status_code": 200,
+                     "json": staticmethod(lambda: {"result": 42})},
+                )()
+
+        monkeypatch.setattr(httpx, "AsyncClient", lambda *a, **k: DummyClient())
+
+        with TestClient(app) as client:
+            resp = client.post(
+                f"/run?db_path={db_file}",
+                json={
+                    "server_id": server_id,
+                    "tool_name": "calculate",
+                    "arguments": {"expression": "2+2"},
+                },
+            )
+            assert resp.status_code == 200
+
+    def test_run_blocks_ssrf_url(self, tmp_path: Path) -> None:
+        """Tool call targeting internal IP is blocked."""
+        db_file = tmp_path / "g.db"
+        db = registry.init_db(db_file)
+        server_id = upsert_server(
+            db, "browser", "http://backend", "approved",
+        )
+        _insert_allowlist(db, server_id, [{"name": "browser_navigate"}])
+        _insert_scan_result(db, server_id, status="pass")
+        with TestClient(app) as client:
+            resp = client.post(
+                f"/run?db_path={db_file}",
+                json={
+                    "server_id": server_id,
+                    "tool_name": "browser_navigate",
+                    "arguments": {"url": "http://169.254.169.254/latest/meta-data"},
+                },
+            )
+            assert resp.status_code == 403
+            body = resp.json()
+            assert body["status"] == "blocked"
+            assert "SSRF" in body["reason"]
+
+    def test_run_intercept_emits_evidence(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    ) -> None:
+        """URL interception emits evidence trail event."""
+        db_file = tmp_path / "g.db"
+        db = registry.init_db(db_file)
+        server_id = upsert_server(
+            db, "browser", "http://backend", "approved",
+        )
+        _insert_allowlist(db, server_id, [{"name": "fetch"}])
+        _insert_scan_result(db, server_id, status="pass")
+        evidence_file = tmp_path / "evidence.jsonl"
+        monkeypatch.setenv("MCP_GATEWAY_EVIDENCE_PATH", str(evidence_file))
+
+        class DummyClient:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                return False
+
+            async def post(self, url: str, json: dict):
+                return type(
+                    "R", (),
+                    {"status_code": 200,
+                     "json": staticmethod(lambda: {"ok": True})},
+                )()
+
+        monkeypatch.setattr(httpx, "AsyncClient", lambda *a, **k: DummyClient())
+
+        with TestClient(app) as client:
+            client.post(
+                f"/run?db_path={db_file}",
+                json={
+                    "server_id": server_id,
+                    "tool_name": "fetch",
+                    "arguments": {"url": "https://google.com"},
+                },
+            )
+
+        if evidence_file.exists():
+            lines = evidence_file.read_text().strip().splitlines()
+            intercept_events = [
+                json.loads(l) for l in lines
+                if "run_url_intercept" in l
+            ]
+            assert len(intercept_events) >= 1
+            evt = intercept_events[0]
+            assert evt["event"] == "run_url_intercept"
+            assert "https://google.com" in evt["urls"]
+
+
