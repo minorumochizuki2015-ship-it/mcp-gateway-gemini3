@@ -1048,7 +1048,7 @@ window.escapeHtml = function escapeHtml(str) {
 	        emptyNoToken: "Please establish an admin session."
 	      },
 	      common: {
-	        gatewayOnline: "Gateway Online",
+	        gatewayOnline: "Demo Mode",
 	        gatewayOfflineTitle: "Gateway unreachable",
 	        gatewayOfflineBody: "Start the gateway, then reload this page.",
 	        gatewayOfflineFileBody: "This page is opened via file://. Open via HTTP (http://localhost:4100/...) to access the API.",
@@ -1173,7 +1173,7 @@ window.escapeHtml = function escapeHtml(str) {
 	        emptyNoToken: "管理者セッションを確立してください。"
 	      },
 	      common: {
-	        gatewayOnline: "Gateway Online",
+	        gatewayOnline: "Demo Mode",
 	        gatewayOfflineTitle: "Gateway に接続できません",
 	        gatewayOfflineBody: "Gateway を起動してから、このページを再読み込みしてください。",
 	        gatewayOfflineFileBody: "file:// で開いているため API に接続できません。HTTP（http://localhost:4100/...）で開いてください。",

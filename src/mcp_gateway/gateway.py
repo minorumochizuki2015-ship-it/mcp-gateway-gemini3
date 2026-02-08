@@ -4903,7 +4903,7 @@ async def demo_page_clickjack() -> HTMLResponse:
 
 
 # ---------------------------------------------------------------------------
-# Live Pipeline Demo — SSE endpoint running real analysis in real-time
+# Demo Pipeline — SSE endpoint demonstrating security analysis workflow
 # ---------------------------------------------------------------------------
 
 _DEMO_HTML_PAGES = [
@@ -4956,9 +4956,9 @@ def _sse_event(event: str, data: dict) -> str:
 
 @app.get("/api/demo/run-live")
 async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
-    """Run live demo with Server-Sent Events — real analysis in real-time.
+    """Run demo scenario with Server-Sent Events — demonstrates security analysis workflow.
 
-    Each pipeline step executes real functions and streams results.
+    Each pipeline step executes demo functions and streams results.
     Accepts admin auth via session cookie, Bearer header, or ?token= query param
     (EventSource API cannot set custom headers).
     """
@@ -5189,7 +5189,7 @@ async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
         # ── Step 5: Causal Web Sandbox (real HTTP fetch + DOM analysis) ──
         yield _sse_event("phase", {
             "name": "web_sandbox",
-            "label": "Causal Web Sandbox (Live URL Analysis)",
+            "label": "Causal Web Sandbox (URL Analysis)",
         })
         # Determine gateway base URL for self-hosted test pages
         _host = request.headers.get("host", "localhost:4100")
@@ -5397,10 +5397,10 @@ async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
         total_events += 1
         await asyncio.sleep(0.5)
 
-        # ── Step 6: MCP Tool Call Interception (Multi-Session Live Demo) ──
+        # ── Step 6: MCP Tool Call Interception (Multi-Session Demo) ──
         yield _sse_event("phase", {
             "name": "intercept",
-            "label": "MCP Tool Call Interception (Live Enforcement)",
+            "label": "MCP Tool Call Interception (Simulated Enforcement)",
         })
 
         # --- Multi-agent sessions (3 simultaneous connections) ---
