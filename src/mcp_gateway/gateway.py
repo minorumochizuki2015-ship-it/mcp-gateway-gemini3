@@ -722,6 +722,18 @@ def _admin_auth_guard(request: Request) -> JSONResponse | None:
             return guard
         return None
     if _get_bearer_token(request) != token:
+        # Log failed auth to evidence trail (OWASP A09)
+        evidence.append(
+            {
+                "event": "admin_auth_failed",
+                "actor": "gateway",
+                "source_ip": request.client.host if request.client else "unknown",
+                "path": str(request.url.path),
+                "method": request.method,
+                "ts": datetime.now(timezone.utc).isoformat(),
+            },
+            path=_evidence_path(),
+        )
         return JSONResponse({"detail": "invalid admin token"}, status_code=401)
     return None
 
