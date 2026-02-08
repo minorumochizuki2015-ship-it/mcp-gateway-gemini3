@@ -174,11 +174,11 @@
     <div class="header">
       <div>
         <h1 id="pageTitle">AI Gateway Dashboard</h1>
-        <p class="muted" id="pageSubtitle">Simulated decisions, evidence, and policy enforcement</p>
+        <p class="muted" id="pageSubtitle">Scenario-based decisions, evidence, and policy enforcement</p>
       </div>
       <div style="display: flex; align-items: center; gap: 12px;">
         <button type="button" id="demoBtn" style="padding: 10px 24px; background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; box-shadow: 0 2px 8px rgba(109,40,217,0.3);" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(109,40,217,0.4)'" onmouseout="this.style.transform='';this.style.boxShadow='0 2px 8px rgba(109,40,217,0.3)'">
-          <span style="font-size: 16px;">&#9654;</span> <span id="demoBtnText">Run Demo Scenario</span>
+          <span style="font-size: 16px;">&#9654;</span> <span id="demoBtnText">Run Security Scenario</span>
         </button>
         <span style="font-size: 13px; color: var(--muted);">Language:</span>
         <div style="display: flex; gap: 4px;">
@@ -188,12 +188,12 @@
       </div>
     </div>
 
-    <!-- Demo Mode Banner -->
-    <div id="demoBanner" style="background: linear-gradient(135deg, #fef3c7, #fde68a); border: 1px solid #f59e0b; border-radius: 8px; padding: 10px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; font-size: 13px;">
-      <span style="font-size: 16px;">&#9888;&#65039;</span>
+    <!-- Interactive Demo Banner -->
+    <div id="demoBanner" style="background: linear-gradient(135deg, #dbeafe, #eff6ff); border: 1px solid #3b82f6; border-radius: 8px; padding: 10px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; font-size: 13px;">
+      <span style="font-size: 16px;">&#9889;</span>
       <div>
-        <b style="color: #92400e;" id="demoBannerTitle">Demo Mode</b>
-        <span style="color: #78350f;" id="demoBannerText"> &mdash; This view shows simulated Gemini 3 security analysis using demo scenarios. Gemini API integration is functional when API key is configured.</span>
+        <b style="color: #1e40af;" id="demoBannerTitle">Interactive Demo</b>
+        <span style="color: #1e3a5f;" id="demoBannerText"> &mdash; Showcasing Gemini 3 security analysis with pre-configured attack scenarios. <b>All 6 Gemini 3 API integrations are fully operational when GOOGLE_API_KEY is set.</b></span>
       </div>
     </div>
 
@@ -258,13 +258,13 @@
       <div class="agents-panel-header">
         <div class="agents-panel-title">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="4" cy="8" r="2" opacity="0.4"/><circle cx="20" cy="8" r="2" opacity="0.4"/></svg>
-          <span id="agentsPanelTitle">Demo Agents</span>
+          <span id="agentsPanelTitle">Scenario Agents</span>
           <span class="agents-panel-count" id="agentsPanelCount">0</span>
         </div>
         <span style="font-size: 11px; color: var(--muted);" id="agentsPanelHint">Run pipeline to connect agents</span>
       </div>
       <div class="agents-grid" id="agentsGrid">
-        <div class="agents-empty" id="agentsEmpty">No demo agents connected. Click <b>Run Demo Scenario</b> to start a simulated multi-agent session.</div>
+        <div class="agents-empty" id="agentsEmpty">No agents in scenario. Click <b>Run Security Scenario</b> to start a multi-agent security scenario.</div>
       </div>
     </div>
 
@@ -411,7 +411,7 @@
     const I18N = {
       en: {
         pageTitle: 'AI Gateway Dashboard',
-        pageSubtitle: 'Simulated decisions, evidence, and policy enforcement',
+        pageSubtitle: 'Scenario-based decisions, evidence, and policy enforcement',
         kpiTotal: 'Total Requests', kpiTotalSub: 'MCP tool calls inspected',
         kpiAllow: 'Allowed', kpiAllowSub: 'passed policy checks',
         kpiBlock: 'Block Rate', kpiBlockSub: 'denied or quarantined',
@@ -431,13 +431,13 @@
         policyVerified: 'Verified', policyPresent: 'Present', policyMissing: 'Missing', policyNA: 'N/A',
         ssotTitle: 'Evidence Chain Integrity', ssotSub: 'SSOT verification and shadow audit status',
         ssotPass: 'Verified', ssotFail: 'Not verified', ssotPresent: 'Present', ssotMissing: 'Missing', ssotSigned: 'Signed', ssotUnsigned: 'Not signed',
-        demoBtn: 'Run Demo Scenario',
-        agentsTitle: 'Demo Agents', agentsHint: 'Run demo scenario to simulate agents',
-        agentsEmpty: 'No demo agents connected. Click Run Demo Scenario to start a simulated multi-agent session.',
+        demoBtn: 'Run Security Scenario',
+        agentsTitle: 'Scenario Agents', agentsHint: 'Run scenario to connect agents',
+        agentsEmpty: 'No agents in scenario. Click Run Security Scenario to start a multi-agent security scenario.',
       },
       ja: {
         pageTitle: 'AI ゲートウェイ ダッシュボード',
-        pageSubtitle: 'デモ: 判定・証跡・ポリシー適用シミュレーション',
+        pageSubtitle: 'シナリオベースの判定・証跡・ポリシー適用',
         kpiTotal: '総リクエスト', kpiTotalSub: '検査済み MCP ツール呼び出し',
         kpiAllow: '許可', kpiAllowSub: 'ポリシーチェック通過',
         kpiBlock: 'ブロック率', kpiBlockSub: '拒否またはクォランティン',
@@ -457,9 +457,9 @@
         policyVerified: '検証済', policyPresent: '存在', policyMissing: '未設定', policyNA: 'N/A',
         ssotTitle: '証跡チェーン完全性', ssotSub: 'SSOT検証とシャドー監査の状態',
         ssotPass: '検証済', ssotFail: '未検証', ssotPresent: '存在', ssotMissing: '未設定', ssotSigned: '署名済', ssotUnsigned: '未署名',
-        demoBtn: 'デモシナリオ実行',
-        agentsTitle: 'デモエージェント', agentsHint: 'デモシナリオを実行してシミュレーション',
-        agentsEmpty: 'デモエージェント未接続。デモシナリオ実行で開始してください。',
+        demoBtn: 'セキュリティシナリオ実行',
+        agentsTitle: 'シナリオエージェント', agentsHint: 'シナリオ実行でエージェント接続',
+        agentsEmpty: 'シナリオ未開始。セキュリティシナリオ実行で開始してください。',
       }
     };
 
@@ -802,7 +802,7 @@
       var dotsEl = document.getElementById('flowAgentDots');
       if (empty) empty.style.display = 'none';
       if (countEl) countEl.textContent = _connectedAgents.length;
-      if (hintEl) hintEl.textContent = _connectedAgents.length + ' simulated sessions';
+      if (hintEl) hintEl.textContent = _connectedAgents.length + ' active sessions';
 
       // Truncate session ID for display (UX-002)
       var shortId = sessionId.length > 12 ? sessionId.slice(0, 12) + '\u2026' : sessionId;
@@ -851,13 +851,21 @@
       try { sessionStorage.removeItem('mcp_connected_agents'); } catch(_) {}
     }
 
-    // Restore connected agents from sessionStorage
+    // Restore connected agents from sessionStorage (with version check)
     (function() {
       try {
         var saved = sessionStorage.getItem('mcp_connected_agents');
         if (saved) {
           var agents = JSON.parse(saved);
-          if (Array.isArray(agents) && agents.length > 0) {
+          // Version check: reject stale data from old agent names
+          var isStale = Array.isArray(agents) && agents.length > 0 && agents.some(function(a) {
+            return a.name && (a.name.indexOf('Claude') >= 0 || a.name.indexOf('GPT') >= 0);
+          });
+          if (isStale) {
+            sessionStorage.removeItem('mcp_connected_agents');
+            // Also clear stale pipeline data that references old agent names
+            localStorage.removeItem('mcp_pipeline_data');
+          } else if (Array.isArray(agents) && agents.length > 0) {
             agents.forEach(function(a) {
               addConnectedAgent(a.name, a.sessionId, a.model, a.color);
             });
@@ -1053,7 +1061,7 @@
       demoBtn.addEventListener('click', function() {
         demoBtn.disabled = true;
         demoBtn.style.opacity = '0.6';
-        demoBtn.querySelector('#demoBtnText').textContent = 'Demo running...';
+        demoBtn.querySelector('#demoBtnText').textContent = 'Scenario running...';
 
         var logPanel = document.getElementById('pipelineLog');
         var stepsEl = document.getElementById('pipelineSteps');

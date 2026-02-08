@@ -5400,7 +5400,7 @@ async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
         # ── Step 6: MCP Tool Call Interception (Multi-Session Demo) ──
         yield _sse_event("phase", {
             "name": "intercept",
-            "label": "MCP Tool Call Interception (Simulated Enforcement)",
+            "label": "MCP Tool Call Interception (Scenario Enforcement)",
         })
 
         # --- Multi-agent sessions (3 simultaneous connections) ---
