@@ -19,6 +19,7 @@ import math
 import os
 import re
 import socket
+import time
 import uuid
 from collections import Counter
 from datetime import datetime, timezone
@@ -402,6 +403,16 @@ class NetworkRequestTrace(BaseModel):
     threat_type: str = Field(default="none", description="Threat type if suspicious")
 
 
+class CausalChainStep(BaseModel):
+    """One step in an attack causal chain - explains WHY something is dangerous."""
+
+    step: int = Field(description="Step number in the chain")
+    action: str = Field(description="What happens at this step")
+    consequence: str = Field(description="Why this is dangerous")
+    evidence: str = Field(description="DOM selector, URL, or pattern as proof")
+    risk_level: str = Field(description="critical, high, medium, low")
+
+
 class WebSecurityVerdict(BaseModel):
     """Gemini 3 structured output for web security analysis."""
 
@@ -419,6 +430,18 @@ class WebSecurityVerdict(BaseModel):
         description="Recommended action: allow, warn, block"
     )
     summary: str = Field(description="Human-readable summary")
+    causal_chain: list[CausalChainStep] = Field(
+        default_factory=list,
+        description="Attack causal chain explaining WHY this is dangerous",
+    )
+    attack_narrative: str = Field(
+        default="",
+        description="Natural language attack scenario explanation",
+    )
+    mcp_specific_threats: list[str] = Field(
+        default_factory=list,
+        description="MCP/AI-agent specific threat descriptions",
+    )
 
 
 class CausalScanResult(BaseModel):
@@ -433,6 +456,39 @@ class CausalScanResult(BaseModel):
     verdict: WebSecurityVerdict
     eval_method: str = "gemini"
     timestamp: str = ""
+    scan_latency_ms: float = Field(
+        default=0.0, description="Total scan latency in milliseconds"
+    )
+    tier: str = Field(
+        default="deep", description="Scan tier: fast (rule-only) or deep (+ Gemini)"
+    )
+
+
+class MCPInterceptRequest(BaseModel):
+    """MCP tool call interception request."""
+
+    method: str = Field(description="MCP method name e.g. tools/browser_navigate")
+    params: dict[str, Any] = Field(
+        default_factory=dict, description="MCP tool call parameters"
+    )
+    session_id: str = Field(default="", description="AI agent session identifier")
+
+
+class MCPInterceptResult(BaseModel):
+    """Result of MCP tool call interception."""
+
+    allowed: bool = Field(description="Whether the tool call is allowed")
+    url: str = Field(default="", description="Extracted URL from tool call")
+    verdict: WebSecurityVerdict | None = Field(
+        default=None, description="Security verdict if URL was scanned"
+    )
+    reason: str = Field(default="", description="Reason for block/allow")
+    latency_ms: float = Field(
+        default=0.0, description="Interception latency in milliseconds"
+    )
+    tier: str = Field(
+        default="fast", description="Scan tier used: fast or deep"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1058,10 +1114,19 @@ def gemini_security_verdict(
     if not api_key:
         return _rule_based_verdict(url, dom_threats, a11y_issues, network_traces, visible_text)
 
+    # DGA pre-analysis for Gemini context
+    hostname = (urlparse(url).hostname or "").lower()
+    is_dga, dga_score, dga_indicators = detect_dga(hostname)
+    parts = hostname.split(".")
+    tld = parts[-1] if parts else ""
+
     instructions = (
-        "You are a web security analyst. Analyze the following web page content "
-        "and provide a security verdict.\n\n"
-        f"URL: {url}\n\n"
+        "You are a web security analyst specializing in AI agent protection. "
+        "Analyze the following web page and provide a CAUSAL security analysis.\n\n"
+        f"URL: {url}\n"
+        f"Hostname: {hostname}\n"
+        f"TLD: .{tld}\n"
+        f"DGA Analysis: is_dga={is_dga}, score={dga_score:.2f}, indicators={dga_indicators}\n\n"
         "DOM threats found:\n"
         + "\n".join(
             f"- {t.threat_type}: {t.tag} at {t.selector}" for t in dom_threats
@@ -1076,9 +1141,15 @@ def gemini_security_verdict(
             for n in network_traces
             if n.is_suspicious
         )
-        + "\n\nClassify as: benign, phishing, malware, clickjacking, scam, or deceptive_ui.\n"
-        "Provide confidence [0.0-1.0], risk indicators, evidence refs, "
-        "and recommended action (allow/warn/block)."
+        + "\n\n## Required Analysis\n"
+        "1. Classify as: benign, phishing, malware, clickjacking, scam, or deceptive_ui.\n"
+        "2. Provide confidence [0.0-1.0].\n"
+        "3. Build a causal_chain: step-by-step attack progression (action→consequence→evidence).\n"
+        "4. Write an attack_narrative: natural language explanation of the threat.\n"
+        "5. Identify mcp_specific_threats: how this page could exploit AI agents "
+        "(tool_call injection, prompt injection via DOM, SSRF via MCP, etc.).\n"
+        "6. Provide recommended_action (allow/warn/block).\n\n"
+        "Focus on WHY this is dangerous, not just IF."
     )
 
     content_preview = visible_text[:10_000]
@@ -1298,6 +1369,35 @@ def _rule_based_verdict(
         confidence = 0.9
         action = "allow"
 
+    # Build causal chain from detected threats
+    causal_chain = _build_causal_chain(
+        url, dom_threats, a11y_issues, network_traces,
+        is_dga, on_suspicious_tld, on_elevated_cc, has_mcp_injection,
+    )
+
+    # Build attack narrative
+    narrative = _build_attack_narrative(
+        classification, causal_chain, is_dga, has_mcp_injection, hostname,
+    )
+
+    # MCP-specific threats
+    mcp_threats: list[str] = []
+    if has_mcp_injection:
+        mcp_threats.append(
+            "JSON-RPC/MCP protocol injection detected in page content. "
+            "An AI agent browsing this page could execute attacker-controlled tool calls."
+        )
+    if is_dga:
+        mcp_threats.append(
+            f"Domain '{hostname}' appears algorithmically generated (DGA). "
+            "AI agents should not trust content from ephemeral infrastructure."
+        )
+    if on_free_hosting:
+        mcp_threats.append(
+            "Content hosted on free platform with minimal identity verification. "
+            "AI agents should apply elevated scrutiny."
+        )
+
     return WebSecurityVerdict(
         classification=classification,
         confidence=confidence,
@@ -1305,7 +1405,427 @@ def _rule_based_verdict(
         evidence_refs=evidence_refs,
         recommended_action=action,
         summary=f"Rule-based: {classification.value} ({len(risk_indicators)} indicators)",
+        causal_chain=causal_chain,
+        attack_narrative=narrative,
+        mcp_specific_threats=mcp_threats,
     )
+
+
+# ---------------------------------------------------------------------------
+# Causal Chain Builder
+# ---------------------------------------------------------------------------
+
+
+def _build_causal_chain(
+    url: str,
+    dom_threats: list[DOMSecurityNode],
+    a11y_issues: list[A11yNode],
+    network_traces: list[NetworkRequestTrace],
+    is_dga: bool,
+    on_suspicious_tld: bool,
+    on_elevated_cc: bool,
+    has_mcp_injection: bool,
+) -> list[CausalChainStep]:
+    """Build a causal chain explaining the attack progression."""
+    steps: list[CausalChainStep] = []
+    step_num = 0
+
+    hostname = (urlparse(url).hostname or "").lower()
+
+    # Step: DGA domain
+    if is_dga:
+        step_num += 1
+        steps.append(CausalChainStep(
+            step=step_num,
+            action=f"Victim visits algorithmically generated domain '{hostname}'",
+            consequence="DGA domains are ephemeral infrastructure used to evade blocklists",
+            evidence=f"hostname={hostname}",
+            risk_level="high",
+        ))
+
+    # Step: Suspicious TLD
+    if on_suspicious_tld or on_elevated_cc:
+        step_num += 1
+        tld = hostname.rsplit(".", 1)[-1] if "." in hostname else ""
+        steps.append(CausalChainStep(
+            step=step_num,
+            action=f"Domain uses high-abuse TLD '.{tld}'",
+            consequence="This TLD has elevated abuse rates per Spamhaus/APWG data",
+            evidence=f"tld=.{tld}",
+            risk_level="medium",
+        ))
+
+    # Step: Hidden iframes
+    hidden_iframes = [t for t in dom_threats if t.threat_type == "hidden_iframe"]
+    if hidden_iframes:
+        step_num += 1
+        steps.append(CausalChainStep(
+            step=step_num,
+            action=f"Page loads {len(hidden_iframes)} hidden iframe(s)",
+            consequence="Hidden iframes can load malicious content invisibly",
+            evidence=hidden_iframes[0].selector,
+            risk_level="high",
+        ))
+
+    # Step: Deceptive forms
+    deceptive_forms = [t for t in dom_threats if t.threat_type == "deceptive_form"]
+    if deceptive_forms:
+        step_num += 1
+        action_url = deceptive_forms[0].attributes.get("action", "unknown")
+        steps.append(CausalChainStep(
+            step=step_num,
+            action=f"Password form submits to external URL: {action_url}",
+            consequence="Credentials are sent to attacker-controlled server",
+            evidence=deceptive_forms[0].selector,
+            risk_level="critical",
+        ))
+
+    # Step: Suspicious scripts
+    sus_scripts = [t for t in dom_threats if t.threat_type == "suspicious_script"]
+    if sus_scripts:
+        step_num += 1
+        steps.append(CausalChainStep(
+            step=step_num,
+            action="Page contains suspicious script patterns (eval, document.cookie)",
+            consequence="Scripts may exfiltrate session data or execute arbitrary code",
+            evidence=sus_scripts[0].selector,
+            risk_level="critical",
+        ))
+
+    # Step: MCP injection
+    if has_mcp_injection:
+        mcp_nodes = [t for t in dom_threats if t.threat_type == "mcp_injection"]
+        step_num += 1
+        steps.append(CausalChainStep(
+            step=step_num,
+            action="Page contains MCP/JSON-RPC protocol injection payloads",
+            consequence=(
+                "AI agent parsing this page could execute attacker-controlled "
+                "tool calls (tool_call injection, SSRF via MCP)"
+            ),
+            evidence=mcp_nodes[0].selector if mcp_nodes else url,
+            risk_level="critical",
+        ))
+
+    # Step: Deceptive labels
+    deceptive_labels = [a for a in a11y_issues if a.deceptive_label]
+    if deceptive_labels:
+        step_num += 1
+        steps.append(CausalChainStep(
+            step=step_num,
+            action=f"{len(deceptive_labels)} deceptive ARIA label(s) detected",
+            consequence="Screen readers and AI agents see different content than displayed",
+            evidence=f"role={deceptive_labels[0].role}, name={deceptive_labels[0].name}",
+            risk_level="medium",
+        ))
+
+    # Step: Network threats
+    sus_net = [n for n in network_traces if n.is_suspicious]
+    if sus_net:
+        step_num += 1
+        steps.append(CausalChainStep(
+            step=step_num,
+            action=f"{len(sus_net)} suspicious network requests detected",
+            consequence="Data may be exfiltrated to tracking/malicious endpoints",
+            evidence=sus_net[0].url,
+            risk_level="medium" if len(sus_net) < 5 else "high",
+        ))
+
+    # If no specific steps but overall suspicious
+    if not steps and any(t.suspicious for t in dom_threats):
+        step_num += 1
+        steps.append(CausalChainStep(
+            step=step_num,
+            action="Multiple low-level suspicious signals detected",
+            consequence="Combined signals suggest potential deception",
+            evidence=url,
+            risk_level="low",
+        ))
+
+    return steps
+
+
+def _build_attack_narrative(
+    classification: ThreatClassification,
+    causal_chain: list[CausalChainStep],
+    is_dga: bool,
+    has_mcp_injection: bool,
+    hostname: str,
+) -> str:
+    """Build natural language attack narrative from causal chain."""
+    if not causal_chain:
+        if classification == ThreatClassification.benign:
+            return "No attack indicators detected. Site appears safe for browsing."
+        return f"Low-confidence {classification.value} detection with minimal evidence."
+
+    parts: list[str] = []
+
+    if is_dga and has_mcp_injection:
+        parts.append(
+            f"CRITICAL: '{hostname}' is an algorithmically generated domain hosting "
+            f"MCP protocol injection payloads. An AI agent browsing this page would be "
+            f"exposed to tool_call hijacking — the attacker could execute arbitrary "
+            f"tool calls through the agent's MCP connection."
+        )
+    elif has_mcp_injection:
+        parts.append(
+            f"CRITICAL: Page contains embedded MCP/JSON-RPC injection payloads. "
+            f"AI agents that process this page's content could have their tool "
+            f"call pipeline hijacked, enabling SSRF, data exfiltration, or "
+            f"arbitrary code execution through the agent's permissions."
+        )
+    elif is_dga:
+        parts.append(
+            f"'{hostname}' exhibits Domain Generation Algorithm (DGA) characteristics: "
+            f"high entropy, abnormal consonant patterns. DGA domains are ephemeral "
+            f"infrastructure typically used for phishing, C2, or malware distribution."
+        )
+    elif classification == ThreatClassification.phishing:
+        parts.append(
+            "Page exhibits phishing characteristics with credential harvesting elements."
+        )
+    elif classification == ThreatClassification.scam:
+        parts.append(
+            "Page exhibits scam indicators including trust signal deficiencies."
+        )
+    elif classification == ThreatClassification.malware:
+        parts.append(
+            "Page contains code patterns consistent with malware delivery or execution."
+        )
+
+    # Add chain summary
+    critical_steps = [s for s in causal_chain if s.risk_level == "critical"]
+    if critical_steps:
+        parts.append(
+            f"Attack chain: {len(causal_chain)} steps identified, "
+            f"{len(critical_steps)} critical."
+        )
+
+    return " ".join(parts) if parts else f"{classification.value} detected."
+
+
+# ---------------------------------------------------------------------------
+# 2-Tier Scan: Fast (rule-only) + Deep (Gemini causal)
+# ---------------------------------------------------------------------------
+
+
+def fast_scan(url: str) -> WebSecurityVerdict:
+    """Tier-1 fast scan: rule-based only, no network fetch.
+
+    Analyzes URL structure, DGA, TLD without fetching the page.
+    Target latency: < 5ms.
+    """
+    parsed = urlparse(url)
+    hostname = (parsed.hostname or "").lower()
+    risk_indicators: list[str] = []
+    evidence_refs: list[str] = []
+
+    # SSRF check (no DNS resolution in fast mode)
+    if parsed.scheme not in ALLOWED_SCHEMES:
+        return WebSecurityVerdict(
+            classification=ThreatClassification.malware,
+            confidence=0.95,
+            risk_indicators=["blocked_scheme"],
+            evidence_refs=[url],
+            recommended_action="block",
+            summary="Blocked: non-HTTP(S) scheme",
+        )
+
+    # DGA check
+    is_dga, dga_score, dga_indicators = detect_dga(hostname)
+    risk_indicators.extend(dga_indicators)
+
+    # TLD check
+    parts = hostname.split(".")
+    tld = parts[-1] if parts else ""
+    on_suspicious_tld = tld in SUSPICIOUS_TLDS
+    on_elevated_cc = tld in ELEVATED_CC_TLDS
+
+    if on_suspicious_tld:
+        risk_indicators.append(f"URL: suspicious_tld (.{tld})")
+    if on_elevated_cc and is_dga:
+        risk_indicators.append(f"URL: dga_on_abused_cctld (.{tld})")
+
+    # HTTP-only
+    if parsed.scheme == "http":
+        risk_indicators.append("URL: http_only")
+
+    # Fast scoring
+    score = 0
+    if is_dga:
+        score += 3
+    if on_suspicious_tld:
+        score += 2
+    elif on_elevated_cc and is_dga:
+        score += 2
+    if parsed.scheme == "http":
+        score += 1
+
+    if is_dga and score >= 4:
+        classification = ThreatClassification.phishing
+        confidence = min(0.5 + dga_score * 0.3, 0.85)
+        action = "block"
+    elif is_dga:
+        classification = ThreatClassification.phishing
+        confidence = min(0.3 + dga_score * 0.3, 0.7)
+        action = "warn"
+    elif score >= 3:
+        classification = ThreatClassification.scam
+        confidence = 0.4
+        action = "warn"
+    else:
+        classification = ThreatClassification.benign
+        confidence = 0.7
+        action = "allow"
+
+    causal_chain: list[CausalChainStep] = []
+    if is_dga:
+        causal_chain.append(CausalChainStep(
+            step=1,
+            action=f"URL contains DGA domain '{hostname}'",
+            consequence="Ephemeral infrastructure, likely malicious",
+            evidence=hostname,
+            risk_level="high",
+        ))
+
+    return WebSecurityVerdict(
+        classification=classification,
+        confidence=confidence,
+        risk_indicators=risk_indicators,
+        evidence_refs=evidence_refs or [url],
+        recommended_action=action,
+        summary=f"Fast-scan: {classification.value} ({len(risk_indicators)} indicators)",
+        causal_chain=causal_chain,
+        attack_narrative=(
+            f"Fast pre-check: {'DGA domain detected' if is_dga else 'URL structure analysis'}"
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# MCP Tool Call Interception
+# ---------------------------------------------------------------------------
+
+# MCP methods that involve URL navigation
+_MCP_URL_METHODS = {
+    "browser_navigate", "tools/browser_navigate",
+    "fetch", "tools/fetch",
+    "browser_snapshot", "tools/browser_snapshot",
+    "web_fetch", "tools/web_fetch",
+    "navigate", "tools/navigate",
+}
+
+# URL parameter names in MCP tool calls
+_MCP_URL_PARAMS = {"url", "uri", "href", "target", "destination", "page"}
+
+
+def intercept_mcp_tool_call(request: MCPInterceptRequest) -> MCPInterceptResult:
+    """Intercept and security-check an MCP tool call.
+
+    Two-tier approach:
+    1. Fast scan (< 5ms): URL structure, DGA, TLD check
+    2. Deep scan (if suspicious): Full page fetch + DOM + Gemini
+
+    Args:
+        request: MCP tool call to intercept.
+
+    Returns:
+        MCPInterceptResult with allow/block decision.
+    """
+    t0 = time.monotonic()
+
+    # Extract method name (handle namespaced and plain formats)
+    method = request.method.split("/")[-1] if "/" in request.method else request.method
+
+    # Check if this is a URL-accessing method
+    if request.method not in _MCP_URL_METHODS and method not in _MCP_URL_METHODS:
+        return MCPInterceptResult(
+            allowed=True,
+            reason="Non-URL method, no interception needed",
+            latency_ms=(time.monotonic() - t0) * 1000,
+            tier="skip",
+        )
+
+    # Extract URL from params
+    url = ""
+    for param_name in _MCP_URL_PARAMS:
+        if param_name in request.params:
+            url = str(request.params[param_name])
+            break
+
+    if not url:
+        return MCPInterceptResult(
+            allowed=True,
+            reason="No URL parameter found in tool call",
+            latency_ms=(time.monotonic() - t0) * 1000,
+            tier="skip",
+        )
+
+    # SSRF pre-check
+    try:
+        validate_url_ssrf(url)
+    except SSRFError as exc:
+        return MCPInterceptResult(
+            allowed=False,
+            url=url,
+            reason=f"SSRF blocked: {exc}",
+            latency_ms=(time.monotonic() - t0) * 1000,
+            tier="fast",
+        )
+
+    # Tier 1: Fast scan
+    fast_verdict = fast_scan(url)
+
+    if fast_verdict.recommended_action == "block":
+        return MCPInterceptResult(
+            allowed=False,
+            url=url,
+            verdict=fast_verdict,
+            reason=f"Fast-scan blocked: {fast_verdict.summary}",
+            latency_ms=(time.monotonic() - t0) * 1000,
+            tier="fast",
+        )
+
+    if fast_verdict.recommended_action == "allow" and fast_verdict.confidence >= 0.7:
+        return MCPInterceptResult(
+            allowed=True,
+            url=url,
+            verdict=fast_verdict,
+            reason="Fast-scan approved: URL appears safe",
+            latency_ms=(time.monotonic() - t0) * 1000,
+            tier="fast",
+        )
+
+    # Tier 2: Deep scan (warn or low-confidence allow)
+    try:
+        deep_result = run_causal_scan(url)
+        return MCPInterceptResult(
+            allowed=deep_result.verdict.recommended_action != "block",
+            url=url,
+            verdict=deep_result.verdict,
+            reason=f"Deep-scan: {deep_result.verdict.summary}",
+            latency_ms=(time.monotonic() - t0) * 1000,
+            tier="deep",
+        )
+    except (SSRFError, ResourceLimitError) as exc:
+        return MCPInterceptResult(
+            allowed=False,
+            url=url,
+            reason=f"Deep-scan error: {exc}",
+            latency_ms=(time.monotonic() - t0) * 1000,
+            tier="deep",
+        )
+    except Exception as exc:
+        # On error, fall back to fast verdict
+        logger.warning("Deep scan failed, using fast verdict: %s", exc)
+        return MCPInterceptResult(
+            allowed=fast_verdict.recommended_action != "block",
+            url=url,
+            verdict=fast_verdict,
+            reason=f"Deep-scan failed ({exc}), using fast verdict",
+            latency_ms=(time.monotonic() - t0) * 1000,
+            tier="fast_fallback",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -1329,6 +1849,7 @@ def run_causal_scan(url: str) -> CausalScanResult:
     """
     run_id = str(uuid.uuid4())
     timestamp = datetime.now(timezone.utc).isoformat()
+    t0 = time.monotonic()
 
     # Step 1: Bundle
     bundle, html = bundle_page(url)
@@ -1378,6 +1899,8 @@ def run_causal_scan(url: str) -> CausalScanResult:
     # Detect actual eval method from verdict summary
     eval_method = "rule_based" if verdict.summary.startswith("Rule-based") else "gemini"
 
+    latency_ms = (time.monotonic() - t0) * 1000
+
     result = CausalScanResult(
         run_id=run_id,
         url=url,
@@ -1388,6 +1911,8 @@ def run_causal_scan(url: str) -> CausalScanResult:
         verdict=verdict,
         eval_method=eval_method,
         timestamp=timestamp,
+        scan_latency_ms=round(latency_ms, 1),
+        tier="deep",
     )
 
     _emit_evidence(result)

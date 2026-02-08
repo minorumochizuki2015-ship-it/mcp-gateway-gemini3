@@ -18,8 +18,11 @@ from mcp_gateway.causal_sandbox import (
     MCP_THREAT_PATTERNS,
     SUSPICIOUS_TLDS,
     A11yNode,
+    CausalChainStep,
     CausalScanResult,
     DOMSecurityNode,
+    MCPInterceptRequest,
+    MCPInterceptResult,
     NetworkRequestTrace,
     ResourceLimitError,
     SSRFError,
@@ -27,13 +30,17 @@ from mcp_gateway.causal_sandbox import (
     WebBundleResult,
     WebSecurityVerdict,
     _CONTAINER_TAGS,
+    _build_attack_narrative,
+    _build_causal_chain,
     _rule_based_verdict,
     analyze_dom_security,
     bundle_page,
     detect_dga,
     extract_accessibility_tree,
     extract_visible_text,
+    fast_scan,
     gemini_security_verdict,
+    intercept_mcp_tool_call,
     run_causal_scan,
     trace_network_requests,
     validate_url_ssrf,
@@ -1078,3 +1085,397 @@ class TestCombinedDetection:
         )
         assert verdict.classification == ThreatClassification.benign
         assert verdict.confidence >= 0.8
+
+
+# ---- Causal Chain ----
+
+
+class TestCausalChain:
+    """Tests for causal chain generation."""
+
+    def test_causal_chain_step_model(self) -> None:
+        """CausalChainStep fields serialize correctly."""
+        step = CausalChainStep(
+            step=1,
+            action="Visit DGA domain",
+            consequence="Ephemeral infrastructure",
+            evidence="hostname=abc123.tk",
+            risk_level="high",
+        )
+        d = step.model_dump()
+        assert d["step"] == 1
+        assert d["risk_level"] == "high"
+
+    def test_verdict_includes_causal_chain(self) -> None:
+        """Rule-based verdict now includes causal chain."""
+        verdict = _rule_based_verdict(
+            "https://xkqmwpzr.tk/login",
+            [DOMSecurityNode(
+                tag="form", attributes={"action": "https://evil.com/steal"},
+                suspicious=True, threat_type="deceptive_form",
+                selector="form",
+            )],
+            [], [],
+        )
+        assert len(verdict.causal_chain) > 0
+        assert any(s.risk_level == "critical" for s in verdict.causal_chain)
+
+    def test_verdict_includes_attack_narrative(self) -> None:
+        """Verdict includes attack narrative."""
+        verdict = _rule_based_verdict(
+            "https://mvmqkppv.my/",
+            [], [], [],
+        )
+        assert verdict.attack_narrative != ""
+        assert "DGA" in verdict.attack_narrative or "dga" in verdict.attack_narrative.lower()
+
+    def test_verdict_includes_mcp_threats_for_injection(self) -> None:
+        """MCP injection triggers mcp_specific_threats field."""
+        verdict = _rule_based_verdict(
+            "https://example.com/",
+            [DOMSecurityNode(
+                tag="script",
+                attributes={"pattern": "jsonrpc"},
+                suspicious=True,
+                threat_type="mcp_injection",
+                selector="[document]",
+            )],
+            [], [],
+        )
+        assert len(verdict.mcp_specific_threats) > 0
+        assert any("MCP" in t or "tool" in t for t in verdict.mcp_specific_threats)
+
+    def test_benign_has_empty_causal_chain(self) -> None:
+        """Benign site has empty or minimal causal chain."""
+        verdict = _rule_based_verdict(
+            "https://www.google.com/",
+            [], [], [],
+            visible_text="Google Search",
+        )
+        assert verdict.classification == ThreatClassification.benign
+        assert len(verdict.causal_chain) == 0
+
+    def test_build_causal_chain_dga_and_mcp(self) -> None:
+        """Causal chain includes both DGA and MCP steps."""
+        chain = _build_causal_chain(
+            "https://qwxrtzmp.tk/",
+            [DOMSecurityNode(
+                tag="script", attributes={}, suspicious=True,
+                threat_type="mcp_injection", selector="doc",
+            )],
+            [], [], True, True, False, True,
+        )
+        types = {s.action for s in chain}
+        assert any("DGA" in a or "algorithmically" in a for a in types)
+        assert any("MCP" in a or "JSON-RPC" in a for a in types)
+
+    def test_attack_narrative_critical_mcp(self) -> None:
+        """Attack narrative mentions tool_call hijacking for MCP+DGA."""
+        chain = [CausalChainStep(
+            step=1, action="test", consequence="test",
+            evidence="test", risk_level="critical",
+        )]
+        narrative = _build_attack_narrative(
+            ThreatClassification.malware, chain,
+            is_dga=True, has_mcp_injection=True,
+            hostname="qwxrtzmp.tk",
+        )
+        assert "tool_call" in narrative or "CRITICAL" in narrative
+
+
+# ---- Fast Scan (Tier 1) ----
+
+
+class TestFastScan:
+    """Tests for fast_scan (URL-only, no network)."""
+
+    def test_fast_scan_dga_domain(self) -> None:
+        """Fast scan detects DGA domains."""
+        verdict = fast_scan("https://xkqmwpzr.tk/login")
+        assert verdict.classification in (
+            ThreatClassification.phishing,
+            ThreatClassification.scam,
+        )
+        assert verdict.recommended_action in ("warn", "block")
+        assert len(verdict.risk_indicators) > 0
+
+    def test_fast_scan_benign(self) -> None:
+        """Fast scan passes benign URLs."""
+        verdict = fast_scan("https://www.google.com/search?q=test")
+        assert verdict.classification == ThreatClassification.benign
+        assert verdict.recommended_action == "allow"
+
+    def test_fast_scan_suspicious_tld(self) -> None:
+        """Fast scan flags suspicious TLDs."""
+        verdict = fast_scan("https://something.tk/")
+        assert any("suspicious_tld" in i for i in verdict.risk_indicators)
+
+    def test_fast_scan_non_http_blocked(self) -> None:
+        """Non-HTTP schemes are blocked."""
+        verdict = fast_scan("ftp://evil.com/malware.exe")
+        assert verdict.recommended_action == "block"
+        assert verdict.classification == ThreatClassification.malware
+
+    def test_fast_scan_has_causal_chain_for_dga(self) -> None:
+        """Fast scan produces causal chain for DGA."""
+        verdict = fast_scan("https://mvmqkppv.my/")
+        assert len(verdict.causal_chain) > 0
+        assert verdict.causal_chain[0].step == 1
+
+    def test_fast_scan_latency_acceptable(self) -> None:
+        """Fast scan completes quickly (no network)."""
+        import time
+
+        t0 = time.monotonic()
+        for _ in range(100):
+            fast_scan("https://www.example.com/page")
+        elapsed = (time.monotonic() - t0) * 1000
+        # 100 scans should complete in < 500ms
+        assert elapsed < 500, f"100 fast scans took {elapsed:.0f}ms"
+
+
+# ---- MCP Interception ----
+
+
+class TestMCPIntercept:
+    """Tests for MCP tool call interception."""
+
+    def test_intercept_non_url_method(self) -> None:
+        """Non-URL methods pass through."""
+        req = MCPInterceptRequest(
+            method="tools/list", params={},
+        )
+        result = intercept_mcp_tool_call(req)
+        assert result.allowed is True
+        assert result.tier == "skip"
+
+    @patch("mcp_gateway.causal_sandbox.validate_url_ssrf")
+    def test_intercept_blocks_dga(self, mock_ssrf: MagicMock) -> None:
+        """DGA URLs are blocked on fast tier."""
+        mock_ssrf.return_value = ("https://xkqmwpzr.tk/login", "1.2.3.4")
+        req = MCPInterceptRequest(
+            method="browser_navigate",
+            params={"url": "https://xkqmwpzr.tk/login"},
+        )
+        result = intercept_mcp_tool_call(req)
+        # Should at least warn or block
+        assert result.url == "https://xkqmwpzr.tk/login"
+        assert result.verdict is not None
+        assert result.verdict.classification != ThreatClassification.benign
+
+    def test_intercept_allows_google(self) -> None:
+        """Safe URLs pass through on fast tier."""
+        req = MCPInterceptRequest(
+            method="browser_navigate",
+            params={"url": "https://www.google.com/"},
+        )
+        result = intercept_mcp_tool_call(req)
+        assert result.allowed is True
+        assert result.tier == "fast"
+
+    @patch("mcp_gateway.causal_sandbox.validate_url_ssrf")
+    def test_intercept_ssrf_blocked(self, mock_ssrf: MagicMock) -> None:
+        """SSRF URLs are blocked."""
+        mock_ssrf.side_effect = SSRFError("Blocked IP: 169.254.169.254")
+        req = MCPInterceptRequest(
+            method="tools/fetch",
+            params={"url": "http://169.254.169.254/latest/meta-data/"},
+        )
+        result = intercept_mcp_tool_call(req)
+        assert result.allowed is False
+        assert "SSRF" in result.reason
+
+    def test_intercept_extracts_url_from_various_params(self) -> None:
+        """URL extraction works for different param names."""
+        for param_name in ["url", "uri", "href", "target"]:
+            req = MCPInterceptRequest(
+                method="browser_navigate",
+                params={param_name: "https://www.google.com/"},
+            )
+            result = intercept_mcp_tool_call(req)
+            assert result.url == "https://www.google.com/"
+
+    def test_intercept_no_url_param(self) -> None:
+        """Missing URL param skips interception."""
+        req = MCPInterceptRequest(
+            method="browser_navigate",
+            params={"text": "hello"},
+        )
+        result = intercept_mcp_tool_call(req)
+        assert result.allowed is True
+        assert result.tier == "skip"
+
+    def test_intercept_result_has_latency(self) -> None:
+        """Intercept result includes latency measurement."""
+        req = MCPInterceptRequest(
+            method="browser_navigate",
+            params={"url": "https://www.example.com/"},
+        )
+        result = intercept_mcp_tool_call(req)
+        assert result.latency_ms >= 0
+
+
+# ---- MCP Security Server ----
+
+
+class TestMCPSecurityServer:
+    """Tests for MCP Security Server protocol handling."""
+
+    def test_handle_initialize(self) -> None:
+        """Initialize message returns server info."""
+        from mcp_gateway.mcp_security_server import handle_message
+
+        msg = json.dumps({
+            "jsonrpc": "2.0", "id": 1,
+            "method": "initialize",
+            "params": {"protocolVersion": "2024-11-05"},
+        })
+        resp = json.loads(handle_message(msg))
+        assert resp["result"]["serverInfo"]["name"] == "mcp-security-gateway"
+
+    def test_handle_tools_list(self) -> None:
+        """tools/list returns available tools."""
+        from mcp_gateway.mcp_security_server import handle_message
+
+        msg = json.dumps({
+            "jsonrpc": "2.0", "id": 2, "method": "tools/list",
+        })
+        resp = json.loads(handle_message(msg))
+        tools = resp["result"]["tools"]
+        names = {t["name"] for t in tools}
+        assert "secure_browse" in names
+        assert "check_url" in names
+        assert "scan_report" in names
+        assert "session_stats" in names
+
+    def test_handle_check_url_benign(self) -> None:
+        """check_url returns fast verdict for benign URL."""
+        from mcp_gateway.mcp_security_server import handle_message
+
+        msg = json.dumps({
+            "jsonrpc": "2.0", "id": 3,
+            "method": "tools/call",
+            "params": {
+                "name": "check_url",
+                "arguments": {"url": "https://www.google.com/"},
+            },
+        })
+        resp = json.loads(handle_message(msg))
+        content = json.loads(resp["result"]["content"][0]["text"])
+        assert content["classification"] == "benign"
+        assert content["tier"] == "fast"
+        assert "latency_ms" in content
+
+    def test_handle_check_url_dga(self) -> None:
+        """check_url detects DGA domain."""
+        from mcp_gateway.mcp_security_server import handle_message
+
+        msg = json.dumps({
+            "jsonrpc": "2.0", "id": 4,
+            "method": "tools/call",
+            "params": {
+                "name": "check_url",
+                "arguments": {"url": "https://mvmqkppv.my/"},
+            },
+        })
+        resp = json.loads(handle_message(msg))
+        content = json.loads(resp["result"]["content"][0]["text"])
+        assert content["classification"] in ("phishing", "scam")
+        assert len(content["causal_chain"]) > 0
+
+    def test_handle_session_stats(self) -> None:
+        """session_stats returns stats structure."""
+        from mcp_gateway.mcp_security_server import handle_message
+
+        msg = json.dumps({
+            "jsonrpc": "2.0", "id": 5,
+            "method": "tools/call",
+            "params": {"name": "session_stats", "arguments": {}},
+        })
+        resp = json.loads(handle_message(msg, session_id="test-session"))
+        content = json.loads(resp["result"]["content"][0]["text"])
+        assert "total_scans" in content
+        assert "session_id" in content
+
+    def test_handle_unknown_tool(self) -> None:
+        """Unknown tool returns error."""
+        from mcp_gateway.mcp_security_server import handle_message
+
+        msg = json.dumps({
+            "jsonrpc": "2.0", "id": 6,
+            "method": "tools/call",
+            "params": {"name": "nonexistent_tool", "arguments": {}},
+        })
+        resp = json.loads(handle_message(msg))
+        assert "error" in resp
+
+    def test_handle_unknown_method(self) -> None:
+        """Unknown method returns method not found."""
+        from mcp_gateway.mcp_security_server import handle_message
+
+        msg = json.dumps({
+            "jsonrpc": "2.0", "id": 7, "method": "unknown/method",
+        })
+        resp = json.loads(handle_message(msg))
+        assert resp["error"]["code"] == -32601
+
+    def test_handle_ping(self) -> None:
+        """Ping returns empty result."""
+        from mcp_gateway.mcp_security_server import handle_message
+
+        msg = json.dumps({
+            "jsonrpc": "2.0", "id": 8, "method": "ping",
+        })
+        resp = json.loads(handle_message(msg))
+        assert resp["result"] == {}
+
+    def test_handle_notification_no_response(self) -> None:
+        """Notifications return None."""
+        from mcp_gateway.mcp_security_server import handle_message
+
+        msg = json.dumps({
+            "jsonrpc": "2.0",
+            "method": "notifications/initialized",
+        })
+        assert handle_message(msg) is None
+
+    def test_handle_invalid_json(self) -> None:
+        """Invalid JSON returns parse error."""
+        from mcp_gateway.mcp_security_server import handle_message
+
+        resp = json.loads(handle_message("not json"))
+        assert resp["error"]["code"] == -32700
+
+    def test_secure_browse_blocks_dga(self) -> None:
+        """secure_browse blocks DGA domain with causal chain."""
+        from mcp_gateway.mcp_security_server import handle_message
+
+        msg = json.dumps({
+            "jsonrpc": "2.0", "id": 9,
+            "method": "tools/call",
+            "params": {
+                "name": "secure_browse",
+                "arguments": {"url": "https://xkqmwpzr.tk/"},
+            },
+        })
+        resp = json.loads(handle_message(msg, session_id="test-browse"))
+        content = json.loads(resp["result"]["content"][0]["text"])
+        assert content.get("blocked") is True or content.get(
+            "classification"
+        ) in ("phishing", "scam")
+
+    def test_secure_browse_allows_safe(self) -> None:
+        """secure_browse allows safe URLs."""
+        from mcp_gateway.mcp_security_server import handle_message
+
+        msg = json.dumps({
+            "jsonrpc": "2.0", "id": 10,
+            "method": "tools/call",
+            "params": {
+                "name": "secure_browse",
+                "arguments": {"url": "https://www.google.com/"},
+            },
+        })
+        resp = json.loads(handle_message(msg, session_id="test-browse"))
+        content = json.loads(resp["result"]["content"][0]["text"])
+        assert content.get("blocked") is False
