@@ -275,7 +275,7 @@ gcloud run services describe mcp-gateway --format='value(status.url)'
 ## Test Suite
 
 ```bash
-# 352 tests
+# 357 tests
 python -m pytest tests/ -v
 
 # Gemini integration tests only
@@ -352,6 +352,29 @@ Dockerfile            # Cloud Run deployment
 docker-compose.yml    # One-command full stack deployment
 cloudbuild.yaml       # Google Cloud Build config
 ```
+
+## Transparent Security: Auto-Scan on Tool Calls
+
+When an AI agent calls a tool through the `/run` proxy, MCP Gateway **automatically scans any URL parameters** before forwarding to the upstream MCP server:
+
+```
+Agent calls: browser_navigate(url="https://suspicious-site.tk/login")
+                │
+                ▼
+   ┌─────────────────────────┐
+   │  1. Extract URL params  │  url, uri, href, target, destination, page
+   │  2. Fast scan (<5ms)    │  DGA, TLD, brand, SSRF check
+   │  3. Deep scan (if warn) │  DOM + a11y + Gemini 3 analysis
+   └─────────────────────────┘
+                │
+         ┌──────┴──────┐
+         │             │
+    ✅ Allow      ❌ Block
+    Forward to    Return 403 +
+    upstream      evidence trail
+```
+
+**No agent modification needed.** The gateway transparently scans URL-bearing tool calls. Evidence is emitted for every interception decision.
 
 ## Connecting AI Agents
 
