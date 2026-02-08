@@ -5257,6 +5257,57 @@ async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
             total_events += 1
             await asyncio.sleep(0.5)
 
+        # ── Step 5b: Agent Scan — Gemini Function Calling demo ──
+        yield _sse_event("phase", {
+            "name": "agent_scan",
+            "label": "Agent Scan (Gemini 3 Function Calling)",
+        })
+        _agent_demo_url = "https://xkjhwqe.tk/payload"
+        _as_t0 = _time.perf_counter()
+        try:
+            _agent_result = _sandbox.run_agent_scan(_agent_demo_url)
+            _as_verdict = _agent_result.verdict
+        except Exception as exc:
+            logger.warning("Agent scan demo failed: %s", exc)
+            _as_verdict = _sandbox.WebSecurityVerdict(
+                classification=_sandbox.ThreatClassification.benign,
+                confidence=0.0,
+                risk_indicators=["agent_scan_error"],
+                evidence_refs=[],
+                recommended_action="warn",
+                summary=f"Agent scan error: {exc}",
+            )
+            _agent_result = _sandbox.AgentScanResult(
+                verdict=_as_verdict,
+                tools_called=["error_fallback"],
+                eval_method="error",
+            )
+        _as_latency = int((_time.perf_counter() - _as_t0) * 1000)
+        yield _sse_event("step", {
+            "phase": "agent_scan",
+            "url": _agent_demo_url,
+            "classification": _as_verdict.classification.value,
+            "confidence": _as_verdict.confidence,
+            "action": _as_verdict.recommended_action,
+            "eval_method": _agent_result.eval_method,
+            "tools_called": _agent_result.tools_called,
+            "tool_count": len(_agent_result.tools_called),
+            "reasoning_steps": _agent_result.reasoning_steps,
+            "latency_ms": _as_latency,
+            "summary": _as_verdict.summary[:200],
+            "gemini_features": [
+                "function_calling",
+                "thinking_level=high",
+                "google_search",
+                "multi_turn",
+            ],
+            "icon": "block" if _as_verdict.recommended_action == "block" else (
+                "warn" if _as_verdict.recommended_action == "warn" else "pass"
+            ),
+        })
+        total_events += 1
+        await asyncio.sleep(0.5)
+
         # ── Step 6: MCP Tool Call Interception (Live Demo) ──
         yield _sse_event("phase", {
             "name": "intercept",
