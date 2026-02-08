@@ -35,14 +35,15 @@ AI Client ──► MCP Gateway ──► MCP Servers
 
 ## Why Gemini 3? (Not Just "Any LLM")
 
-MCP Gateway uses **4 Gemini 3 exclusive features** across **all 5 integration points** — not just one component:
+MCP Gateway uses **5 Gemini 3 exclusive features** across **all 6 integration points** — not just one component:
 
 | Gemini 3 Feature | Used In | Why Only Gemini 3 |
 |-----------|--------|---------------|
-| **Thinking Levels** | All 5 components (`high` for security, `low` for speed) | 2-tier reasoning: deep analysis for threats, fast triage for safe content |
+| **Thinking Levels** | All 6 components (`high` for security, `low` for speed) | 2-tier reasoning: deep analysis for threats, fast triage for safe content |
+| **Function Calling** | Agent Scan (multi-turn tool use) | Gemini **autonomously decides** which security tools to invoke — not a fixed pipeline |
 | **URL Context** | Web Sandbox | Gemini 3 **browses the URL itself** — multimodal page analysis without our own renderer |
-| **Google Search Grounding** | AI Council + Semantic Scanner + Web Sandbox | Real-time threat intel: "Has this server/domain/package been reported as malicious?" |
-| **Structured Output + Tools** | All 5 components (typed JSON schemas) | Combine browsing + search + typed verdict in a single API call |
+| **Google Search Grounding** | AI Council + Scanner + Sandbox + Agent Scan | Real-time threat intel: "Has this server/domain/package been reported as malicious?" |
+| **Structured Output** | All 6 components (typed JSON schemas) | Combine browsing + search + typed verdict in a single API call |
 
 **Architecture**: Gemini 3 is not a "classifier at the end" — it is the **reasoning engine** that browses, searches, thinks, and decides:
 
@@ -69,7 +70,7 @@ verdict = WebSecurityVerdict.model_validate_json(response.text)
 **Without Gemini 3**: Rule-based only (DGA entropy, brand matching, TLD scoring). Works but misses semantic attacks.
 **With Gemini 3**: Deep reasoning about WHY a page is dangerous, real-time threat intel, visual page analysis.
 
-## 5 Gemini 3 Integration Points
+## 6 Gemini 3 Integration Points
 
 | # | Component | Schema | Gemini 3 Features Used |
 |---|-----------|--------|-------------|
@@ -78,6 +79,7 @@ verdict = WebSecurityVerdict.model_validate_json(response.text)
 | 3 | **RedTeam Generator** | `RedTeamGeneration` | **thinking_level=low** + structured output for fast attack generation |
 | 4 | **RedTeam Evaluator** | `PayloadSafetyVerdict` | **thinking_level=high** + structured output for safety assessment |
 | 5 | **Causal Web Sandbox** | `WebSecurityVerdict` | **thinking_level + URL Context + Google Search + structured output** |
+| 6 | **Agent Scan** | `AgentScanResult` | **function_calling + thinking_level=high + Google Search + multi-turn** |
 
 ### Causal Web Sandbox: The "Only Gemini 3 Can Do This" Feature
 
@@ -104,6 +106,31 @@ Output: {
   "mcp_specific_threats": ["Brand impersonation: 'odakyu' on .qpon. AI agents must not trust credentials."]
 }
 ```
+
+### Agent Scan: Gemini 3 as Security Agent (Function Calling)
+
+The most advanced integration — Gemini 3 operates as an **autonomous security agent**:
+
+```
+POST /api/web-sandbox/agent-scan  {"url": "https://suspicious-site.tk"}
+
+Gemini 3 Agent Loop:
+  Turn 1: "Let me check the domain for DGA patterns"
+    → calls check_dga(domain="suspicious-site.tk")
+    → result: {is_dga: false, entropy: 3.2}
+
+  Turn 2: "TLD .tk is suspicious, let me check reputation"
+    → calls check_tld_reputation(domain="suspicious-site.tk", tld="tk")
+    → result: {category: "suspicious"}
+
+  Turn 3: "Let me search for known threats on this domain"
+    → uses Google Search grounding
+
+  Final: Synthesizes all tool results → WebSecurityVerdict
+    {classification: "phishing", confidence: 0.87, tools_called: 3}
+```
+
+**Why this matters**: Unlike a fixed pipeline, Gemini 3 **decides what to investigate**. A `.com` domain might only need DGA check, while a `.tk` domain triggers full analysis. This is **agentic security** — the same pattern MCP agents themselves use.
 
 ## Live Pipeline Demo
 
@@ -275,7 +302,7 @@ gcloud run services describe mcp-gateway --format='value(status.url)'
 ## Test Suite
 
 ```bash
-# 357 tests
+# 371 tests
 python -m pytest tests/ -v
 
 # Gemini integration tests only

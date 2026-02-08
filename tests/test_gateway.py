@@ -3264,7 +3264,7 @@ class TestGemini3Integration:
     def test_about_endpoint_gemini_features(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
     ) -> None:
-        """All 5 integration points report correct Gemini 3 features."""
+        """All 6 integration points report correct Gemini 3 features."""
         monkeypatch.setenv("MCP_GATEWAY_DB_PATH", str(tmp_path / "g.db"))
         monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
         with TestClient(app) as client:
@@ -3272,7 +3272,7 @@ class TestGemini3Integration:
             assert resp.status_code == 200
             data = resp.json()
             points = data["gemini_integration_points"]
-            assert len(points) == 5
+            assert len(points) == 6
 
             # Council: thinking_level_high + google_search
             council = points[0]
@@ -3578,5 +3578,69 @@ class TestRunURLInterception:
             evt = intercept_events[0]
             assert evt["event"] == "run_url_intercept"
             assert "https://google.com" in evt["urls"]
+
+
+class TestAgentScanEndpoint:
+    """Tests for /api/web-sandbox/agent-scan endpoint."""
+
+    @pytest.fixture(autouse=True)
+    def _demo_mode(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Enable demo mode to bypass admin auth guard."""
+        monkeypatch.setenv("MCP_GATEWAY_DEMO_MODE", "true")
+
+    def test_agent_scan_returns_verdict(self) -> None:
+        """Agent scan endpoint returns structured result."""
+        with TestClient(app) as client:
+            resp = client.post(
+                "/api/web-sandbox/agent-scan",
+                json={"url": "https://example.com"},
+            )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "verdict" in body
+        assert "tools_called" in body
+        assert "eval_method" in body
+        assert body["url"] == "https://example.com"
+
+    def test_agent_scan_blocks_ssrf(self) -> None:
+        """Agent scan blocks SSRF URLs."""
+        with TestClient(app) as client:
+            resp = client.post(
+                "/api/web-sandbox/agent-scan",
+                json={"url": "http://169.254.169.254/meta"},
+            )
+        # SSRF is caught inside run_agent_scan and returns as verdict
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["verdict"]["recommended_action"] == "block"
+        assert body["eval_method"] == "ssrf_guard"
+
+    def test_agent_scan_dga_domain(self) -> None:
+        """Agent scan detects DGA domains via fallback."""
+        with TestClient(app) as client:
+            resp = client.post(
+                "/api/web-sandbox/agent-scan",
+                json={"url": "https://xkjhwqe.tk/payload"},
+            )
+        assert resp.status_code == 200
+        body = resp.json()
+        # Should detect as suspicious via fast_scan fallback
+        assert body["verdict"]["classification"] in [
+            "phishing", "malware",
+        ]
+
+    def test_agent_scan_about_includes_function_calling(self) -> None:
+        """The /api/about response includes Agent Scan integration point."""
+        with TestClient(app) as client:
+            resp = client.get("/api/about")
+        body = resp.json()
+        points = body["gemini_integration_points"]
+        agent_point = [
+            p for p in points
+            if "function_calling" in p.get("gemini_features", [])
+        ]
+        assert len(agent_point) == 1
+        assert agent_point[0]["component"] == "Agent Scan (Function Calling)"
+        assert "multi_turn" in agent_point[0]["gemini_features"]
 
 

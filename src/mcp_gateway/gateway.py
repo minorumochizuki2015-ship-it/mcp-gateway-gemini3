@@ -1506,6 +1506,18 @@ async def about() -> JSONResponse:
                     "structured_output",
                 ],
             },
+            {
+                "id": 6,
+                "component": "Agent Scan (Function Calling)",
+                "schema": "AgentScanResult",
+                "gemini_features": [
+                    "function_calling",
+                    "thinking_level_high",
+                    "google_search",
+                    "structured_output",
+                    "multi_turn",
+                ],
+            },
         ],
         "security_layers": [
             "L1: Source/Sink Policy (deterministic)",
@@ -1528,7 +1540,7 @@ async def about() -> JSONResponse:
             {"protocol": "MCP stdio", "command": "python -m src.mcp_gateway.mcp_security_server"},
             {"protocol": "MCP Streamable HTTP", "endpoint": "/mcp/security"},
         ],
-        "test_count": 357,
+        "test_count": 371,
     })
 
 
@@ -4076,6 +4088,57 @@ async def web_sandbox_artifact(bundle_id: str) -> JSONResponse:
 async def web_sandbox_verdicts() -> JSONResponse:
     """List recent web sandbox verdicts (in-memory, max 100)."""
     return JSONResponse({"verdicts": list(_WEB_SANDBOX_VERDICTS)})
+
+
+@app.post("/api/web-sandbox/agent-scan")
+async def web_sandbox_agent_scan(
+    request: Request, body: WebSandboxScanRequest
+) -> JSONResponse:
+    """Run Gemini 3 Agent Scan using Function Calling.
+
+    Gemini 3 autonomously decides which security tools to invoke.
+    Demonstrates: function_calling + thinking_level + google_search
+    + structured_output in a single agent loop.
+    """
+    if guard := _admin_auth_guard(request):
+        return guard
+    from . import causal_sandbox
+
+    try:
+        result = causal_sandbox.run_agent_scan(body.url)
+    except causal_sandbox.SSRFError as exc:
+        return JSONResponse(
+            {"detail": f"SSRF blocked: {exc}"}, status_code=400
+        )
+
+    verdict_dict = result.verdict.model_dump()
+    verdict_dict["classification"] = result.verdict.classification.value
+    verdict_dict["causal_chain"] = [
+        s.model_dump() for s in result.verdict.causal_chain
+    ]
+
+    resp = {
+        "url": body.url,
+        "verdict": verdict_dict,
+        "tools_called": result.tools_called,
+        "tool_results": result.tool_results,
+        "reasoning_steps": result.reasoning_steps,
+        "eval_method": result.eval_method,
+    }
+
+    _WEB_SANDBOX_VERDICTS.append(
+        {
+            "url": body.url,
+            "classification": result.verdict.classification.value,
+            "confidence": result.verdict.confidence,
+            "recommended_action": result.verdict.recommended_action,
+            "summary": result.verdict.summary,
+            "tools_called": result.tools_called,
+            "eval_method": result.eval_method,
+        }
+    )
+
+    return JSONResponse(resp)
 
 
 # ---------------------------------------------------------------------------

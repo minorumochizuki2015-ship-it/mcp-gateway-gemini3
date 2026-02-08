@@ -2278,3 +2278,357 @@ def _emit_evidence(result: CausalScanResult) -> None:
         )
     except Exception:
         pass
+
+
+# ---------------------------------------------------------------------------
+# Gemini 3 Agent Scan: Function Calling (Gemini decides which tools to use)
+# ---------------------------------------------------------------------------
+
+# Security analysis tools that Gemini can call autonomously
+_AGENT_TOOL_DECLARATIONS = [
+    {
+        "name": "check_dga",
+        "description": (
+            "Analyze a domain name for Domain Generation Algorithm (DGA) patterns. "
+            "Returns entropy score, consonant analysis, and DGA classification."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "domain": {
+                    "type": "string",
+                    "description": "Domain name to analyze (e.g., 'xyzqwkjhgfds.tk')",
+                },
+            },
+            "required": ["domain"],
+        },
+    },
+    {
+        "name": "check_brand_impersonation",
+        "description": (
+            "Check if a domain visually or textually impersonates a known brand. "
+            "Detects typosquatting, homograph attacks, and substring matches "
+            "against 80+ known brands."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "domain": {
+                    "type": "string",
+                    "description": "Domain name to check for brand impersonation",
+                },
+            },
+            "required": ["domain"],
+        },
+    },
+    {
+        "name": "analyze_page_dom",
+        "description": (
+            "Fetch a URL and analyze its DOM for security threats: hidden iframes, "
+            "deceptive forms, suspicious scripts, clickjacking attempts, and "
+            "MCP-specific injection patterns (JSON-RPC injection, tool shadowing)."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "URL to fetch and analyze",
+                },
+            },
+            "required": ["url"],
+        },
+    },
+    {
+        "name": "trace_network_requests",
+        "description": (
+            "Extract and analyze all network requests from a page's HTML: "
+            "script sources, form actions, image sources, link targets. "
+            "Flags suspicious domains, DGA resources, and credential exfiltration."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "URL whose HTML to analyze for network requests",
+                },
+            },
+            "required": ["url"],
+        },
+    },
+    {
+        "name": "check_tld_reputation",
+        "description": (
+            "Check if a domain uses a suspicious or elevated-risk TLD. "
+            "Returns TLD category (suspicious/elevated/normal) and abuse history."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "domain": {
+                    "type": "string",
+                    "description": "Domain name to check TLD reputation",
+                },
+            },
+            "required": ["domain"],
+        },
+    },
+]
+
+
+def _execute_agent_tool(name: str, args: dict) -> dict:
+    """Execute a security analysis tool called by Gemini agent."""
+    if name == "check_dga":
+        domain = args.get("domain", "")
+        is_dga, score, indicators = detect_dga(domain)
+        parts = domain.split(".")
+        target = max(parts[:-1], key=len) if len(parts) >= 2 else domain
+        return {
+            "domain": domain,
+            "is_dga": is_dga,
+            "score": round(score, 3),
+            "entropy": round(_shannon_entropy(target), 3),
+            "consonant_ratio": round(_consonant_ratio(target), 3),
+            "indicators": indicators,
+        }
+
+    if name == "check_brand_impersonation":
+        domain = args.get("domain", "")
+        label = domain.split(".")[0].lower() if domain else ""
+        matched_brand = ""
+        is_impersonation = False
+        for brand in IMPERSONATED_BRANDS:
+            if brand in label and label != brand:
+                matched_brand = brand
+                is_impersonation = True
+                break
+        return {
+            "domain": domain,
+            "is_impersonation": is_impersonation,
+            "brand": matched_brand,
+            "match_type": "substring" if is_impersonation else "none",
+        }
+
+    if name == "analyze_page_dom":
+        url = args.get("url", "")
+        try:
+            validate_url_ssrf(url)
+            _bundle, html = bundle_page(url)
+            if not html:
+                return {"url": url, "error": "failed to fetch", "threats": []}
+            nodes = analyze_dom_security(html, url)
+            threats = [
+                {"tag": n.tag, "threat_type": n.threat_type, "selector": n.selector}
+                for n in nodes if n.suspicious
+            ]
+            return {"url": url, "threat_count": len(threats), "threats": threats[:10]}
+        except (SSRFError, ResourceLimitError) as exc:
+            return {"url": url, "error": str(exc), "threats": []}
+
+    if name == "trace_network_requests":
+        url = args.get("url", "")
+        try:
+            validate_url_ssrf(url)
+            _bundle, html = bundle_page(url)
+            if not html:
+                return {"url": url, "error": "failed to fetch", "traces": []}
+            traces = trace_network_requests(url, html)
+            suspicious = [
+                {"url": t.url, "source": t.source, "threat_type": t.threat_type}
+                for t in traces if t.is_suspicious
+            ]
+            return {
+                "url": url,
+                "total_requests": len(traces),
+                "suspicious_count": len(suspicious),
+                "suspicious": suspicious[:10],
+            }
+        except (SSRFError, ResourceLimitError) as exc:
+            return {"url": url, "error": str(exc), "traces": []}
+
+    if name == "check_tld_reputation":
+        domain = args.get("domain", "")
+        parts = domain.rsplit(".", 1)
+        tld = parts[-1].lower() if parts else ""
+        is_suspicious = tld in SUSPICIOUS_TLDS
+        is_elevated = tld in ELEVATED_CC_TLDS
+        category = (
+            "suspicious" if is_suspicious
+            else "elevated" if is_elevated
+            else "normal"
+        )
+        return {"domain": domain, "tld": tld, "category": category}
+
+    return {"error": f"Unknown tool: {name}"}
+
+
+class AgentScanResult(BaseModel):
+    """Result of Gemini Agent Scan with function calling."""
+
+    verdict: WebSecurityVerdict
+    tools_called: list[str] = Field(
+        default_factory=list, description="Tools Gemini chose to call"
+    )
+    tool_results: list[dict] = Field(
+        default_factory=list, description="Results from each tool call"
+    )
+    reasoning_steps: int = Field(
+        default=0, description="Number of reasoning turns"
+    )
+    eval_method: str = Field(default="gemini_agent")
+
+
+def run_agent_scan(url: str) -> AgentScanResult:
+    """Run Gemini 3 Agent Scan using Function Calling.
+
+    Instead of a fixed pipeline, Gemini 3 autonomously decides which
+    security analysis tools to invoke based on the URL. This demonstrates
+    Gemini 3's function calling capability combined with thinking_level
+    and structured output.
+
+    Flow:
+    1. Give Gemini the URL + available security tools
+    2. Gemini calls tools it deems relevant (0-5 calls)
+    3. Gemini synthesizes tool results into WebSecurityVerdict
+    """
+    # SSRF check first (before any network calls, regardless of API key)
+    try:
+        validate_url_ssrf(url)
+    except SSRFError as exc:
+        return AgentScanResult(
+            verdict=WebSecurityVerdict(
+                classification=ThreatClassification.malware,
+                confidence=1.0,
+                risk_indicators=[f"SSRF: {exc}"],
+                evidence_refs=[url],
+                recommended_action="block",
+                summary=f"SSRF blocked: {exc}",
+            ),
+            tools_called=[],
+            eval_method="ssrf_guard",
+        )
+
+    api_key = os.getenv(GEMINI_API_KEY_ENV)
+    if not api_key:
+        fast = fast_scan(url)
+        return AgentScanResult(
+            verdict=fast,
+            tools_called=["fast_scan_fallback"],
+            eval_method="rule_based",
+        )
+
+    try:
+        from google import genai
+        from google.genai import types
+
+        client = genai.Client(api_key=api_key)
+
+        security_tools = types.Tool(
+            function_declarations=[
+                types.FunctionDeclaration(**decl)
+                for decl in _AGENT_TOOL_DECLARATIONS
+            ]
+        )
+        search_tool = types.Tool(google_search=types.GoogleSearch())
+
+        parsed = urlparse(url)
+        domain = parsed.hostname or ""
+
+        prompt = (
+            f"You are a security analyst agent. Analyze this URL for threats:\n"
+            f"URL: {url}\n"
+            f"Domain: {domain}\n"
+            f"TLD: {domain.rsplit('.', 1)[-1] if '.' in domain else ''}\n\n"
+            "Use the security analysis tools to investigate. You should:\n"
+            "1. Check the domain for DGA patterns and brand impersonation\n"
+            "2. Check TLD reputation\n"
+            "3. If the domain looks suspicious, analyze the page DOM and "
+            "trace network requests\n"
+            "4. Use Google Search to check threat databases\n"
+            "5. Synthesize all findings into a final security verdict\n\n"
+            "Call the tools you think are most relevant. Not all tools need "
+            "to be called for every URL -- use your judgment."
+        )
+
+        tools_called: list[str] = []
+        tool_results: list[dict] = []
+        messages: list = [prompt]
+        max_turns = 5
+        turns = 0
+
+        while turns < max_turns:
+            response = client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=messages,
+                config=types.GenerateContentConfig(
+                    thinking_config=types.ThinkingConfig(thinking_level="high"),
+                    tools=[security_tools, search_tool],
+                    temperature=1.0,
+                    max_output_tokens=4096,
+                ),
+            )
+
+            has_function_calls = False
+            if response.candidates and response.candidates[0].content:
+                for part in response.candidates[0].content.parts:
+                    if hasattr(part, "function_call") and part.function_call:
+                        has_function_calls = True
+                        fc = part.function_call
+                        tool_name = fc.name
+                        tool_args = dict(fc.args) if fc.args else {}
+                        tools_called.append(tool_name)
+                        result = _execute_agent_tool(tool_name, tool_args)
+                        tool_results.append(
+                            {"tool": tool_name, "args": tool_args, "result": result}
+                        )
+                        messages.append(response.candidates[0].content)
+                        messages.append(
+                            types.Content(
+                                role="user",
+                                parts=[types.Part(
+                                    function_response=types.FunctionResponse(
+                                        name=tool_name,
+                                        response=result,
+                                    )
+                                )],
+                            )
+                        )
+
+            if not has_function_calls:
+                break
+            turns += 1
+
+        messages.append(
+            "Based on all the analysis above, provide your final security "
+            "verdict as a WebSecurityVerdict JSON."
+        )
+        final_response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=messages,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=WebSecurityVerdict,
+                thinking_config=types.ThinkingConfig(thinking_level="high"),
+                temperature=1.0,
+                max_output_tokens=2048,
+            ),
+        )
+        verdict = WebSecurityVerdict.model_validate_json(final_response.text)
+
+        return AgentScanResult(
+            verdict=verdict,
+            tools_called=tools_called,
+            tool_results=tool_results,
+            reasoning_steps=turns + 1,
+            eval_method="gemini_agent",
+        )
+
+    except Exception as exc:
+        logger.warning("Agent scan failed, falling back to fast scan: %s", exc)
+        fast = fast_scan(url)
+        return AgentScanResult(
+            verdict=fast,
+            tools_called=["fast_scan_fallback"],
+            eval_method="rule_based_fallback",
+        )

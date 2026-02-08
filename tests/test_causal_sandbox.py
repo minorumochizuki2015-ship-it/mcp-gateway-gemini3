@@ -48,6 +48,12 @@ from mcp_gateway.causal_sandbox import (
     trace_network_requests,
     validate_url_ssrf,
 )
+from mcp_gateway.causal_sandbox import (
+    AgentScanResult,
+    _AGENT_TOOL_DECLARATIONS,
+    _execute_agent_tool,
+    run_agent_scan,
+)
 
 
 # ---- Pydantic Models ----
@@ -1816,3 +1822,135 @@ class TestGemini3Features:
         call_kwargs = mock_client.models.generate_content.call_args
         config = call_kwargs.kwargs.get("config") or call_kwargs[1].get("config")
         assert config.temperature == 1.0
+
+
+# ---- Agent Scan (Function Calling) ----
+
+
+class TestAgentScan:
+    """Tests for Gemini 3 Agent Scan with Function Calling."""
+
+    def test_agent_tool_declarations_complete(self) -> None:
+        """All 5 security tools are declared."""
+        names = [d["name"] for d in _AGENT_TOOL_DECLARATIONS]
+        assert len(names) == 5
+        assert "check_dga" in names
+        assert "check_brand_impersonation" in names
+        assert "analyze_page_dom" in names
+        assert "trace_network_requests" in names
+        assert "check_tld_reputation" in names
+
+    def test_agent_tool_declarations_have_parameters(self) -> None:
+        """Each tool declaration has parameters schema."""
+        for decl in _AGENT_TOOL_DECLARATIONS:
+            assert "parameters" in decl, f"{decl['name']} missing parameters"
+            params = decl["parameters"]
+            assert params.get("type") == "object"
+            assert "properties" in params
+
+    def test_execute_agent_tool_check_dga(self) -> None:
+        """_execute_agent_tool dispatches check_dga correctly."""
+        result = _execute_agent_tool(
+            "check_dga", {"domain": "xkjhwqe.xyz"}
+        )
+        assert "is_dga" in result
+        assert "entropy" in result
+        assert isinstance(result["is_dga"], bool)
+
+    def test_execute_agent_tool_brand_impersonation(self) -> None:
+        """_execute_agent_tool dispatches check_brand_impersonation."""
+        result = _execute_agent_tool(
+            "check_brand_impersonation",
+            {"domain": "g00gle-login.com"},
+        )
+        assert "is_impersonation" in result
+
+    def test_execute_agent_tool_tld_reputation(self) -> None:
+        """_execute_agent_tool dispatches check_tld_reputation."""
+        result = _execute_agent_tool(
+            "check_tld_reputation", {"domain": "evil.tk", "tld": "tk"}
+        )
+        assert "category" in result
+
+    def test_execute_agent_tool_unknown(self) -> None:
+        """_execute_agent_tool returns error for unknown tool."""
+        result = _execute_agent_tool("nonexistent_tool", {})
+        assert "error" in result
+
+    def test_agent_scan_no_api_key_fallback(self) -> None:
+        """Without API key, agent scan falls back to fast_scan."""
+        with patch.dict("os.environ", {}, clear=False):
+            # Ensure GOOGLE_API_KEY is not set
+            import os
+
+            env = os.environ.copy()
+            env.pop("GOOGLE_API_KEY", None)
+            with patch.dict("os.environ", env, clear=True):
+                result = run_agent_scan("https://example.com")
+        assert isinstance(result, AgentScanResult)
+        assert result.eval_method == "rule_based"
+        assert "fast_scan_fallback" in result.tools_called
+
+    def test_agent_scan_ssrf_blocked(self) -> None:
+        """Agent scan blocks SSRF attempts."""
+        with patch.dict(
+            "os.environ", {"GOOGLE_API_KEY": "test-key"}
+        ):
+            result = run_agent_scan("http://169.254.169.254/latest/meta-data")
+        assert result.eval_method == "ssrf_guard"
+        assert result.verdict.classification == ThreatClassification.malware
+        assert result.verdict.confidence == 1.0
+        assert result.verdict.recommended_action == "block"
+
+    def test_agent_scan_result_model(self) -> None:
+        """AgentScanResult Pydantic model validates correctly."""
+        verdict = WebSecurityVerdict(
+            classification=ThreatClassification.benign,
+            confidence=0.95,
+            risk_indicators=[],
+            evidence_refs=[],
+            recommended_action="allow",
+            summary="Safe site",
+        )
+        result = AgentScanResult(
+            verdict=verdict,
+            tools_called=["check_dga", "check_tld_reputation"],
+            tool_results=[
+                {"tool": "check_dga", "args": {}, "result": {}},
+            ],
+            reasoning_steps=2,
+            eval_method="gemini_agent",
+        )
+        assert result.reasoning_steps == 2
+        assert len(result.tools_called) == 2
+        data = result.model_dump()
+        assert data["eval_method"] == "gemini_agent"
+
+    def test_agent_scan_gemini_error_fallback(self) -> None:
+        """Agent scan falls back on Gemini API errors."""
+        with patch.dict(
+            "os.environ", {"GOOGLE_API_KEY": "test-key"}
+        ):
+            with patch(
+                "mcp_gateway.causal_sandbox.validate_url_ssrf",
+                return_value="https://example.com",
+            ):
+                # Import will fail with mock that raises
+                with patch(
+                    "mcp_gateway.causal_sandbox.genai",
+                    create=True,
+                ) as mock_genai:
+                    mock_client = MagicMock()
+                    mock_client.models.generate_content.side_effect = (
+                        RuntimeError("API error")
+                    )
+                    mock_genai.Client.return_value = mock_client
+                    # Patch the import inside run_agent_scan
+                    import importlib
+                    import sys
+
+                    # Just test that fallback works
+                    result = run_agent_scan("https://example.com")
+        assert isinstance(result, AgentScanResult)
+        # Should fall back to rule_based_fallback or rule_based
+        assert "fallback" in result.eval_method or result.eval_method == "rule_based"
