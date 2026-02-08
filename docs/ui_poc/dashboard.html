@@ -782,9 +782,17 @@
               scoresHtml += '</div>';
             }
           }
+          var councilGf = '';
+          if (d.gemini_features && d.gemini_features.length > 0) {
+            councilGf = '<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:3px">';
+            d.gemini_features.forEach(function(f) {
+              councilGf += '<span style="background:#ede9fe;color:#5b21b6;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:600">' + escapeHtml(f.replace('_', ' ')) + '</span>';
+            });
+            councilGf += '</div>';
+          }
           detail = '<div style="margin:4px 0 2px 24px;padding:6px 10px;background:#f8fafc;border-radius:6px;border-left:2px solid #dbeafe;font-size:11px;color:var(--gray-700)">'
             + '<span style="color:var(--muted);font-weight:600">Rationale:</span> ' + escapeHtml(d.rationale)
-            + scoresHtml + '</div>';
+            + scoresHtml + councilGf + '</div>';
         }
       } else if (d.phase === 'attack') {
         // ── Enhanced Attack Visualization ──
@@ -817,9 +825,19 @@
         var cls = d.classification;
         var ccol = cls === 'benign' ? 'var(--success)' : (cls === 'phishing' ? 'var(--danger)' : 'var(--warn)');
         var em = d.eval_method === 'gemini' ? ' <span style="background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600">Gemini 3</span>' : ' <span style="background:#f3f4f6;color:#6b7280;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600">Rule-based</span>';
+        // Gemini 3 feature badges
+        var gfBadges = '';
+        if (d.gemini_features && d.gemini_features.length > 0) {
+          gfBadges = '<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:3px">';
+          d.gemini_features.forEach(function(f) {
+            var fLabel = f.replace('_', ' ');
+            gfBadges += '<span style="background:#ede9fe;color:#5b21b6;padding:1px 6px;border-radius:3px;font-size:9px;font-weight:600">' + escapeHtml(fLabel) + '</span>';
+          });
+          gfBadges += '</div>';
+        }
         line = icon + ' <b>' + escapeHtml(d.label || d.url) + '</b> &rarr; <span style="color:' + ccol + ';font-weight:700">' + escapeHtml(String(cls).toUpperCase()) + '</span> (conf: ' + (d.confidence * 100).toFixed(0) + '%, ' + d.dom_threats + ' DOM threats, ' + (d.network_traces || 0) + ' network)' + em + latencyBadge(d.latency_ms);
-        // Show risk indicators and summary as expandable detail
-        if (d.summary || (d.risk_indicators && d.risk_indicators.length > 0)) {
+        // Show risk indicators, summary, causal chain, attack narrative
+        if (d.summary || (d.risk_indicators && d.risk_indicators.length > 0) || (d.causal_chain && d.causal_chain.length > 0)) {
           var riHtml = '';
           if (d.risk_indicators && d.risk_indicators.length > 0) {
             riHtml = '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">';
@@ -828,8 +846,31 @@
             });
             riHtml += '</div>';
           }
+          // Causal chain (Gemini 3 unique)
+          var chainHtml = '';
+          if (d.causal_chain && d.causal_chain.length > 0) {
+            chainHtml = '<div style="margin-top:6px;padding:4px 8px;background:#fef2f2;border-radius:4px;font-size:10px;color:#991b1b"><b>Causal Chain:</b>';
+            d.causal_chain.forEach(function(step) {
+              chainHtml += '<div style="margin:2px 0 0 8px">&rarr; <b>Step ' + step.step + ':</b> ' + escapeHtml(step.action) + ' &mdash; <i>' + escapeHtml(step.consequence) + '</i></div>';
+            });
+            chainHtml += '</div>';
+          }
+          // Attack narrative
+          var narrHtml = '';
+          if (d.attack_narrative) {
+            narrHtml = '<div style="margin-top:4px;font-size:10px;color:#6b21a8;font-style:italic">' + escapeHtml(d.attack_narrative) + '</div>';
+          }
+          // MCP-specific threats
+          var mcpHtml = '';
+          if (d.mcp_threats && d.mcp_threats.length > 0) {
+            mcpHtml = '<div style="margin-top:4px;display:flex;gap:3px;flex-wrap:wrap">';
+            d.mcp_threats.forEach(function(t) {
+              mcpHtml += '<span style="background:#fee2e2;color:#991b1b;padding:1px 6px;border-radius:3px;font-size:9px;font-weight:600">MCP: ' + escapeHtml(t.substring(0, 80)) + '</span>';
+            });
+            mcpHtml += '</div>';
+          }
           detail = '<div style="margin:4px 0 2px 24px;padding:6px 10px;background:#f8fafc;border-radius:6px;border-left:2px solid ' + ccol + ';font-size:11px;color:var(--gray-700)">'
-            + (d.summary ? escapeHtml(d.summary) : '') + riHtml + '</div>';
+            + (d.summary ? escapeHtml(d.summary) : '') + riHtml + gfBadges + chainHtml + narrHtml + mcpHtml + '</div>';
         }
       } else if (d.phase === 'intercept') {
         // ── Tool Call Interception Demo ──

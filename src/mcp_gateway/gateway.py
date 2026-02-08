@@ -4712,6 +4712,10 @@ async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
                     (new_status, ts, sid),
                 )
 
+            _council_gemini = (
+                ["structured_output", "seed_reproducibility"]
+                if eval_method == "gemini" else []
+            )
             yield _sse_event("step", {
                 "phase": "council", "server": srv_name,
                 "decision": decision, "eval_method": eval_method,
@@ -4719,6 +4723,7 @@ async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
                 "security_score": scores.get("security", 0),
                 "scores": {k: round(v, 2) for k, v in scores.items()} if scores else {},
                 "latency_ms": _council_latency,
+                "gemini_features": _council_gemini,
                 "icon": "allow" if decision == "allow" else "deny",
             })
             total_events += 1
@@ -4921,6 +4926,15 @@ async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
             )
 
             _ws_latency = int((_time.perf_counter() - _ws_t0) * 1000)
+            # Gemini 3 feature flags for UI display
+            _gemini_features: list[str] = []
+            if eval_method == "gemini":
+                _gemini_features = [
+                    "thinking_level=high",
+                    "url_context",
+                    "google_search",
+                    "structured_output",
+                ]
             yield _sse_event("step", {
                 "phase": "web_sandbox",
                 "url": page_url,
@@ -4934,6 +4948,13 @@ async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
                 "latency_ms": _ws_latency,
                 "risk_indicators": [str(r) for r in verdict.risk_indicators][:5],
                 "summary": verdict.summary[:150],
+                "gemini_features": _gemini_features,
+                "causal_chain": [
+                    s.model_dump() for s in verdict.causal_chain
+                ][:3],
+                "attack_narrative": verdict.attack_narrative[:200]
+                if verdict.attack_narrative else "",
+                "mcp_threats": verdict.mcp_specific_threats[:3],
                 "icon": "block" if verdict.recommended_action == "block" else (
                     "warn" if verdict.recommended_action == "warn" else "pass"
                 ),
