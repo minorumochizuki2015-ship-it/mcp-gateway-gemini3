@@ -873,29 +873,37 @@
             + (d.summary ? escapeHtml(d.summary) : '') + riHtml + gfBadges + chainHtml + narrHtml + mcpHtml + '</div>';
         }
       } else if (d.phase === 'intercept') {
-        // ── Tool Call Interception Demo ──
+        // ── Tool Call Interception Demo (Multi-Session) ──
+        var sessColor = d.color || '#8b5cf6';
+        var sessTag = d.agent ? '<span style="background:' + sessColor + ';color:#fff;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;margin-right:4px">' + escapeHtml(d.agent) + '</span>' : '';
         if (d.action === 'session_start') {
-          line = icon + ' <span style="background:#dbeafe;color:#1e40af;padding:2px 10px;border-radius:6px;font-size:11px;font-weight:700">SESSION</span> <b>' + escapeHtml(d.agent) + '</b> connected <span style="font-family:monospace;font-size:11px;color:var(--muted)">(' + escapeHtml(d.session_id) + ')</span>';
-          // Show session badge in nav
+          line = icon + ' <span style="background:' + sessColor + ';color:#fff;padding:2px 10px;border-radius:6px;font-size:11px;font-weight:700">SESSION</span> <b>' + escapeHtml(d.agent) + '</b> connected <span style="font-family:monospace;font-size:11px;color:var(--muted)">(' + escapeHtml(d.session_id) + ')</span> <span style="font-size:10px;color:var(--muted)">' + escapeHtml(d.model || '') + '</span>';
+          // Update nav with multi-session indicator
           var navStatus = document.querySelector('.nav-status');
-          if (navStatus) navStatus.innerHTML = '<span class="status-dot"></span> <span style="font-size:12px">' + escapeHtml(d.agent) + '</span> <span style="font-size:11px;background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:4px;font-weight:600">' + escapeHtml(d.session_id) + '</span>';
+          if (navStatus) {
+            var existing = navStatus.innerHTML;
+            var badge = '<span style="display:inline-flex;align-items:center;gap:4px;margin-left:6px"><span style="width:8px;height:8px;border-radius:50%;background:' + sessColor + ';display:inline-block"></span><span style="font-size:11px;font-weight:600">' + escapeHtml(d.agent) + '</span></span>';
+            navStatus.innerHTML = (existing.indexOf('inline-flex') >= 0 ? existing : '') + badge;
+          }
         } else if (d.action === 'tool_call') {
           var rcol = d.result === 'BLOCKED' ? 'var(--danger)' : 'var(--success)';
           var rbg = d.result === 'BLOCKED' ? '#fee2e2' : '#d1fae5';
           var rtxt = d.result === 'BLOCKED' ? '#991b1b' : '#065f46';
-          line = icon + ' <b>' + escapeHtml(d.server) + '</b>.<b>' + escapeHtml(d.tool) + '</b>() &rarr; <span style="background:' + rbg + ';color:' + rtxt + ';padding:2px 10px;border-radius:6px;font-size:11px;font-weight:700">' + escapeHtml(d.result) + '</span> <span style="color:var(--muted);font-size:11px">' + escapeHtml(d.reason) + '</span>';
+          line = icon + ' ' + sessTag + '<b>' + escapeHtml(d.server) + '</b>.<b>' + escapeHtml(d.tool) + '</b>() &rarr; <span style="background:' + rbg + ';color:' + rtxt + ';padding:2px 10px;border-radius:6px;font-size:11px;font-weight:700">' + escapeHtml(d.result) + '</span> <span style="color:var(--muted);font-size:11px">' + escapeHtml(d.reason) + '</span>';
           if (d.result === 'BLOCKED') _interceptStats.blocked++;
           else _interceptStats.allowed++;
           updateFlowCounters();
         } else if (d.action === 'dlp_scan') {
           var findings = d.findings || [];
-          line = icon + ' DLP scan on <b>' + escapeHtml(d.server) + '.' + escapeHtml(d.tool) + '</b> response &rarr; <span style="background:#fef3c7;color:#92400e;padding:2px 10px;border-radius:6px;font-size:11px;font-weight:700">SENSITIVE DATA</span> <span style="color:var(--warn);font-size:11px">[' + escapeHtml(findings.join(', ')) + ']</span>';
+          line = icon + ' ' + sessTag + 'DLP scan on <b>' + escapeHtml(d.server) + '.' + escapeHtml(d.tool) + '</b> response &rarr; <span style="background:#fef3c7;color:#92400e;padding:2px 10px;border-radius:6px;font-size:11px;font-weight:700">SENSITIVE DATA</span> <span style="color:var(--warn);font-size:11px">[' + escapeHtml(findings.join(', ')) + ']</span>';
           _interceptStats.dlp++;
         } else if (d.action === 'session_summary') {
-          line = icon + ' <span style="background:var(--gray-900);color:#fff;padding:3px 12px;border-radius:6px;font-size:11px;font-weight:700">SUMMARY</span> ' + escapeHtml(d.message);
+          line = icon + ' <span style="background:' + sessColor + ';color:#fff;padding:3px 12px;border-radius:6px;font-size:11px;font-weight:700">SUMMARY</span> ' + escapeHtml(d.message);
         }
       }
-      var html = '<div style="padding: 3px 8px; animation: fadeSlideIn 0.3s ease-out; border-left: 2px solid transparent;" class="pipeline-step"><span style="color:var(--muted);margin-right:8px;">' + ts + '</span>' + line + '</div>';
+      // Use session color for border-left on intercept steps
+      var borderColor = (d.phase === 'intercept' && d.color) ? d.color : 'transparent';
+      var html = '<div style="padding: 3px 8px; animation: fadeSlideIn 0.3s ease-out; border-left: 3px solid ' + borderColor + ';" class="pipeline-step"><span style="color:var(--muted);margin-right:8px;">' + ts + '</span>' + line + '</div>';
       if (detail) html += detail;
       return html;
     }
