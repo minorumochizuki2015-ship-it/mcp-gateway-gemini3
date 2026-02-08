@@ -3853,6 +3853,10 @@ async def web_sandbox_scan(request: Request, body: WebSandboxScanRequest) -> JSO
 
     result_dict = result.model_dump()
     result_dict["verdict"]["classification"] = result.verdict.classification.value
+    # Serialize causal chain steps
+    result_dict["verdict"]["causal_chain"] = [
+        s.model_dump() for s in result.verdict.causal_chain
+    ]
 
     # LRU eviction: remove oldest entry when at capacity
     if len(_WEB_SANDBOX_ARTIFACTS) >= _WEB_SANDBOX_MAX_ARTIFACTS:
@@ -3890,6 +3894,105 @@ async def web_sandbox_artifact(bundle_id: str) -> JSONResponse:
 async def web_sandbox_verdicts() -> JSONResponse:
     """List recent web sandbox verdicts (in-memory, max 100)."""
     return JSONResponse({"verdicts": list(_WEB_SANDBOX_VERDICTS)})
+
+
+# ---------------------------------------------------------------------------
+# MCP Security Interception (AI-agent hub)
+# ---------------------------------------------------------------------------
+
+_MCP_INTERCEPT_HISTORY: deque[dict[str, Any]] = deque(maxlen=200)
+
+
+class MCPInterceptBody(BaseModel):
+    """Request body for /api/mcp/intercept."""
+
+    method: str
+    params: dict[str, Any] = {}
+    session_id: str = ""
+
+
+@app.post("/api/mcp/intercept")
+async def mcp_intercept(request: Request, body: MCPInterceptBody) -> JSONResponse:
+    """Intercept an MCP tool call and security-scan it.
+
+    Two-tier approach:
+    - Tier 1 (fast, < 5ms): URL structure, DGA, TLD analysis
+    - Tier 2 (deep): Full page fetch + DOM + Gemini causal analysis
+
+    Returns allow/block decision with causal chain explanation.
+    """
+    from . import causal_sandbox
+
+    req = causal_sandbox.MCPInterceptRequest(
+        method=body.method,
+        params=body.params,
+        session_id=body.session_id,
+    )
+    result = causal_sandbox.intercept_mcp_tool_call(req)
+
+    result_dict: dict[str, Any] = {
+        "allowed": result.allowed,
+        "url": result.url,
+        "reason": result.reason,
+        "latency_ms": result.latency_ms,
+        "tier": result.tier,
+    }
+    if result.verdict:
+        result_dict["verdict"] = {
+            "classification": result.verdict.classification.value,
+            "confidence": result.verdict.confidence,
+            "recommended_action": result.verdict.recommended_action,
+            "risk_indicators": result.verdict.risk_indicators,
+            "evidence_refs": result.verdict.evidence_refs,
+            "summary": result.verdict.summary,
+            "causal_chain": [s.model_dump() for s in result.verdict.causal_chain],
+            "attack_narrative": result.verdict.attack_narrative,
+            "mcp_specific_threats": result.verdict.mcp_specific_threats,
+        }
+
+    _MCP_INTERCEPT_HISTORY.append({
+        **result_dict,
+        "method": body.method,
+        "session_id": body.session_id,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    })
+
+    return JSONResponse(result_dict)
+
+
+@app.get("/api/mcp/intercept/history")
+async def mcp_intercept_history() -> JSONResponse:
+    """List recent MCP interception results."""
+    return JSONResponse({"history": list(_MCP_INTERCEPT_HISTORY)})
+
+
+@app.get("/api/mcp/intercept/stats")
+async def mcp_intercept_stats() -> JSONResponse:
+    """Aggregate MCP interception statistics."""
+    total = len(_MCP_INTERCEPT_HISTORY)
+    blocked = sum(1 for h in _MCP_INTERCEPT_HISTORY if not h.get("allowed"))
+    allowed = total - blocked
+    latencies = [h.get("latency_ms", 0) for h in _MCP_INTERCEPT_HISTORY]
+    avg_lat = round(sum(latencies) / len(latencies), 1) if latencies else 0
+    fast = sum(1 for h in _MCP_INTERCEPT_HISTORY if h.get("tier") in ("fast", "skip"))
+    deep = total - fast
+
+    threat_types: dict[str, int] = {}
+    for h in _MCP_INTERCEPT_HISTORY:
+        v = h.get("verdict", {})
+        cls = v.get("classification", "")
+        if cls and cls != "benign":
+            threat_types[cls] = threat_types.get(cls, 0) + 1
+
+    return JSONResponse({
+        "total_intercepts": total,
+        "allowed": allowed,
+        "blocked": blocked,
+        "fast_scans": fast,
+        "deep_scans": deep,
+        "avg_latency_ms": avg_lat,
+        "threat_types": threat_types,
+    })
 
 
 # ---------------------------------------------------------------------------
