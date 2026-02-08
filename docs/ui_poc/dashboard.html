@@ -80,6 +80,26 @@
     .flow-tag.red { background: #fee2e2; color: #991b1b; }
     .flow-tag.amber { background: #fef3c7; color: #92400e; }
 
+    /* Connected Agents Panel */
+    .agents-panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; box-shadow: var(--shadow-sm); margin-bottom: 16px; }
+    .agents-panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .agents-panel-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .agents-panel-count { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600; background: var(--gray-100); color: var(--muted); }
+    .agents-grid { display: flex; gap: 10px; flex-wrap: wrap; }
+    .agent-card { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 8px; min-width: 200px; flex: 1; max-width: 340px; transition: all 0.2s; }
+    .agent-card.active { border-color: var(--primary); background: #f0f4ff; }
+    .agent-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .agent-dot.active { animation: pulse 2s infinite; }
+    .agent-info { min-width: 0; flex: 1; }
+    .agent-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .agent-session { font-size: 10px; font-family: 'SF Mono', 'Fira Code', monospace; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .agent-model { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .agent-status { font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600; flex-shrink: 0; }
+    .agent-status.connected { background: #d1fae5; color: #065f46; }
+    .agent-status.idle { background: var(--gray-100); color: var(--muted); }
+    .agents-empty { font-size: 12px; color: var(--muted); padding: 8px 0; }
+    @media (max-width: 768px) { .agent-card { min-width: 160px; } }
+
     /* Decisions Table */
     .section-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow-sm); margin-bottom: 24px; }
     .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
@@ -224,6 +244,21 @@
       </div>
     </div>
 
+    <!-- Connected Agents Panel -->
+    <div class="agents-panel" id="agentsPanel">
+      <div class="agents-panel-header">
+        <div class="agents-panel-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="4" cy="8" r="2" opacity="0.4"/><circle cx="20" cy="8" r="2" opacity="0.4"/></svg>
+          <span id="agentsPanelTitle">Connected Agents</span>
+          <span class="agents-panel-count" id="agentsPanelCount">0</span>
+        </div>
+        <span style="font-size: 11px; color: var(--muted);" id="agentsPanelHint">Run pipeline to connect agents</span>
+      </div>
+      <div class="agents-grid" id="agentsGrid">
+        <div class="agents-empty" id="agentsEmpty">No agents connected. Click <b>Run Live Pipeline</b> to start a multi-agent session.</div>
+      </div>
+    </div>
+
     <!-- Gateway Flow Diagram -->
     <div class="flow-card">
       <div class="flow-row">
@@ -231,6 +266,7 @@
           <div class="flow-box-title" id="flowAgentTitle">Agent Requests</div>
           <div class="flow-box-sub" id="flowAgentSub">MCP Clients</div>
           <div class="flow-box-metric" id="flowAgentMetric">0</div>
+          <div class="flow-tags" id="flowAgentDots" style="margin-top: 8px;"></div>
         </div>
         <div class="flow-arrow active">&#10132;</div>
         <div class="flow-box gateway">
@@ -249,6 +285,7 @@
             <span class="flow-tag green" id="flowAllowed">0 Allowed</span>
             <span class="flow-tag red" id="flowBlocked">0 Blocked</span>
             <span class="flow-tag amber" id="flowQuarantined">0 Quarantined</span>
+            <span class="flow-tag amber" id="flowDlp" style="display:none">0 DLP</span>
           </div>
         </div>
       </div>
@@ -386,6 +423,8 @@
         ssotTitle: 'Evidence Chain Integrity', ssotSub: 'SSOT verification and shadow audit status',
         ssotPass: 'Verified', ssotFail: 'Not verified', ssotPresent: 'Present', ssotMissing: 'Missing', ssotSigned: 'Signed', ssotUnsigned: 'Not signed',
         demoBtn: 'Run Live Pipeline',
+        agentsTitle: 'Connected Agents', agentsHint: 'Run pipeline to connect agents',
+        agentsEmpty: 'No agents connected. Click Run Live Pipeline to start a multi-agent session.',
       },
       ja: {
         pageTitle: 'AI ゲートウェイ ダッシュボード',
@@ -410,6 +449,8 @@
         ssotTitle: '証跡チェーン完全性', ssotSub: 'SSOT検証とシャドー監査の状態',
         ssotPass: '検証済', ssotFail: '未検証', ssotPresent: '存在', ssotMissing: '未設定', ssotSigned: '署名済', ssotUnsigned: '未署名',
         demoBtn: 'ライブパイプライン実行',
+        agentsTitle: '接続中エージェント', agentsHint: 'パイプラインを実行してエージェントを接続',
+        agentsEmpty: 'エージェント未接続。ライブパイプライン実行で開始してください。',
       }
     };
 
@@ -454,6 +495,8 @@
       if (th) th.innerHTML = '<tr><th>' + [d.thTime, d.thDecision, d.thConfidence, d.thFinding, d.thEvidence].map(escapeHtml).join('</th><th>') + '</th></tr>';
       if (el('decisionsEmpty')) el('decisionsEmpty').innerHTML = escapeHtml(d.decisionsEmpty) + ' <a href="web_sandbox.html">' + escapeHtml(d.decisionsEmptyLink) + '</a>' + escapeHtml(d.decisionsEmptyTail);
       if (el('demoBtnText')) el('demoBtnText').textContent = d.demoBtn;
+      if (el('agentsPanelTitle')) el('agentsPanelTitle').textContent = d.agentsTitle || 'Connected Agents';
+      if (el('agentsPanelHint') && _connectedAgents.length === 0) el('agentsPanelHint').textContent = d.agentsHint || 'Run pipeline to connect agents';
       // lang buttons
       var ja = el('langJa'), en = el('langEn');
       if (ja) ja.classList.toggle('active', lang === 'ja');
@@ -728,7 +771,92 @@
       var d = I18N[getLang()] || I18N.en;
       el('flowAllowed').textContent = _interceptStats.allowed + ' ' + d.flowAllowed;
       el('flowBlocked').textContent = _interceptStats.blocked + ' ' + d.flowBlocked;
+      // DLP counter in flow
+      var dlpEl = el('flowDlp');
+      if (dlpEl && _interceptStats.dlp > 0) {
+        dlpEl.textContent = _interceptStats.dlp + ' DLP';
+        dlpEl.style.display = '';
+      }
     }
+
+    // Connected Agents management
+    var _connectedAgents = [];
+    function addConnectedAgent(name, sessionId, model, color) {
+      // Validate color (CSS injection defense: only hex colors allowed)
+      var safeColor = /^#[0-9a-fA-F]{3,8}$/.test(color) ? color : '#6b7280';
+      _connectedAgents.push({ name: name, sessionId: sessionId, model: model, color: safeColor });
+
+      var grid = document.getElementById('agentsGrid');
+      var empty = document.getElementById('agentsEmpty');
+      var countEl = document.getElementById('agentsPanelCount');
+      var hintEl = document.getElementById('agentsPanelHint');
+      var dotsEl = document.getElementById('flowAgentDots');
+      if (empty) empty.style.display = 'none';
+      if (countEl) countEl.textContent = _connectedAgents.length;
+      if (hintEl) hintEl.textContent = _connectedAgents.length + ' active sessions';
+
+      // Truncate session ID for display (UX-002)
+      var shortId = sessionId.length > 12 ? sessionId.slice(0, 12) + '\u2026' : sessionId;
+
+      // Add agent card
+      var card = document.createElement('div');
+      card.className = 'agent-card active';
+      card.style.animation = 'fadeSlideIn 0.3s ease-out';
+      card.title = 'Session: ' + sessionId + '\nModel: ' + model;
+      card.innerHTML = '<div class="agent-dot active" style="background:' + safeColor + '"></div>'
+        + '<div class="agent-info">'
+        + '<div class="agent-name">' + escapeHtml(name) + '</div>'
+        + '<div class="agent-session">' + escapeHtml(shortId) + '</div>'
+        + '<div class="agent-model">' + escapeHtml(model) + '</div>'
+        + '</div>'
+        + '<span class="agent-status connected">Active</span>';
+      grid.appendChild(card);
+
+      // Add colored dot to flow diagram left box
+      if (dotsEl) {
+        var dot = '<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--muted)">'
+          + '<span style="width:6px;height:6px;border-radius:50%;background:' + safeColor + ';display:inline-block"></span>'
+          + escapeHtml(name.split(' ')[0])
+          + '</span>';
+        dotsEl.innerHTML += dot;
+      }
+
+      // Save to sessionStorage (TTL: cleared on session end)
+      try {
+        sessionStorage.setItem('mcp_connected_agents', JSON.stringify(_connectedAgents));
+      } catch(_) {}
+    }
+
+    function clearConnectedAgents() {
+      _connectedAgents = [];
+      var grid = document.getElementById('agentsGrid');
+      var empty = document.getElementById('agentsEmpty');
+      var countEl = document.getElementById('agentsPanelCount');
+      var hintEl = document.getElementById('agentsPanelHint');
+      var dotsEl = document.getElementById('flowAgentDots');
+      if (grid) grid.innerHTML = '';
+      if (empty) { empty.style.display = ''; grid.appendChild(empty); }
+      if (countEl) countEl.textContent = '0';
+      if (hintEl) hintEl.textContent = 'Run pipeline to connect agents';
+      if (dotsEl) dotsEl.innerHTML = '';
+      try { sessionStorage.removeItem('mcp_connected_agents'); } catch(_) {}
+    }
+
+    // Restore connected agents from sessionStorage
+    (function() {
+      try {
+        var saved = sessionStorage.getItem('mcp_connected_agents');
+        if (saved) {
+          var agents = JSON.parse(saved);
+          if (Array.isArray(agents) && agents.length > 0) {
+            agents.forEach(function(a) {
+              addConnectedAgent(a.name, a.sessionId, a.model, a.color);
+            });
+          }
+        }
+      } catch(_) {}
+    })();
+
     // Latency badge helper
     function latencyBadge(ms) {
       if (!ms && ms !== 0) return '';
@@ -878,6 +1006,8 @@
         var sessTag = d.agent ? '<span style="background:' + sessColor + ';color:#fff;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;margin-right:4px">' + escapeHtml(d.agent) + '</span>' : '';
         if (d.action === 'session_start') {
           line = icon + ' <span style="background:' + sessColor + ';color:#fff;padding:2px 10px;border-radius:6px;font-size:11px;font-weight:700">SESSION</span> <b>' + escapeHtml(d.agent) + '</b> connected <span style="font-family:monospace;font-size:11px;color:var(--muted)">(' + escapeHtml(d.session_id) + ')</span> <span style="font-size:10px;color:var(--muted)">' + escapeHtml(d.model || '') + '</span>';
+          // Update Connected Agents panel
+          addConnectedAgent(d.agent, d.session_id, d.model || '', sessColor);
           // Update nav with multi-session indicator
           var navStatus = document.querySelector('.nav-status');
           if (navStatus) {
@@ -926,6 +1056,7 @@
         var stepCount = 0;
 
         _interceptStats = { blocked: 0, allowed: 0, dlp: 0 };
+        clearConnectedAgents();
         animateFlow(true);
 
         var base = (window.apiClient && window.apiClient._base) || '';
@@ -985,11 +1116,15 @@
           demoBtn.disabled = false;
           demoBtn.style.opacity = '1';
           demoBtn.querySelector('#demoBtnText').textContent = I18N[getLang()].demoBtn;
-          // Save pipeline results to localStorage for persistence across navigation
+          // Save pipeline results to localStorage for persistence across navigation (TTL: 30min)
           try {
-            localStorage.setItem('mcp_pipeline_html', stepsEl.innerHTML);
-            localStorage.setItem('mcp_pipeline_count', d.total_events + ' events \u2014 complete');
-            localStorage.setItem('mcp_pipeline_stats', JSON.stringify(_interceptStats));
+            var pipelineData = {
+              html: stepsEl.innerHTML,
+              count: d.total_events + ' events \u2014 complete',
+              stats: _interceptStats,
+              ts: Date.now()
+            };
+            localStorage.setItem('mcp_pipeline_data', JSON.stringify(pipelineData));
           } catch(_) {}
           // Final dashboard refresh
           setTimeout(function() { init(); }, 500);
@@ -1010,27 +1145,36 @@
       });
     }
 
-    // Restore pipeline results from localStorage if available
+    // Restore pipeline results from localStorage if available (TTL: 30min)
     (function() {
       try {
-        var savedHtml = localStorage.getItem('mcp_pipeline_html');
-        var savedCount = localStorage.getItem('mcp_pipeline_count');
-        var savedStats = localStorage.getItem('mcp_pipeline_stats');
-        if (savedHtml) {
-          var logPanel = document.getElementById('pipelineLog');
-          var stepsEl = document.getElementById('pipelineSteps');
-          var counterEl = document.getElementById('pipelineCounter');
-          var phaseEl = document.getElementById('pipelinePhase');
-          var iconEl = document.getElementById('pipelineIcon');
-          logPanel.style.display = '';
-          stepsEl.innerHTML = savedHtml;
-          counterEl.textContent = savedCount || '';
-          phaseEl.textContent = 'Done';
-          iconEl.textContent = '\u2705';
-          if (savedStats) {
-            _interceptStats = JSON.parse(savedStats);
+        var raw = localStorage.getItem('mcp_pipeline_data');
+        if (raw) {
+          var data = JSON.parse(raw);
+          var TTL_MS = 30 * 60 * 1000; // 30 minutes
+          if (data.ts && (Date.now() - data.ts) < TTL_MS && data.html) {
+            var logPanel = document.getElementById('pipelineLog');
+            var stepsEl = document.getElementById('pipelineSteps');
+            var counterEl = document.getElementById('pipelineCounter');
+            var phaseEl = document.getElementById('pipelinePhase');
+            var iconEl = document.getElementById('pipelineIcon');
+            logPanel.style.display = '';
+            stepsEl.innerHTML = data.html;
+            counterEl.textContent = data.count || '';
+            phaseEl.textContent = 'Done';
+            iconEl.textContent = '\u2705';
+            if (data.stats) {
+              _interceptStats = data.stats;
+            }
+          } else {
+            // TTL expired, clean up
+            localStorage.removeItem('mcp_pipeline_data');
           }
         }
+        // Also clean up legacy keys
+        localStorage.removeItem('mcp_pipeline_html');
+        localStorage.removeItem('mcp_pipeline_count');
+        localStorage.removeItem('mcp_pipeline_stats');
       } catch(_) {}
     })();
 
