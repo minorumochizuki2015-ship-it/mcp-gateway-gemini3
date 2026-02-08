@@ -636,6 +636,7 @@ window.escapeHtml = function escapeHtml(str) {
     const res = await requestJsonWithStatus(`${BASE}/web-sandbox/scan`, {
       method: "POST",
       body: { url },
+      timeoutMs: 60000,
     });
     if (res.ok) return res.data;
     throw new Error(
@@ -1576,6 +1577,8 @@ window.escapeHtml = function escapeHtml(str) {
 	      if (data && data.demo_mode === true) {
 	        adminSessionRequired = false;
 	        window.SUITE_DEMO_MODE = true;
+	        // Gateway is reachable — clear offline state
+	        setGatewayOnline();
 	        // Auto-create admin session so all auth: true calls succeed
 	        try {
 	          await fetch(`${CONTROL_BASE}/control/session`, {
@@ -1586,6 +1589,9 @@ window.escapeHtml = function escapeHtml(str) {
 	          });
 	        } catch (_) { /* best-effort session bootstrap */ }
 	        updateAdminSessionBanner();
+	      } else {
+	        // Not demo mode but gateway responded — still online
+	        setGatewayOnline();
 	      }
 	    } catch (_) { /* gateway unreachable, ignore */ }
 	  }
