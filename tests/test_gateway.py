@@ -3258,3 +3258,138 @@ class TestMCPHTTPTransport:
             assert resp.status_code == 200
 
 
+class TestGemini3Integration:
+    """Tests verifying Gemini 3 unique features are configured correctly."""
+
+    def test_about_endpoint_gemini_features(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    ) -> None:
+        """All 5 integration points report correct Gemini 3 features."""
+        monkeypatch.setenv("MCP_GATEWAY_DB_PATH", str(tmp_path / "g.db"))
+        monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
+        with TestClient(app) as client:
+            resp = client.get("/api/about")
+            assert resp.status_code == 200
+            data = resp.json()
+            points = data["gemini_integration_points"]
+            assert len(points) == 5
+
+            # Council: thinking_level_high + google_search
+            council = points[0]
+            assert council["component"] == "AI Council"
+            assert "thinking_level_high" in council["gemini_features"]
+            assert "google_search" in council["gemini_features"]
+            assert "structured_output" in council["gemini_features"]
+
+            # Scanner: thinking_level_high + google_search
+            scanner = points[1]
+            assert scanner["component"] == "Semantic Scanner"
+            assert "thinking_level_high" in scanner["gemini_features"]
+            assert "google_search" in scanner["gemini_features"]
+
+            # RedTeam Generator: thinking_level_low (fast generation)
+            gen = points[2]
+            assert gen["component"] == "RedTeam Generator"
+            assert "thinking_level_low" in gen["gemini_features"]
+
+            # RedTeam Evaluator: thinking_level_high (careful evaluation)
+            evaluator = points[3]
+            assert evaluator["component"] == "RedTeam Evaluator"
+            assert "thinking_level_high" in evaluator["gemini_features"]
+
+            # Web Sandbox: all 4 unique features
+            sandbox = points[4]
+            assert sandbox["component"] == "Causal Web Sandbox"
+            assert "thinking_level_high" in sandbox["gemini_features"]
+            assert "thinking_level_low" in sandbox["gemini_features"]
+            assert "url_context" in sandbox["gemini_features"]
+            assert "google_search" in sandbox["gemini_features"]
+            assert "structured_output" in sandbox["gemini_features"]
+
+    def test_about_endpoint_gemini_not_configured(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    ) -> None:
+        """When GOOGLE_API_KEY is not set, gemini_configured is false."""
+        monkeypatch.setenv("MCP_GATEWAY_DB_PATH", str(tmp_path / "g.db"))
+        monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+        with TestClient(app) as client:
+            resp = client.get("/api/about")
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["gemini_configured"] is False
+            assert data["gemini_model"] == "gemini-3-flash-preview"
+
+    def test_about_endpoint_detectors_count(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    ) -> None:
+        """About endpoint lists all 6 detectors."""
+        monkeypatch.setenv("MCP_GATEWAY_DB_PATH", str(tmp_path / "g.db"))
+        with TestClient(app) as client:
+            resp = client.get("/api/about")
+            data = resp.json()
+            assert len(data["detectors"]) == 6
+            assert "dga_detection" in data["detectors"]
+            assert "brand_impersonation" in data["detectors"]
+            assert "mcp_zero_day" in data["detectors"]
+
+    def test_about_endpoint_security_layers(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    ) -> None:
+        """About endpoint lists all 6 security layers."""
+        monkeypatch.setenv("MCP_GATEWAY_DB_PATH", str(tmp_path / "g.db"))
+        with TestClient(app) as client:
+            resp = client.get("/api/about")
+            data = resp.json()
+            assert len(data["security_layers"]) == 6
+            assert any("Source/Sink" in l for l in data["security_layers"])
+            assert any("Web Sandbox" in l for l in data["security_layers"])
+
+    def test_about_endpoint_transports(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    ) -> None:
+        """About endpoint lists transport protocols."""
+        monkeypatch.setenv("MCP_GATEWAY_DB_PATH", str(tmp_path / "g.db"))
+        with TestClient(app) as client:
+            resp = client.get("/api/about")
+            data = resp.json()
+            assert "transports" in data
+            transports = data["transports"]
+            assert len(transports) == 3
+            protocols = [t["protocol"] for t in transports]
+            assert "HTTP REST" in protocols
+            assert "MCP stdio" in protocols
+            assert "MCP Streamable HTTP" in protocols
+
+    def test_all_thinking_levels_mapped(self) -> None:
+        """Verify all Gemini integration points use thinking_level."""
+        from src.mcp_gateway import ai_council, redteam, scanner
+        import inspect
+
+        # Check source code contains thinking_config
+        assert "thinking_level" in inspect.getsource(
+            ai_council._evaluate_with_gemini
+        )
+        assert "thinking_level" in inspect.getsource(
+            scanner.semantic_scan
+        )
+        assert "thinking_level" in inspect.getsource(
+            redteam.generate_attack_scenarios
+        )
+        assert "thinking_level" in inspect.getsource(
+            redteam.evaluate_response_safety
+        )
+
+    def test_google_search_in_council_and_scanner(self) -> None:
+        """Verify Google Search grounding in Council and Scanner source."""
+        from src.mcp_gateway import ai_council, scanner
+        import inspect
+
+        council_src = inspect.getsource(ai_council._evaluate_with_gemini)
+        assert "google_search" in council_src
+        assert "GoogleSearch" in council_src
+
+        scanner_src = inspect.getsource(scanner.semantic_scan)
+        assert "google_search" in scanner_src
+        assert "GoogleSearch" in scanner_src
+
+
