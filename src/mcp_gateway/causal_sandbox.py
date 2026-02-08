@@ -635,11 +635,21 @@ def extract_accessibility_tree(html: str) -> list[A11yNode]:
         aria_label = tag.get("aria-label")
 
         deceptive = False
-        if aria_label and visible_text:
+        # Container elements (nav, main, form, table, section, header, footer)
+        # use aria-label as a *summary* — mismatch with inner text is expected.
+        _CONTAINER_TAGS = {"nav", "main", "form", "table", "section", "header", "footer", "aside"}
+        if aria_label and visible_text and tag.name not in _CONTAINER_TAGS:
             aria_lower = str(aria_label).lower().strip()
             visible_lower = visible_text.lower().strip()
             # Skip common benign UI labels (language, menu, search, etc.)
             if aria_lower in BENIGN_ARIA_LABELS:
+                deceptive = False
+            # Skip when visible text is much longer (summary label pattern)
+            elif len(visible_lower) > len(aria_lower) * 5:
+                deceptive = False
+            # Skip when aria-label is much longer than visible text
+            # (descriptive/tooltip pattern, e.g. "You must be signed in to ...")
+            elif len(aria_lower) > len(visible_lower) * 3 and len(aria_lower) > 20:
                 deceptive = False
             elif aria_lower and visible_lower and aria_lower != visible_lower:
                 overlap = len(set(aria_lower.split()) & set(visible_lower.split()))
