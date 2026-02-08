@@ -67,6 +67,42 @@ BLOCKED_NETWORKS = [
 
 BLOCKED_PORTS = {6379, 5432, 3306, 27017, 11211}
 
+# Known analytics / tag-manager iframe domains (benign hidden iframes)
+ANALYTICS_IFRAME_DOMAINS = {
+    "googletagmanager.com",
+    "www.googletagmanager.com",
+    "www.google-analytics.com",
+    "www.youtube.com",
+    "player.vimeo.com",
+    "connect.facebook.net",
+    "platform.twitter.com",
+    "snap.licdn.com",
+    "bat.bing.com",
+    "td.doubleclick.net",
+}
+
+# Common benign aria-labels (UI patterns, not deceptive)
+BENIGN_ARIA_LABELS = {
+    "language",
+    "menu",
+    "search",
+    "close",
+    "open",
+    "toggle",
+    "navigation",
+    "nav",
+    "back",
+    "forward",
+    "submit",
+    "cancel",
+    "share",
+    "settings",
+    "options",
+    "more",
+    "expand",
+    "collapse",
+}
+
 # Suspicious URL-shortener / tracking domains
 SUSPICIOUS_DOMAINS = {
     "bit.ly",
@@ -469,9 +505,13 @@ def analyze_dom_security(html: str, url: str) -> list[DOMSecurityNode]:
                 f"DOM too deep: {max_depth} levels (max {MAX_DOM_DEPTH})"
             )
 
-    # Hidden iframes
+    # Hidden iframes (skip known analytics/tag-manager domains)
     for iframe in soup.find_all("iframe"):
         if _is_hidden(iframe):
+            iframe_src = str(iframe.get("src", ""))
+            iframe_host = urlparse(iframe_src).hostname or ""
+            if iframe_host in ANALYTICS_IFRAME_DOMAINS:
+                continue
             threats.append(
                 DOMSecurityNode(
                     tag="iframe",
@@ -598,7 +638,10 @@ def extract_accessibility_tree(html: str) -> list[A11yNode]:
         if aria_label and visible_text:
             aria_lower = str(aria_label).lower().strip()
             visible_lower = visible_text.lower().strip()
-            if aria_lower and visible_lower and aria_lower != visible_lower:
+            # Skip common benign UI labels (language, menu, search, etc.)
+            if aria_lower in BENIGN_ARIA_LABELS:
+                deceptive = False
+            elif aria_lower and visible_lower and aria_lower != visible_lower:
                 overlap = len(set(aria_lower.split()) & set(visible_lower.split()))
                 total = max(len(set(aria_lower.split())), 1)
                 if overlap / total < 0.3:
