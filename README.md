@@ -197,6 +197,31 @@ MCP_GATEWAY_ADMIN_TOKEN=your-token \
 python -m uvicorn src.mcp_gateway.gateway:app --host 127.0.0.1 --port 4100
 ```
 
+### Docker (One Command)
+
+```bash
+mkdir -p .local
+echo "your-admin-token" > .local/admin_token.txt
+echo "your-upstream-key" > .local/upstream_api_key.txt
+
+GOOGLE_API_KEY="your-api-key" docker compose up --build
+# Dashboard: http://localhost:4100
+```
+
+### Cloud Run (Google Cloud)
+
+```bash
+# 1. Create secrets in Secret Manager
+echo -n "your-admin-token" | gcloud secrets create admin-token --data-file=-
+echo -n "your-api-key" | gcloud secrets create google-api-key --data-file=-
+
+# 2. Deploy with Cloud Build
+gcloud builds submit --config=cloudbuild.yaml
+
+# 3. Access your public URL
+gcloud run services describe mcp-gateway --format='value(status.url)'
+```
+
 ## Architecture
 
 ```
@@ -247,7 +272,7 @@ python -m uvicorn src.mcp_gateway.gateway:app --host 127.0.0.1 --port 4100
 ## Test Suite
 
 ```bash
-# 241 tests
+# 339 tests
 python -m pytest tests/ -v
 
 # Gemini integration tests only
@@ -255,7 +280,7 @@ python -m pytest tests/test_council.py tests/test_scanner.py \
   tests/test_redteam.py tests/test_causal_sandbox.py -v
 ```
 
-## API Endpoints (47 total)
+## API Endpoints (50 total)
 
 ### Core Pipeline
 | Method | Path | Description |
@@ -265,6 +290,13 @@ python -m pytest tests/test_council.py tests/test_scanner.py \
 | POST | `/api/web-sandbox/scan` | Causal Web Sandbox analysis |
 | POST | `/api/redteam/generate` | Generate attack scenarios |
 | POST | `/api/redteam/evaluate` | Evaluate tool safety |
+
+### MCP Tool Interception (NEW)
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/mcp/intercept` | Intercept MCP tool call, two-tier scan |
+| GET | `/api/mcp/intercept/history` | Recent interception results |
+| GET | `/api/mcp/intercept/stats` | Interception statistics |
 
 ### Management
 | Method | Path | Description |
