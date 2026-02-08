@@ -1441,6 +1441,82 @@ async def health():
     return {"status": "ok"}
 
 
+@app.get("/api/about")
+async def about() -> JSONResponse:
+    """Gateway capabilities and Gemini 3 integration summary."""
+    import os
+
+    gemini_configured = bool(os.getenv("GOOGLE_API_KEY", ""))
+    gemini_model = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
+    return JSONResponse({
+        "name": "MCP Gateway",
+        "version": "1.0.0",
+        "description": "AI-Powered Security Gateway for MCP",
+        "gemini_configured": gemini_configured,
+        "gemini_model": gemini_model,
+        "gemini_integration_points": [
+            {
+                "id": 1,
+                "component": "AI Council",
+                "schema": "CouncilVerdict",
+                "gemini_features": ["structured_output", "seed_reproducibility"],
+            },
+            {
+                "id": 2,
+                "component": "Semantic Scanner",
+                "schema": "SemanticScanResult",
+                "gemini_features": ["structured_output"],
+            },
+            {
+                "id": 3,
+                "component": "RedTeam Generator",
+                "schema": "RedTeamGeneration",
+                "gemini_features": ["structured_output"],
+            },
+            {
+                "id": 4,
+                "component": "RedTeam Evaluator",
+                "schema": "PayloadSafetyVerdict",
+                "gemini_features": ["structured_output"],
+            },
+            {
+                "id": 5,
+                "component": "Causal Web Sandbox",
+                "schema": "WebSecurityVerdict",
+                "gemini_features": [
+                    "thinking_level_high",
+                    "thinking_level_low",
+                    "url_context",
+                    "google_search",
+                    "structured_output",
+                ],
+            },
+        ],
+        "security_layers": [
+            "L1: Source/Sink Policy (deterministic)",
+            "L2: Static Scan (pattern matching)",
+            "L3: Semantic Scan (Gemini 3)",
+            "L4: AI Council Verdict (Gemini 3)",
+            "L5: Prompt Sanitization (multi-level)",
+            "L6: Web Sandbox (Gemini 3 + DOM)",
+        ],
+        "detectors": [
+            "signature_cloaking",
+            "bait_and_switch",
+            "tool_shadowing",
+            "dga_detection",
+            "brand_impersonation",
+            "mcp_zero_day",
+        ],
+        "transports": [
+            {"protocol": "HTTP REST", "endpoint": "/api/*"},
+            {"protocol": "MCP stdio", "command": "python -m src.mcp_gateway.mcp_security_server"},
+            {"protocol": "MCP Streamable HTTP", "endpoint": "/mcp/security"},
+        ],
+        "test_count": 345,
+    })
+
+
 @app.get("/v1/models")
 async def list_proxy_models(request: Request):
     path = "/v1/models"
