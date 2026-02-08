@@ -103,6 +103,11 @@ BENIGN_ARIA_LABELS = {
     "collapse",
 }
 
+# Container elements: aria-label is a *summary* — mismatch with inner text is expected.
+_CONTAINER_TAGS = frozenset({
+    "nav", "main", "form", "table", "section", "header", "footer", "aside",
+})
+
 # Suspicious URL-shortener / tracking domains
 SUSPICIOUS_DOMAINS = {
     "bit.ly",
@@ -510,7 +515,16 @@ def analyze_dom_security(html: str, url: str) -> list[DOMSecurityNode]:
         if _is_hidden(iframe):
             iframe_src = str(iframe.get("src", ""))
             iframe_host = urlparse(iframe_src).hostname or ""
-            if iframe_host in ANALYTICS_IFRAME_DOMAINS:
+            # SA-006: SSRF-validate iframe src before trusting whitelist
+            # (prevents DNS rebinding to fake whitelisted domain)
+            ssrf_safe = False
+            if iframe_src and iframe_host in ANALYTICS_IFRAME_DOMAINS:
+                try:
+                    validate_url_ssrf(urljoin(url, iframe_src))
+                    ssrf_safe = True
+                except (SSRFError, Exception):
+                    ssrf_safe = False
+            if ssrf_safe:
                 continue
             threats.append(
                 DOMSecurityNode(
@@ -635,9 +649,6 @@ def extract_accessibility_tree(html: str) -> list[A11yNode]:
         aria_label = tag.get("aria-label")
 
         deceptive = False
-        # Container elements (nav, main, form, table, section, header, footer)
-        # use aria-label as a *summary* — mismatch with inner text is expected.
-        _CONTAINER_TAGS = {"nav", "main", "form", "table", "section", "header", "footer", "aside"}
         if aria_label and visible_text and tag.name not in _CONTAINER_TAGS:
             aria_lower = str(aria_label).lower().strip()
             visible_lower = visible_text.lower().strip()
@@ -647,10 +658,22 @@ def extract_accessibility_tree(html: str) -> list[A11yNode]:
             # Skip when visible text is much longer (summary label pattern)
             elif len(visible_lower) > len(aria_lower) * 5:
                 deceptive = False
-            # Skip when aria-label is much longer than visible text
-            # (descriptive/tooltip pattern, e.g. "You must be signed in to ...")
+            # Skip when aria-label is much longer than visible text AND
+            # the visible text tokens are contained in the aria-label
+            # (descriptive/tooltip pattern, e.g. "You must be signed in to star")
+            # Guard: requires visible_text words to appear in aria_label
+            # to prevent attackers crafting long unrelated aria-labels.
             elif len(aria_lower) > len(visible_lower) * 3 and len(aria_lower) > 20:
-                deceptive = False
+                visible_tokens = set(visible_lower.split())
+                aria_tokens = set(aria_lower.split())
+                if visible_tokens and visible_tokens.issubset(aria_tokens):
+                    deceptive = False
+                else:
+                    # Guard failed: visible text not contained → check overlap
+                    overlap = len(visible_tokens & aria_tokens)
+                    total = max(len(aria_tokens), 1)
+                    if overlap / total < 0.3:
+                        deceptive = True
             elif aria_lower and visible_lower and aria_lower != visible_lower:
                 overlap = len(set(aria_lower.split()) & set(visible_lower.split()))
                 total = max(len(set(aria_lower.split())), 1)

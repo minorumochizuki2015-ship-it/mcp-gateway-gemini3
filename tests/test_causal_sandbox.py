@@ -11,6 +11,8 @@ import pytest
 
 from mcp_gateway import causal_sandbox
 from mcp_gateway.causal_sandbox import (
+    ANALYTICS_IFRAME_DOMAINS,
+    BENIGN_ARIA_LABELS,
     A11yNode,
     CausalScanResult,
     DOMSecurityNode,
@@ -20,6 +22,7 @@ from mcp_gateway.causal_sandbox import (
     ThreatClassification,
     WebBundleResult,
     WebSecurityVerdict,
+    _CONTAINER_TAGS,
     analyze_dom_security,
     bundle_page,
     extract_accessibility_tree,
@@ -547,6 +550,165 @@ class TestRunCausalScan:
         assert result.eval_method == "degraded"
         assert result.verdict.recommended_action == "warn"
         assert result.bundle.status_code == 0
+
+
+# ---- False Positive Exclusion Paths ----
+
+
+class TestAnalyticsIframeWhitelist:
+    """Analytics iframe domain whitelist tests (E5 fix)."""
+
+    def test_gtm_noscript_iframe_skipped(self) -> None:
+        """GTM noscript hidden iframe is not flagged."""
+        html = (
+            '<html><body>'
+            '<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-ABC123"'
+            ' style="display:none;visibility:hidden" height="0" width="0">'
+            '</iframe></noscript>'
+            '<p>Content</p>'
+            '</body></html>'
+        )
+        with patch("socket.getaddrinfo") as mock_dns:
+            mock_dns.return_value = [(2, 1, 6, "", ("142.250.80.46", 443))]
+            threats = analyze_dom_security(html, "https://example.com")
+        iframe_threats = [t for t in threats if t.threat_type == "hidden_iframe"]
+        assert iframe_threats == []
+
+    def test_non_whitelisted_hidden_iframe_flagged(self) -> None:
+        """Hidden iframe from unknown domain is still flagged."""
+        html = (
+            '<html><body>'
+            '<iframe src="https://evil-tracker.com/spy" style="display:none"></iframe>'
+            '</body></html>'
+        )
+        threats = analyze_dom_security(html, "https://example.com")
+        iframe_threats = [t for t in threats if t.threat_type == "hidden_iframe"]
+        assert len(iframe_threats) >= 1
+
+    def test_analytics_whitelist_requires_ssrf_validation(self) -> None:
+        """Analytics domain iframe pointing to private IP is flagged (SA-006)."""
+        html = (
+            '<html><body>'
+            '<iframe src="https://www.googletagmanager.com/ns.html"'
+            ' style="display:none"></iframe>'
+            '</body></html>'
+        )
+        # Mock DNS to resolve whitelisted domain to private IP (DNS rebinding)
+        with patch("socket.getaddrinfo") as mock_dns:
+            mock_dns.return_value = [(2, 1, 6, "", ("10.0.0.1", 443))]
+            threats = analyze_dom_security(html, "https://example.com")
+        iframe_threats = [t for t in threats if t.threat_type == "hidden_iframe"]
+        assert len(iframe_threats) >= 1, "DNS rebinding to private IP should be flagged"
+
+    def test_analytics_domains_constant_completeness(self) -> None:
+        """ANALYTICS_IFRAME_DOMAINS contains expected tracking domains."""
+        assert "googletagmanager.com" in ANALYTICS_IFRAME_DOMAINS
+        assert "www.google-analytics.com" in ANALYTICS_IFRAME_DOMAINS
+        assert "bat.bing.com" in ANALYTICS_IFRAME_DOMAINS
+
+
+class TestBenignAriaLabels:
+    """Benign aria-label whitelist tests (E5 fix)."""
+
+    def test_language_label_not_deceptive(self) -> None:
+        """Common UI label 'language' is not flagged as deceptive."""
+        html = (
+            '<html><body>'
+            '<button aria-label="language">EN</button>'
+            '</body></html>'
+        )
+        nodes = extract_accessibility_tree(html)
+        deceptive = [n for n in nodes if n.deceptive_label]
+        assert deceptive == []
+
+    def test_menu_label_not_deceptive(self) -> None:
+        """Common UI label 'menu' is not flagged as deceptive."""
+        html = (
+            '<html><body>'
+            '<button aria-label="menu">Home About Contact</button>'
+            '</body></html>'
+        )
+        nodes = extract_accessibility_tree(html)
+        deceptive = [n for n in nodes if n.deceptive_label]
+        assert deceptive == []
+
+    def test_benign_labels_set_has_expected_entries(self) -> None:
+        """BENIGN_ARIA_LABELS has expected common patterns."""
+        for label in ("search", "close", "toggle", "navigation", "expand"):
+            assert label in BENIGN_ARIA_LABELS
+
+
+class TestContainerTagExclusion:
+    """Container element exclusion tests (E5 fix)."""
+
+    def test_nav_with_summary_label_not_deceptive(self) -> None:
+        """Nav element with aria-label summary is not flagged."""
+        html = (
+            '<html><body>'
+            '<nav aria-label="Main navigation">'
+            '<a href="/">Home</a><a href="/about">About</a>'
+            '</nav>'
+            '</body></html>'
+        )
+        nodes = extract_accessibility_tree(html)
+        nav_nodes = [n for n in nodes if n.role == "navigation"]
+        assert all(not n.deceptive_label for n in nav_nodes)
+
+    def test_container_tags_is_module_level(self) -> None:
+        """_CONTAINER_TAGS is a module-level frozenset constant."""
+        assert isinstance(_CONTAINER_TAGS, frozenset)
+        assert "nav" in _CONTAINER_TAGS
+        assert "aside" in _CONTAINER_TAGS
+
+
+class TestSummaryLabelPattern:
+    """Summary label pattern (visible_text >> aria_label) tests (E5 fix)."""
+
+    def test_long_visible_text_short_label_not_deceptive(self) -> None:
+        """Button with very long visible text and short label is benign."""
+        html = (
+            '<html><body>'
+            '<a aria-label="link">'
+            'This is a very long paragraph of visible text that describes '
+            'the link destination in great detail and is much longer than the label'
+            '</a>'
+            '</body></html>'
+        )
+        nodes = extract_accessibility_tree(html)
+        deceptive = [n for n in nodes if n.deceptive_label]
+        assert deceptive == []
+
+
+class TestDescriptiveLabelPattern:
+    """Descriptive/tooltip label pattern tests with guard (E5 fix - QE-003)."""
+
+    def test_tooltip_label_with_contained_text_not_deceptive(self) -> None:
+        """Long aria-label containing visible text tokens is benign."""
+        html = (
+            '<html><body>'
+            '<a aria-label="You must be signed in to star a repository">'
+            'star'
+            '</a>'
+            '</body></html>'
+        )
+        nodes = extract_accessibility_tree(html)
+        deceptive = [n for n in nodes if n.deceptive_label]
+        assert deceptive == []
+
+    def test_long_malicious_aria_label_still_detected(self) -> None:
+        """Long aria-label NOT containing visible text IS flagged (QE-003 guard)."""
+        html = (
+            '<html><body>'
+            '<button aria-label="Click here to claim your free prize money and win big rewards today">'
+            'Login'
+            '</button>'
+            '</body></html>'
+        )
+        nodes = extract_accessibility_tree(html)
+        deceptive = [n for n in nodes if n.deceptive_label]
+        assert len(deceptive) >= 1, (
+            "Long aria-label with unrelated content should be flagged as deceptive"
+        )
 
 
 # ---- Prompt Injection Defense ----
