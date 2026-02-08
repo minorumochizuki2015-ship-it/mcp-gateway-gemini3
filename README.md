@@ -33,40 +33,77 @@ AI Client ──► MCP Gateway ──► MCP Servers
 
 **Key insight**: Instead of binary allow/deny, every decision produces **structured evidence** — the _why_ behind every verdict — making security **auditable and explainable**.
 
-## Why Gemini 3?
+## Why Gemini 3? (Not Just "Any LLM")
 
-MCP Gateway requires a model that can produce **deterministic, structured security verdicts** — not free-form text. Gemini 3's `response_schema` with Pydantic models enables:
+MCP Gateway uses **4 Gemini 3 exclusive features** that cannot be replicated by other models:
 
-| Capability | How We Use It | Why It Matters |
+| Gemini 3 Feature | How We Use It | Why Only Gemini 3 |
 |-----------|---------------|---------------|
-| **Structured Output** | `response_schema=CouncilVerdict` | Verdicts are _typed JSON_, not parsed prose. Zero extraction errors. |
-| **Temperature 0 + Seed** | `temperature=0.0, seed=42` | Same tool description → same verdict. Reproducible security decisions. |
-| **Schema Validation** | Pydantic `BaseModel` → JSON Schema | Invalid verdicts are rejected at the API level, not caught by post-hoc parsing. |
-| **Graceful Degradation** | Rule-based fallback when API unavailable | Security is never compromised — gateway continues with deterministic rules. |
+| **Thinking Levels** | `thinking_level="high"` for deep scan, `"low"` for fast scan | 2-tier security: deep reasoning for threats, minimal latency for safe URLs |
+| **URL Context** | `Tool(url_context=UrlContext())` | Gemini 3 **browses the URL itself** — multimodal page analysis without our own renderer |
+| **Google Search Grounding** | `Tool(google_search=GoogleSearch())` | Real-time threat intelligence: "Has this domain been reported as phishing?" |
+| **Structured Output + Tools** | `response_schema=WebSecurityVerdict` with built-in tools | Combine URL browsing + search + typed JSON verdict in a single API call |
 
-Every Gemini call is wrapped with the same pattern:
+**Architecture**: Gemini 3 is not a "classifier at the end" — it is the **reasoning engine** that browses, searches, thinks, and decides:
+
 ```python
 response = client.models.generate_content(
     model="gemini-3-flash-preview",
-    contents=prompt,
+    contents=f"Analyze this URL for security threats: {url}",
     config=types.GenerateContentConfig(
+        # Gemini 3 unique: thinking + tools + structured output
+        thinking_config=types.ThinkingConfig(thinking_level="high"),
+        tools=[
+            types.Tool(url_context=types.UrlContext()),       # Browse the URL
+            types.Tool(google_search=types.GoogleSearch()),    # Search threat intel
+        ],
         response_mime_type="application/json",
-        response_schema=CouncilVerdict,   # Pydantic model
-        temperature=0.0, seed=42,
+        response_schema=WebSecurityVerdict,  # Typed verdict
+        temperature=1.0,  # Gemini 3 recommended
+        max_output_tokens=4096,
     ),
 )
-verdict = CouncilVerdict.model_validate_json(response.text)
+verdict = WebSecurityVerdict.model_validate_json(response.text)
 ```
+
+**Without Gemini 3**: Rule-based only (DGA entropy, brand matching, TLD scoring). Works but misses semantic attacks.
+**With Gemini 3**: Deep reasoning about WHY a page is dangerous, real-time threat intel, visual page analysis.
 
 ## 5 Gemini 3 Integration Points
 
-| # | Component | Schema | What It Does |
+| # | Component | Schema | Gemini 3 Features Used |
 |---|-----------|--------|-------------|
-| 1 | **AI Council** | `CouncilVerdict` | Multi-criteria security evaluation with per-finding analysis and confidence scoring |
-| 2 | **Semantic Scanner** | `SemanticScanResult` | Deep analysis of tool descriptions for hidden threats that regex cannot detect |
-| 3 | **RedTeam Generator** | `RedTeamGeneration` | Dynamic attack scenario generation tailored to each tool's capabilities |
-| 4 | **RedTeam Evaluator** | `PayloadSafetyVerdict` | AI-powered safety assessment of tool responses against attack scenarios |
-| 5 | **Causal Web Sandbox** | `WebSecurityVerdict` | Evidence-based web page threat classification with DOM/a11y/network analysis |
+| 1 | **AI Council** | `CouncilVerdict` | Structured output + seed reproducibility |
+| 2 | **Semantic Scanner** | `SemanticScanResult` | Deep analysis of tool descriptions for hidden threats |
+| 3 | **RedTeam Generator** | `RedTeamGeneration` | Dynamic attack scenario generation |
+| 4 | **RedTeam Evaluator** | `PayloadSafetyVerdict` | AI-powered safety assessment |
+| 5 | **Causal Web Sandbox** | `WebSecurityVerdict` | **thinking_level + URL Context + Google Search + structured output** |
+
+### Causal Web Sandbox: The "Only Gemini 3 Can Do This" Feature
+
+The Causal Web Sandbox demonstrates capabilities **unique to Gemini 3**:
+
+1. **URL Context**: Gemini 3 visits the suspicious URL directly, rendering the page internally
+2. **Google Search**: Checks if the domain/URL has been reported in threat databases
+3. **Thinking Level**: `high` for deep analysis (complex phishing), `low` for fast triage (<100ms)
+4. **Causal Chain**: Step-by-step explanation of the attack progression
+5. **MCP-Specific Threats**: Detects JSON-RPC injection, tool shadowing, signature cloaking in web content
+
+```
+Input:  https://rope.odakyu.qpon/login
+Output: {
+  "classification": "phishing",
+  "confidence": 0.93,
+  "causal_chain": [
+    {"step": 1, "action": "Domain impersonates brand 'odakyu'",
+     "consequence": "Not the legitimate odakyu railway site"},
+    {"step": 2, "action": "Hosted on .qpon (high-abuse TLD)",
+     "consequence": "TLD is commonly used for scam/phishing sites"}
+  ],
+  "attack_narrative": "PHISHING: 'rope.odakyu.qpon' impersonates the brand 'odakyu' on a .qpon domain...",
+  "mcp_specific_threats": ["Brand impersonation: 'odakyu' on .qpon. AI agents must not trust credentials."]
+}
+```
 
 ## Live Pipeline Demo
 
