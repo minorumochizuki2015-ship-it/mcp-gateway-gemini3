@@ -120,6 +120,41 @@ SUSPICIOUS_DOMAINS = {
     "shorturl.at",
 }
 
+# Free/cheap hosting platforms often used by scam sites
+FREE_HOSTING_DOMAINS = {
+    "fc2.com", "cart.fc2.com", "web.fc2.com",
+    "geocities.jp", "geocities.co.jp",
+    "wixsite.com", "weebly.com",
+    "jimdo.com", "jimdofree.com",
+    "sites.google.com",
+    "blogspot.com",
+    "wordpress.com",
+    "shopify.com",  # note: legitimate but used by drop-shipping scams
+}
+
+# Scam content keywords (Japanese + English)
+SCAM_KEYWORDS_JA = [
+    re.compile(r"振込先|振り込み先|お振込み", re.IGNORECASE),
+    re.compile(r"銀行口座|口座番号|口座名義", re.IGNORECASE),
+    re.compile(r"代金引換不可|前払い|先払い", re.IGNORECASE),
+    re.compile(r"特定商取引法|特商法", re.IGNORECASE),
+    re.compile(r"返品不可|返金不可|キャンセル不可", re.IGNORECASE),
+]
+
+SCAM_KEYWORDS_EN = [
+    re.compile(r"wire\s+transfer\s+only", re.IGNORECASE),
+    re.compile(r"bank\s+transfer\s+only", re.IGNORECASE),
+    re.compile(r"no\s+refund", re.IGNORECASE),
+    re.compile(r"western\s+union", re.IGNORECASE),
+]
+
+# Legitimate e-commerce trust signals
+TRUST_SIGNALS = [
+    re.compile(r"(?:\+?\d{1,4}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}"),  # phone
+    re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"),  # email
+    re.compile(r"https://", re.IGNORECASE),  # SSL
+]
+
 # Counter-evidence: suspicious script patterns
 SUSPICIOUS_SCRIPT_PATTERNS = [
     re.compile(r"eval\s*\(", re.IGNORECASE),
@@ -845,7 +880,7 @@ def gemini_security_verdict(
     """
     api_key = os.getenv(GEMINI_API_KEY_ENV)
     if not api_key:
-        return _rule_based_verdict(url, dom_threats, a11y_issues, network_traces)
+        return _rule_based_verdict(url, dom_threats, a11y_issues, network_traces, visible_text)
 
     instructions = (
         "You are a web security analyst. Analyze the following web page content "
@@ -894,7 +929,7 @@ def gemini_security_verdict(
         return WebSecurityVerdict.model_validate_json(response.text)
     except Exception as exc:
         logger.warning("Gemini web security verdict failed: %s", exc)
-        return _rule_based_verdict(url, dom_threats, a11y_issues, network_traces)
+        return _rule_based_verdict(url, dom_threats, a11y_issues, network_traces, visible_text)
 
 
 def _rule_based_verdict(
@@ -902,11 +937,13 @@ def _rule_based_verdict(
     dom_threats: list[DOMSecurityNode],
     a11y_issues: list[A11yNode],
     network_traces: list[NetworkRequestTrace],
+    visible_text: str = "",
 ) -> WebSecurityVerdict:
     """Fallback rule-based verdict when Gemini is unavailable."""
     risk_indicators: list[str] = []
     evidence_refs: list[str] = []
 
+    # --- DOM-based signals ---
     for t in dom_threats:
         risk_indicators.append(f"DOM: {t.threat_type}")
         evidence_refs.append(t.selector)
@@ -926,6 +963,72 @@ def _rule_based_verdict(
         t.threat_type == "suspicious_script" for t in dom_threats
     )
 
+    # --- URL-based scam signals ---
+    parsed_url = urlparse(url)
+    is_http_only = parsed_url.scheme == "http"
+    hostname = (parsed_url.hostname or "").lower()
+
+    # Free hosting check (match domain or any parent domain)
+    on_free_hosting = False
+    parts = hostname.split(".")
+    for i in range(len(parts)):
+        candidate = ".".join(parts[i:])
+        if candidate in FREE_HOSTING_DOMAINS:
+            on_free_hosting = True
+            break
+
+    if is_http_only:
+        risk_indicators.append("URL: http_only (no SSL)")
+        evidence_refs.append(url)
+    if on_free_hosting:
+        risk_indicators.append(f"URL: free_hosting ({hostname})")
+        evidence_refs.append(url)
+
+    # --- Content-based scam signals ---
+    scam_keyword_hits = 0
+    if visible_text:
+        for pat in SCAM_KEYWORDS_JA:
+            if pat.search(visible_text):
+                scam_keyword_hits += 1
+                risk_indicators.append(f"Content: scam_keyword_ja ({pat.pattern})")
+        for pat in SCAM_KEYWORDS_EN:
+            if pat.search(visible_text):
+                scam_keyword_hits += 1
+                risk_indicators.append(f"Content: scam_keyword_en ({pat.pattern})")
+
+        # Trust signal analysis (absence = risk)
+        has_phone = TRUST_SIGNALS[0].search(visible_text) is not None
+        has_email = TRUST_SIGNALS[1].search(visible_text) is not None
+
+        # E-commerce context detection (price/cart/buy patterns)
+        ecommerce_patterns = re.compile(
+            r"カート|買い物|購入|注文|price|add to cart|buy now|¥[\d,]+|\$[\d,.]+|円",
+            re.IGNORECASE,
+        )
+        looks_like_ecommerce = bool(ecommerce_patterns.search(visible_text))
+
+        if looks_like_ecommerce:
+            if not has_phone:
+                risk_indicators.append("Trust: no_phone_number (e-commerce)")
+            if not has_email:
+                risk_indicators.append("Trust: no_email_address (e-commerce)")
+            if is_http_only:
+                risk_indicators.append("Trust: http_ecommerce (no SSL on shop)")
+
+    # --- Scam score calculation ---
+    scam_score = 0
+    if is_http_only:
+        scam_score += 1
+    if on_free_hosting:
+        scam_score += 2
+    scam_score += scam_keyword_hits
+    if visible_text:
+        if looks_like_ecommerce and not has_phone:
+            scam_score += 1
+        if looks_like_ecommerce and is_http_only:
+            scam_score += 2
+
+    # --- Classification logic ---
     if has_phishing_form:
         classification = ThreatClassification.phishing
         confidence = 0.8
@@ -934,6 +1037,10 @@ def _rule_based_verdict(
         classification = ThreatClassification.malware
         confidence = 0.7
         action = "block"
+    elif scam_score >= 3:
+        classification = ThreatClassification.scam
+        confidence = min(0.5 + scam_score * 0.1, 0.9)
+        action = "block" if scam_score >= 5 else "warn"
     elif has_hidden_iframe:
         classification = ThreatClassification.clickjacking
         confidence = 0.6
@@ -945,6 +1052,10 @@ def _rule_based_verdict(
     elif suspicious_net:
         classification = ThreatClassification.scam
         confidence = 0.4
+        action = "warn"
+    elif scam_score >= 1:
+        classification = ThreatClassification.scam
+        confidence = 0.3 + scam_score * 0.1
         action = "warn"
     else:
         classification = ThreatClassification.benign

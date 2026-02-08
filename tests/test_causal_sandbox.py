@@ -13,6 +13,7 @@ from mcp_gateway import causal_sandbox
 from mcp_gateway.causal_sandbox import (
     ANALYTICS_IFRAME_DOMAINS,
     BENIGN_ARIA_LABELS,
+    FREE_HOSTING_DOMAINS,
     A11yNode,
     CausalScanResult,
     DOMSecurityNode,
@@ -23,6 +24,7 @@ from mcp_gateway.causal_sandbox import (
     WebBundleResult,
     WebSecurityVerdict,
     _CONTAINER_TAGS,
+    _rule_based_verdict,
     analyze_dom_security,
     bundle_page,
     extract_accessibility_tree,
@@ -722,6 +724,78 @@ class TestDescriptiveLabelPattern:
         assert len(deceptive) >= 1, (
             "Long aria-label with unrelated content should be flagged as deceptive"
         )
+
+
+# ---- Scam Detection (Rule-based) ----
+
+
+class TestScamDetection:
+    """Scam detection signals in rule-based verdict."""
+
+    def test_http_only_ecommerce_flagged(self) -> None:
+        """HTTP-only e-commerce site is flagged as scam."""
+        verdict = _rule_based_verdict(
+            "http://fake-shop.example.com/",
+            [], [], [],
+            visible_text="カートに入れる 購入する ¥9,800",
+        )
+        assert verdict.classification == ThreatClassification.scam
+        assert any("http_only" in r for r in verdict.risk_indicators)
+
+    def test_free_hosting_ecommerce_flagged(self) -> None:
+        """E-commerce on free hosting (fc2.com) is flagged."""
+        verdict = _rule_based_verdict(
+            "http://gamenoah.cart.fc2.com/",
+            [], [], [],
+            visible_text="カートに入れる 購入する ¥5,000 振込先",
+        )
+        assert verdict.classification == ThreatClassification.scam
+        assert any("free_hosting" in r for r in verdict.risk_indicators)
+
+    def test_scam_keywords_detected(self) -> None:
+        """Japanese scam keywords (振込先, 返品不可) are detected."""
+        verdict = _rule_based_verdict(
+            "https://example.com/shop",
+            [], [], [],
+            visible_text="購入 ¥3,000 振込先 銀行口座 返品不可",
+        )
+        scam_kw = [r for r in verdict.risk_indicators if "scam_keyword" in r]
+        assert len(scam_kw) >= 2
+
+    def test_missing_phone_ecommerce_flagged(self) -> None:
+        """E-commerce without phone number is flagged."""
+        verdict = _rule_based_verdict(
+            "https://example.com/shop",
+            [], [], [],
+            visible_text="カートに入れる ¥9,800 お買い物",
+        )
+        assert any("no_phone" in r for r in verdict.risk_indicators)
+
+    def test_legitimate_site_not_flagged(self) -> None:
+        """HTTPS site with phone/email is not flagged as scam."""
+        verdict = _rule_based_verdict(
+            "https://legitimate-shop.com/",
+            [], [], [],
+            visible_text="Welcome to our store. Contact: 03-1234-5678 info@shop.com",
+        )
+        assert verdict.classification == ThreatClassification.benign
+
+    def test_free_hosting_domains_completeness(self) -> None:
+        """FREE_HOSTING_DOMAINS includes expected platforms."""
+        assert "fc2.com" in FREE_HOSTING_DOMAINS
+        assert "cart.fc2.com" in FREE_HOSTING_DOMAINS
+        assert "wixsite.com" in FREE_HOSTING_DOMAINS
+
+    def test_high_scam_score_blocks(self) -> None:
+        """Multiple scam signals produce block recommendation."""
+        verdict = _rule_based_verdict(
+            "http://gamenoah.cart.fc2.com/",
+            [], [], [],
+            visible_text="カート 購入 ¥5,000 振込先 銀行口座 返品不可",
+        )
+        assert verdict.classification == ThreatClassification.scam
+        assert verdict.recommended_action in ("warn", "block")
+        assert verdict.confidence >= 0.5
 
 
 # ---- Prompt Injection Defense ----
