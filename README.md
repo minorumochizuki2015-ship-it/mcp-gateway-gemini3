@@ -275,7 +275,7 @@ gcloud run services describe mcp-gateway --format='value(status.url)'
 ## Test Suite
 
 ```bash
-# 345 tests
+# 352 tests
 python -m pytest tests/ -v
 
 # Gemini integration tests only

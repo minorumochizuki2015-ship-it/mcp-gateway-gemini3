@@ -1528,7 +1528,7 @@ async def about() -> JSONResponse:
             {"protocol": "MCP stdio", "command": "python -m src.mcp_gateway.mcp_security_server"},
             {"protocol": "MCP Streamable HTTP", "endpoint": "/mcp/security"},
         ],
-        "test_count": 345,
+        "test_count": 352,
     })
 
 
