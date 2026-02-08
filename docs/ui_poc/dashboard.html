@@ -661,6 +661,28 @@
       allow: '\u2705', deny: '\u{1F6AB}', attack: '\u{1F525}', block: '\u{1F6AB}',
       warn: '\u26A0\uFE0F', scan: '\u{1F50D}', council: '\u{1F3DB}', web: '\u{1F310}'
     };
+    // Flow diagram animation state
+    var _flowAnimInterval = null;
+    var _interceptStats = { blocked: 0, allowed: 0, dlp: 0 };
+    function animateFlow(active) {
+      var arrows = document.querySelectorAll('.flow-arrow');
+      if (active) {
+        _flowAnimInterval = setInterval(function() {
+          arrows.forEach(function(a) { a.style.color = a.style.color === 'var(--primary)' ? '#8b5cf6' : 'var(--primary)'; });
+        }, 600);
+        document.querySelector('.flow-box.gateway').style.boxShadow = '0 0 20px rgba(0,102,255,0.3)';
+      } else {
+        if (_flowAnimInterval) { clearInterval(_flowAnimInterval); _flowAnimInterval = null; }
+        arrows.forEach(function(a) { a.style.color = 'var(--primary)'; });
+        document.querySelector('.flow-box.gateway').style.boxShadow = '';
+      }
+    }
+    function updateFlowCounters() {
+      var el = function(id) { return document.getElementById(id); };
+      var d = I18N[getLang()] || I18N.en;
+      el('flowAllowed').textContent = _interceptStats.allowed + ' ' + d.flowAllowed;
+      el('flowBlocked').textContent = _interceptStats.blocked + ' ' + d.flowBlocked;
+    }
     function pipelineStepHtml(d) {
       var ts = new Date().toLocaleTimeString('en-US', {hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
       var icon = STEP_ICONS[d.icon] || '\u2022';
@@ -682,6 +704,28 @@
         var ccol = cls === 'benign' ? 'var(--success)' : (cls === 'phishing' ? 'var(--danger)' : 'var(--warn)');
         var em = d.eval_method === 'gemini' ? ' <span style="background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600">Gemini</span>' : ' <span style="background:#f3f4f6;color:#6b7280;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600">Rule-based</span>';
         line = icon + ' <b>' + escapeHtml(d.label || d.url) + '</b> &rarr; <span style="color:' + ccol + ';font-weight:700">' + escapeHtml(String(cls).toUpperCase()) + '</span> (conf: ' + (d.confidence * 100).toFixed(0) + '%, ' + d.dom_threats + ' DOM threats)' + em;
+      } else if (d.phase === 'intercept') {
+        // ── Tool Call Interception Demo ──
+        if (d.action === 'session_start') {
+          line = icon + ' <span style="background:#dbeafe;color:#1e40af;padding:2px 10px;border-radius:6px;font-size:11px;font-weight:700">SESSION</span> <b>' + escapeHtml(d.agent) + '</b> connected <span style="font-family:monospace;font-size:11px;color:var(--muted)">(' + escapeHtml(d.session_id) + ')</span>';
+          // Show session badge in nav
+          var navStatus = document.querySelector('.nav-status');
+          if (navStatus) navStatus.innerHTML = '<span class="status-dot"></span> <span style="font-size:12px">' + escapeHtml(d.agent) + '</span> <span style="font-size:11px;background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:4px;font-weight:600">' + escapeHtml(d.session_id) + '</span>';
+        } else if (d.action === 'tool_call') {
+          var rcol = d.result === 'BLOCKED' ? 'var(--danger)' : 'var(--success)';
+          var rbg = d.result === 'BLOCKED' ? '#fee2e2' : '#d1fae5';
+          var rtxt = d.result === 'BLOCKED' ? '#991b1b' : '#065f46';
+          line = icon + ' <b>' + escapeHtml(d.server) + '</b>.<b>' + escapeHtml(d.tool) + '</b>() &rarr; <span style="background:' + rbg + ';color:' + rtxt + ';padding:2px 10px;border-radius:6px;font-size:11px;font-weight:700">' + escapeHtml(d.result) + '</span> <span style="color:var(--muted);font-size:11px">' + escapeHtml(d.reason) + '</span>';
+          if (d.result === 'BLOCKED') _interceptStats.blocked++;
+          else _interceptStats.allowed++;
+          updateFlowCounters();
+        } else if (d.action === 'dlp_scan') {
+          var findings = d.findings || [];
+          line = icon + ' DLP scan on <b>' + escapeHtml(d.server) + '.' + escapeHtml(d.tool) + '</b> response &rarr; <span style="background:#fef3c7;color:#92400e;padding:2px 10px;border-radius:6px;font-size:11px;font-weight:700">SENSITIVE DATA</span> <span style="color:var(--warn);font-size:11px">[' + escapeHtml(findings.join(', ')) + ']</span>';
+          _interceptStats.dlp++;
+        } else if (d.action === 'session_summary') {
+          line = icon + ' <span style="background:var(--gray-900);color:#fff;padding:3px 12px;border-radius:6px;font-size:11px;font-weight:700">SUMMARY</span> ' + escapeHtml(d.message);
+        }
       }
       return '<div style="padding: 3px 8px; animation: fadeSlideIn 0.3s ease-out; border-left: 2px solid transparent;" class="pipeline-step"><span style="color:var(--muted);margin-right:8px;">' + ts + '</span>' + line + '</div>';
     }
@@ -703,6 +747,9 @@
         stepsEl.innerHTML = '';
         var stepCount = 0;
 
+        _interceptStats = { blocked: 0, allowed: 0, dlp: 0 };
+        animateFlow(true);
+
         var base = (window.apiClient && window.apiClient._base) || '';
         var sseUrl = base + '/api/demo/run-live';
         // EventSource cannot set Authorization header — pass token via query param
@@ -713,8 +760,14 @@
         es.addEventListener('phase', function(e) {
           var d = JSON.parse(e.data);
           phaseEl.textContent = d.label;
-          var phaseIcons = {register: '\u{1F916}', scan: '\u{1F6E1}', council: '\u{2696}\uFE0F', attack: '\u{1F525}', web_sandbox: '\u{1F310}'};
+          var phaseIcons = {register: '\u{1F916}', scan: '\u{1F6E1}', council: '\u{2696}\uFE0F', attack: '\u{1F525}', web_sandbox: '\u{1F310}', intercept: '\u{1F6E1}\u{1F50D}'};
           iconEl.textContent = phaseIcons[d.name] || '\u2699\uFE0F';
+          // Phase-specific flow highlight
+          var gwBox = document.querySelector('.flow-box.gateway');
+          if (d.name === 'intercept') {
+            gwBox.style.borderColor = '#8b5cf6';
+            gwBox.style.boxShadow = '0 0 24px rgba(139,92,246,0.4)';
+          }
           // Add phase separator
           stepsEl.innerHTML += '<div style="padding: 6px 8px; color: #8b5cf6; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; border-bottom: 1px solid #ede9fe;">' + escapeHtml(d.label) + '</div>';
           stepsEl.scrollTop = stepsEl.scrollHeight;
@@ -732,12 +785,25 @@
 
         es.addEventListener('complete', function(e) {
           es.close();
+          animateFlow(false);
           var d = JSON.parse(e.data);
           counterEl.textContent = d.total_events + ' events — complete';
           phaseEl.textContent = 'Done';
           iconEl.textContent = '\u2705';
-          stepsEl.innerHTML += '<div style="padding: 8px; color: var(--success); font-weight: 700; border-top: 1px solid var(--border); margin-top: 8px;">\u2705 ' + escapeHtml(d.message) + '</div>';
+          // Show enforcement summary in pipeline log
+          var summaryHtml = '<div style="padding: 10px 8px; background: linear-gradient(135deg,#f0fdf4,#ecfdf5); border-radius: 8px; margin-top: 8px; border: 1px solid #bbf7d0;">'
+            + '<div style="font-weight:700;color:#166534;margin-bottom:4px;">\u2705 ' + escapeHtml(d.message) + '</div>'
+            + '<div style="display:flex;gap:16px;font-size:12px;font-weight:600;">'
+            + '<span style="color:var(--danger)">\u{1F6AB} ' + _interceptStats.blocked + ' Blocked</span>'
+            + '<span style="color:var(--success)">\u2705 ' + _interceptStats.allowed + ' Allowed</span>'
+            + '<span style="color:var(--warn)">\u26A0\uFE0F ' + _interceptStats.dlp + ' DLP</span>'
+            + '</div></div>';
+          stepsEl.innerHTML += summaryHtml;
           stepsEl.scrollTop = stepsEl.scrollHeight;
+          // Restore gateway box style
+          var gwBox = document.querySelector('.flow-box.gateway');
+          gwBox.style.borderColor = 'var(--primary)';
+          gwBox.style.boxShadow = '';
           demoBtn.disabled = false;
           demoBtn.style.opacity = '1';
           demoBtn.querySelector('#demoBtnText').textContent = I18N[getLang()].demoBtn;
@@ -747,6 +813,7 @@
 
         es.onerror = function() {
           es.close();
+          animateFlow(false);
           counterEl.textContent = 'Connection lost';
           phaseEl.textContent = 'Error';
           iconEl.textContent = '\u274C';

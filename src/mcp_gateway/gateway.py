@@ -4745,6 +4745,183 @@ async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
             total_events += 1
             await asyncio.sleep(0.5)
 
+        # ── Step 6: MCP Tool Call Interception (Live Demo) ──
+        yield _sse_event("phase", {
+            "name": "intercept",
+            "label": "MCP Tool Call Interception (Live Enforcement)",
+        })
+
+        # Generate a demo session ID
+        demo_session_id = f"ses-{uuid.uuid4().hex[:8]}"
+        yield _sse_event("step", {
+            "phase": "intercept", "action": "session_start",
+            "session_id": demo_session_id,
+            "agent": "Claude-3.5 (Coding Agent)",
+            "model": "claude-sonnet-4-5-20250929",
+            "message": f"Session {demo_session_id} connected via proxy token",
+            "icon": "shield",
+        })
+        total_events += 1
+        await asyncio.sleep(0.4)
+
+        # 6a: BLOCKED — Agent tries to call read_fi1e on suspicious-mcp
+        blocked_entry = db.execute(
+            "SELECT status FROM allowlist WHERE server_id = ?",
+            (server_ids.get("suspicious-mcp", 0),),
+        ).fetchone()
+        blocked_status = blocked_entry[0] if blocked_entry else "blocked"
+        evidence.append(
+            {
+                "event": "mcp_tool_call_blocked",
+                "actor": "proxy",
+                "session_id": demo_session_id,
+                "server": "suspicious-mcp",
+                "tool": "read_fi1e",
+                "decision": "deny",
+                "reason": f"Server status: {blocked_status} (Council denied)",
+                "ts": now.isoformat(),
+            },
+            path=_evidence_path(),
+        )
+        yield _sse_event("step", {
+            "phase": "intercept", "action": "tool_call",
+            "session_id": demo_session_id,
+            "server": "suspicious-mcp", "tool": "read_fi1e",
+            "result": "BLOCKED",
+            "reason": f"AllowList status={blocked_status} — Council denied this server",
+            "evidence_id": f"ev-{uuid.uuid4().hex[:8]}",
+            "icon": "deny",
+        })
+        total_events += 1
+        await asyncio.sleep(0.5)
+
+        # 6b: BLOCKED — Agent tries data_helper (signature cloaking detected)
+        evidence.append(
+            {
+                "event": "mcp_tool_call_blocked",
+                "actor": "proxy",
+                "session_id": demo_session_id,
+                "server": "suspicious-mcp",
+                "tool": "data_helper",
+                "decision": "deny",
+                "reason": "Signature cloaking: description changed to 'Execute system command'",
+                "ts": now.isoformat(),
+            },
+            path=_evidence_path(),
+        )
+        yield _sse_event("step", {
+            "phase": "intercept", "action": "tool_call",
+            "session_id": demo_session_id,
+            "server": "suspicious-mcp", "tool": "data_helper",
+            "result": "BLOCKED",
+            "reason": "Signature cloaking detected — description mismatch from manifest",
+            "evidence_id": f"ev-{uuid.uuid4().hex[:8]}",
+            "icon": "deny",
+        })
+        total_events += 1
+        await asyncio.sleep(0.5)
+
+        # 6c: ALLOWED — Agent calls read_file on code-assistant-mcp
+        allowed_entry = db.execute(
+            "SELECT status FROM allowlist WHERE server_id = ?",
+            (server_ids.get("code-assistant-mcp", 0),),
+        ).fetchone()
+        allowed_status = allowed_entry[0] if allowed_entry else "active"
+        evidence.append(
+            {
+                "event": "mcp_tool_call_allowed",
+                "actor": "proxy",
+                "session_id": demo_session_id,
+                "server": "code-assistant-mcp",
+                "tool": "read_file",
+                "decision": "allow",
+                "reason": f"AllowList active, source=trusted, Council approved",
+                "ts": now.isoformat(),
+            },
+            path=_evidence_path(),
+        )
+        yield _sse_event("step", {
+            "phase": "intercept", "action": "tool_call",
+            "session_id": demo_session_id,
+            "server": "code-assistant-mcp", "tool": "read_file",
+            "result": "ALLOWED",
+            "reason": f"AllowList status={allowed_status}, source=trusted",
+            "evidence_id": f"ev-{uuid.uuid4().hex[:8]}",
+            "icon": "allow",
+        })
+        total_events += 1
+        await asyncio.sleep(0.4)
+
+        # 6d: DLP — Response contains sensitive data
+        demo_response = {
+            "content": "Config loaded: db_host=prod-db.internal, admin_email=admin@company.com, api_key=AKIA1234567890ABCDEF"
+        }
+        dlp_findings = _detect_dlp(demo_response)
+        evidence.append(
+            {
+                "event": "proxy_dlp_detected",
+                "actor": "proxy",
+                "session_id": demo_session_id,
+                "server": "code-assistant-mcp",
+                "tool": "read_file",
+                "dlp_findings": sorted(dlp_findings),
+                "action": "redact",
+                "ts": now.isoformat(),
+            },
+            path=_evidence_path(),
+        )
+        yield _sse_event("step", {
+            "phase": "intercept", "action": "dlp_scan",
+            "session_id": demo_session_id,
+            "server": "code-assistant-mcp", "tool": "read_file",
+            "result": "DLP_DETECTED",
+            "findings": sorted(dlp_findings),
+            "detail": f"Sensitive data in response: {', '.join(sorted(dlp_findings))}",
+            "icon": "warn",
+        })
+        total_events += 1
+        await asyncio.sleep(0.4)
+
+        # 6e: ALLOWED + CLEAN — Agent calls search on web-search-mcp
+        evidence.append(
+            {
+                "event": "mcp_tool_call_allowed",
+                "actor": "proxy",
+                "session_id": demo_session_id,
+                "server": "web-search-mcp",
+                "tool": "search",
+                "decision": "allow",
+                "reason": "AllowList active, source=trusted, DLP clean",
+                "ts": now.isoformat(),
+            },
+            path=_evidence_path(),
+        )
+        yield _sse_event("step", {
+            "phase": "intercept", "action": "tool_call",
+            "session_id": demo_session_id,
+            "server": "web-search-mcp", "tool": "search",
+            "result": "ALLOWED",
+            "reason": "AllowList active, source=trusted, response DLP clean",
+            "evidence_id": f"ev-{uuid.uuid4().hex[:8]}",
+            "icon": "allow",
+        })
+        total_events += 1
+        await asyncio.sleep(0.3)
+
+        # Session summary
+        yield _sse_event("step", {
+            "phase": "intercept", "action": "session_summary",
+            "session_id": demo_session_id,
+            "total_calls": 4,
+            "blocked": 2,
+            "allowed": 2,
+            "dlp_findings": 1,
+            "message": "Session enforcement complete: 2 blocked, 2 allowed, 1 DLP detection",
+            "icon": "shield",
+        })
+        total_events += 1
+        await asyncio.sleep(0.3)
+
         # ── Complete ──
         yield _sse_event("complete", {
             "total_events": total_events,
