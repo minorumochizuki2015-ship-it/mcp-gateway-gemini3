@@ -1087,7 +1087,8 @@ class TestCombinedDetection:
             visible_text="Amazon.co.jp 03-1234-5678 help@amazon.co.jp",
         )
         assert verdict.classification == ThreatClassification.benign
-        assert verdict.confidence >= 0.8
+        # SA-003: default benign is 0.5 (absence of negative != positive safety)
+        assert verdict.confidence >= 0.4
 
 
 # ---- Causal Chain ----

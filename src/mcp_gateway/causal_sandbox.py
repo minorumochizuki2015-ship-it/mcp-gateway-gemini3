@@ -244,10 +244,10 @@ SCAM_KEYWORDS_EN = [
 ]
 
 # Legitimate e-commerce trust signals
+# NOTE: HTTPS removed (SA-010) - free certs make HTTPS meaningless as trust signal
 TRUST_SIGNALS = [
     re.compile(r"(?:\+?\d{1,4}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}"),  # phone
     re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"),  # email
-    re.compile(r"https://", re.IGNORECASE),  # SSL
 ]
 
 # Counter-evidence: suspicious script patterns
@@ -1493,7 +1493,9 @@ def _rule_based_verdict(
         action = "warn"
     else:
         classification = ThreatClassification.benign
-        confidence = 0.9
+        # SA-003: absence of negative signals != positive safety evidence
+        # High confidence requires positive trust signals (known domain, valid cert)
+        confidence = 0.5
         action = "allow"
 
     # Build causal chain from detected threats
