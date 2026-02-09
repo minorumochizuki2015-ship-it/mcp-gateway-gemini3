@@ -98,6 +98,19 @@
     .btn-primary:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
     .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
+    .demo-btn {
+      padding: 6px 14px; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+      font-family: inherit; background: var(--gray-50);
+    }
+    .demo-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+    .demo-btn-danger { border-color: #fca5a5; color: #dc2626; background: #fef2f2; }
+    .demo-btn-danger:hover { background: #fee2e2; }
+    .demo-btn-safe { border-color: #86efac; color: #16a34a; background: #f0fdf4; }
+    .demo-btn-safe:hover { background: #dcfce7; }
+    .demo-btn-warn { border-color: #fcd34d; color: #d97706; background: #fffbeb; }
+    .demo-btn-warn:hover { background: #fef3c7; }
+
     .verdict-card {
       display: flex; align-items: center; gap: 20px; padding: 20px 24px;
     }
@@ -286,6 +299,13 @@
       <div id="scanLoading" style="margin-top: 12px; display: none;">
         <span class="spinner"></span>
         <span class="muted" style="margin-left: 8px;" id="scanLoadingText">Scanning page...</span>
+      </div>
+      <!-- Demo scan buttons -->
+      <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+        <span class="muted" style="font-size: 12px;" id="demoLabel">Try demo:</span>
+        <button class="demo-btn demo-btn-danger" onclick="demoScan('phishing')" id="demoBtnPhishing">Phishing Page</button>
+        <button class="demo-btn demo-btn-safe" onclick="demoScan('clean')" id="demoBtnClean">Clean Page</button>
+        <button class="demo-btn demo-btn-warn" onclick="demoScan('clickjack')" id="demoBtnClickjack">Clickjack Page</button>
       </div>
     </div>
 
@@ -620,13 +640,24 @@
           document.getElementById('compareTraditionalBadge').className = 'compare-badge none';
         }
 
-        // Gemini side: show actual scan result
-        var sevText = cls.toUpperCase() + (cls === 'benign' ? '' : ' DETECTED');
-        document.getElementById('compareSemanticVerdict').textContent = sevText;
-        document.getElementById('compareSemanticVerdict').className = 'compare-verdict ' + (cls === 'benign' ? 'safe' : 'threat');
-        var indicatorCount = (v.risk_indicators || []).length;
-        document.getElementById('compareSemanticBadge').textContent = indicatorCount + (d.compareIndicators || ' risk indicators found');
-        document.getElementById('compareSemanticBadge').className = 'compare-badge ' + (cls === 'benign' ? 'none' : 'detected');
+        // Gemini side: show actual scan result or fallback notice
+        var isRuleBased = data.eval_method === 'rule_based' || data.eval_method === 'demo_preset';
+        if (isRuleBased) {
+          // Gemini not configured — show clear CTA
+          document.getElementById('compareSemanticVerdict').textContent = d.geminiNotActive || 'GEMINI NOT ACTIVE';
+          document.getElementById('compareSemanticVerdict').className = 'compare-verdict';
+          document.getElementById('compareSemanticVerdict').style.color = '#6b7280';
+          document.getElementById('compareSemanticBadge').textContent = d.geminiConfigCta || 'Set API key above to enable';
+          document.getElementById('compareSemanticBadge').className = 'compare-badge none';
+        } else {
+          var sevText = cls.toUpperCase() + (cls === 'benign' ? '' : ' DETECTED');
+          document.getElementById('compareSemanticVerdict').textContent = sevText;
+          document.getElementById('compareSemanticVerdict').className = 'compare-verdict ' + (cls === 'benign' ? 'safe' : 'threat');
+          document.getElementById('compareSemanticVerdict').style.color = '';
+          var indicatorCount = (v.risk_indicators || []).length;
+          document.getElementById('compareSemanticBadge').textContent = indicatorCount + (d.compareIndicators || ' risk indicators found');
+          document.getElementById('compareSemanticBadge').className = 'compare-badge ' + (cls === 'benign' ? 'none' : 'detected');
+        }
         // i18n titles
         if (d.compareTraditionalTitle) document.getElementById('compareTraditionalTitle').textContent = d.compareTraditionalTitle;
         if (d.compareSemanticTitle) document.getElementById('compareSemanticTitle').textContent = d.compareSemanticTitle;
@@ -829,6 +860,35 @@
       }
     });
 
+    // --- Demo Scan (pre-configured pages, no SSRF issues) ---
+    window.demoScan = async function(page) {
+      scanError.style.display = 'none';
+      scanLoading.style.display = '';
+      scanBtn.disabled = true;
+      resultSection.style.display = 'none';
+      // Show which demo is being scanned
+      var demoLabels = {phishing: 'Phishing Page', clean: 'Clean Page', clickjack: 'Clickjack Page'};
+      urlInput.value = demoLabels[page] || page;
+
+      try {
+        var resp = await fetch('/api/web-sandbox/scan-demo', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({page: page}),
+        });
+        if (!resp.ok) throw new Error('Demo scan failed: ' + resp.status);
+        var data = await resp.json();
+        renderVerdict(data);
+        loadHistory();
+      } catch (err) {
+        scanError.textContent = err.message || 'Demo scan failed';
+        scanError.style.display = '';
+      } finally {
+        scanLoading.style.display = 'none';
+        scanBtn.disabled = false;
+      }
+    };
+
     // Load history on page load
     loadHistory();
 
@@ -848,6 +908,10 @@
         geminiSetting: 'Setting...',
         targetUrl: 'Target URL',
         scanBtn: 'Scan',
+        demoLabel: 'Try demo:',
+        demoBtnPhishing: 'Phishing Page',
+        demoBtnClean: 'Clean Page',
+        demoBtnClickjack: 'Clickjack Page',
         scanning: 'Scanning page...',
         historyTitle: 'Recent Verdicts',
         historyEmpty: 'No scans yet. Enter a URL above to start.',
@@ -888,6 +952,8 @@
         compareTraditionalTitle: 'Rule-based Only',
         compareSemanticTitle: 'With Gemini 3 Agent',
         compareNoThreats: 'NO THREATS DETECTED',
+        geminiNotActive: 'GEMINI NOT ACTIVE',
+        geminiConfigCta: 'Set API key above to enable Gemini analysis',
         compare0Matches: '0 pattern matches',
         compareIndicators: ' risk indicators found',
         compareNoData: 'N/A',
@@ -911,6 +977,10 @@
         geminiSetting: '設定中...',
         targetUrl: '対象 URL',
         scanBtn: 'スキャン',
+        demoLabel: 'デモ:',
+        demoBtnPhishing: 'フィッシング',
+        demoBtnClean: '安全なページ',
+        demoBtnClickjack: 'クリックジャック',
         scanning: 'ページをスキャン中...',
         historyTitle: 'スキャン履歴',
         historyEmpty: 'スキャン履歴がありません。上の入力欄に URL を入力してください。',
@@ -951,6 +1021,8 @@
         compareTraditionalTitle: 'ルールベースのみ',
         compareSemanticTitle: 'Gemini 3 エージェント付き',
         compareNoThreats: '脅威検出なし',
+        geminiNotActive: 'GEMINI 未設定',
+        geminiConfigCta: '上のAPI Keyを設定してGemini分析を有効化',
         compare0Matches: 'パターン一致 0件',
         compareIndicators: ' 件のリスク指標を検出',
         compareNoData: 'N/A',
@@ -985,6 +1057,10 @@
       // Scan form
       if (el('targetUrlLabel')) el('targetUrlLabel').textContent = d.targetUrl;
       if (el('scanBtn') && !el('scanBtn').disabled) el('scanBtn').textContent = d.scanBtn;
+      if (el('demoLabel')) el('demoLabel').textContent = d.demoLabel;
+      if (el('demoBtnPhishing')) el('demoBtnPhishing').textContent = d.demoBtnPhishing;
+      if (el('demoBtnClean')) el('demoBtnClean').textContent = d.demoBtnClean;
+      if (el('demoBtnClickjack')) el('demoBtnClickjack').textContent = d.demoBtnClickjack;
       if (el('scanLoadingText')) el('scanLoadingText').textContent = d.scanning;
       // Result meta labels
       if (el('lblConfidence')) el('lblConfidence').textContent = d.lblConfidence;

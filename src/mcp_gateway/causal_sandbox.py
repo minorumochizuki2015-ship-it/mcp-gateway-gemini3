@@ -20,6 +20,7 @@ import os
 import re
 import socket
 import time
+import unicodedata
 import uuid
 from collections import Counter
 from datetime import datetime, timezone
@@ -203,6 +204,51 @@ IMPERSONATED_BRANDS = {
     # Delivery / logistics
     "sagawa", "yamato", "kuroneko", "jppost", "fedex", "ups", "dhl",
 }
+
+# Suspicious URL tokens that indicate phishing intent
+SUSPICIOUS_URL_TOKENS = frozenset({
+    "login", "verify", "secure", "account", "update", "support",
+    "billing", "confirm", "signin", "signup", "auth", "password",
+    "reset", "recover", "unlock", "suspend", "alert", "urgent",
+    "expire", "validate",
+})
+
+# Freenom TLDs (almost universally abused, higher score than general suspicious)
+FREENOM_TLDS = frozenset({"tk", "ml", "ga", "gq", "cf"})
+
+# Unicode confusable character mapping (IDN homograph attack defense)
+# Maps visually similar non-Latin characters to their Latin equivalents
+_CONFUSABLE_MAP: dict[int, str] = {
+    # Cyrillic → Latin
+    0x0430: "a", 0x0435: "e", 0x043E: "o", 0x0440: "p",
+    0x0441: "c", 0x0443: "y", 0x0445: "x", 0x0456: "i",
+    0x0455: "s", 0x04BB: "h", 0x0458: "j", 0x043A: "k",
+    0x043C: "m", 0x0442: "t", 0x044A: "b",
+    # Greek → Latin
+    0x03B1: "a", 0x03B5: "e", 0x03BF: "o", 0x03C1: "p",
+    0x03C4: "t", 0x03BD: "v", 0x03B9: "i", 0x03BA: "k",
+    # Latin extended → Latin basic
+    0x00E0: "a", 0x00E1: "a", 0x00E2: "a", 0x00E3: "a",
+    0x00E4: "a", 0x00E5: "a", 0x00E8: "e", 0x00E9: "e",
+    0x00EA: "e", 0x00EB: "e", 0x00EC: "i", 0x00ED: "i",
+    0x00EE: "i", 0x00EF: "i", 0x00F2: "o", 0x00F3: "o",
+    0x00F4: "o", 0x00F5: "o", 0x00F6: "o", 0x00F9: "u",
+    0x00FA: "u", 0x00FB: "u", 0x00FC: "u",
+}
+
+
+def _confusable_to_ascii(text: str) -> str:
+    """Convert Unicode confusable characters to ASCII equivalents."""
+    result: list[str] = []
+    for ch in text:
+        cp = ord(ch)
+        if cp < 128:
+            result.append(ch)
+        elif cp in _CONFUSABLE_MAP:
+            result.append(_CONFUSABLE_MAP[cp])
+        # else: drop non-mapped non-ASCII characters
+    return "".join(result)
+
 
 # MCP / JSON-RPC protocol injection patterns in web content
 MCP_THREAT_PATTERNS = [
@@ -391,6 +437,117 @@ def detect_dga(hostname: str) -> tuple[bool, float, list[str]]:
 
     is_dga = dga_score >= 0.4
     return is_dga, min(dga_score, 1.0), indicators
+
+
+def detect_brand_impersonation(
+    hostname: str,
+) -> tuple[bool, str, list[str]]:
+    """Unified brand impersonation detection.
+
+    Checks for brand names in domain labels using:
+    1. Exact label match (original behaviour)
+    2. Punycode/IDN decode (xn-- prefix → Unicode → NFKD → ASCII)
+    3. Hyphen/underscore-split substring match
+    4. Suspicious URL token detection
+
+    Returns:
+        (has_brand, brand_name, risk_indicators)
+    """
+    parts = hostname.lower().split(".")
+    if len(parts) < 2:
+        return False, "", []
+
+    tld = parts[-1]
+    _compound = ".".join(parts[-2:]) if len(parts) >= 2 else ""
+    _is_compound_tld = _compound in COMPOUND_TLD_SUFFIXES
+    _sld_index = -3 if _is_compound_tld and len(parts) >= 3 else -2
+    _sld = parts[_sld_index] if abs(_sld_index) <= len(parts) else ""
+    _legit_tlds = {"com", "co", "jp", "org", "net", "io", "dev", "edu", "gov"}
+
+    domain_without_tld = ".".join(parts[:-1]) if len(parts) > 1 else ""
+    indicators: list[str] = []
+
+    for label in domain_without_tld.split("."):
+        label_lower = label.lower()
+
+        # --- Step 1: Exact label match ---
+        if label_lower in IMPERSONATED_BRANDS:
+            if label_lower == _sld and tld in _legit_tlds:
+                continue
+            if tld not in _legit_tlds:
+                indicators.append(
+                    f"Brand: impersonation_detected ({label_lower} on .{tld})"
+                )
+            else:
+                indicators.append(
+                    f"Brand: subdomain_impersonation ({label_lower})"
+                )
+            return True, label_lower, indicators
+
+        # --- Step 2: Punycode/IDN decode ---
+        decoded_label = label_lower
+        if label_lower.startswith("xn--"):
+            try:
+                decoded_label = label_lower.encode("ascii").decode("idna")
+            except (UnicodeError, UnicodeDecodeError):
+                pass
+
+        if decoded_label != label_lower:
+            # Use confusable mapping for Cyrillic/Greek homoglyphs
+            ascii_approx = _confusable_to_ascii(decoded_label).lower()
+            # Also try NFKD as fallback
+            nfkd = unicodedata.normalize("NFKD", decoded_label)
+            nfkd_ascii = nfkd.encode("ascii", "ignore").decode("ascii").lower()
+            for brand in IMPERSONATED_BRANDS:
+                if brand in ascii_approx or brand in nfkd_ascii:
+                    indicators.append(
+                        f"Brand: idn_homograph ({decoded_label} ≈ {brand})"
+                    )
+                    return True, brand, indicators
+
+        # --- Step 3: Hyphen/underscore-split substring match ---
+        # Only trigger on non-legitimate TLDs to avoid false positives
+        # (e.g., my-apple-store.jp is a plausible legitimate domain)
+        tokens = re.split(r"[-_.]", label_lower)
+        for token in tokens:
+            if len(token) < 3:
+                continue
+            if token in IMPERSONATED_BRANDS:
+                if token == _sld and tld in _legit_tlds:
+                    continue
+                # On legit TLDs, require additional context
+                if tld in _legit_tlds:
+                    # Brand in subdomain of different SLD → still flag
+                    if label_lower != _sld:
+                        indicators.append(
+                            f"Brand: subdomain_impersonation ({token})"
+                        )
+                        return True, token, indicators
+                    # Brand as part of SLD on legit TLD → skip
+                    # (e.g., my-apple-store.com is plausible)
+                    continue
+                indicators.append(
+                    f"Brand: substring_impersonation ({token} in {label_lower})"
+                )
+                return True, token, indicators
+
+    return False, "", indicators
+
+
+def count_suspicious_url_tokens(
+    hostname: str,
+) -> tuple[int, list[str]]:
+    """Count suspicious phishing-intent tokens in hostname."""
+    parts = hostname.lower().split(".")
+    domain_without_tld = ".".join(parts[:-1]) if len(parts) > 1 else ""
+    all_tokens: set[str] = set()
+    for label in domain_without_tld.split("."):
+        for t in re.split(r"[-_.]", label):
+            if t:
+                all_tokens.add(t)
+    hits = all_tokens & SUSPICIOUS_URL_TOKENS
+    indicators = [f"URL: suspicious_token ({t})" for t in sorted(hits)]
+    return len(hits), indicators
 
 
 # ---------------------------------------------------------------------------
@@ -1350,40 +1507,17 @@ def _rule_based_verdict(
         risk_indicators.append(f"URL: rare_unknown_tld (.{tld})")
         evidence_refs.append(url)
 
-    # --- Brand impersonation detection ---
-    has_brand_impersonation = False
-    impersonated_brand = ""
-    # Find effective SLD (registrable domain, accounting for compound TLDs)
-    _compound = ".".join(parts[-2:]) if len(parts) >= 2 else ""
-    _is_compound_tld = _compound in COMPOUND_TLD_SUFFIXES
-    _sld_index = -3 if _is_compound_tld and len(parts) >= 3 else -2
-    _sld = parts[_sld_index] if abs(_sld_index) <= len(parts) else ""
-    domain_without_tld = ".".join(parts[:-1]) if len(parts) > 1 else ""
-    domain_labels = domain_without_tld.split(".")
-    _legit_tlds = {"com", "co", "jp", "org", "net", "io", "dev"}
-    for label in domain_labels:
-        label_lower = label.lower()
-        if label_lower in IMPERSONATED_BRANDS:
-            # If brand IS the SLD AND TLD is legitimate → skip
-            if label_lower == _sld and tld in _legit_tlds:
-                continue
-            # Brand on suspicious/rare TLD (e.g. odakyu.qpon, paypal.xyz)
-            if tld not in _legit_tlds:
-                has_brand_impersonation = True
-                impersonated_brand = label_lower
-                risk_indicators.append(
-                    f"Brand: impersonation_detected ({label_lower} on .{tld})"
-                )
-                evidence_refs.append(hostname)
-                break
-            # Brand in subdomain of unrelated domain (e.g. amazon.evil.com)
-            has_brand_impersonation = True
-            impersonated_brand = label_lower
-            risk_indicators.append(
-                f"Brand: subdomain_impersonation ({label_lower})"
-            )
-            evidence_refs.append(hostname)
-            break
+    # --- Brand impersonation detection (unified) ---
+    has_brand_impersonation, impersonated_brand, brand_indicators = (
+        detect_brand_impersonation(hostname)
+    )
+    risk_indicators.extend(brand_indicators)
+    if has_brand_impersonation:
+        evidence_refs.append(hostname)
+
+    # --- Suspicious URL tokens ---
+    sus_token_count, sus_token_indicators = count_suspicious_url_tokens(hostname)
+    risk_indicators.extend(sus_token_indicators)
 
     # --- MCP injection detection ---
     has_mcp_injection = any(t.threat_type == "mcp_injection" for t in dom_threats)
@@ -1442,7 +1576,10 @@ def _rule_based_verdict(
     scam_score += scam_keyword_hits
     if is_dga:
         scam_score += 3  # DGA is a strong phishing/scam signal
-    if on_suspicious_tld:
+    on_freenom_tld = tld in FREENOM_TLDS
+    if on_freenom_tld:
+        scam_score += 3  # Freenom TLDs are almost universally abused
+    elif on_suspicious_tld:
         scam_score += 2
     elif on_elevated_cc and is_dga:
         scam_score += 2  # DGA + abused ccTLD combination
@@ -1454,6 +1591,8 @@ def _rule_based_verdict(
         scam_score += 4  # Brand impersonation is critical
     if has_brand_impersonation and on_suspicious_tld:
         scam_score += 2  # Combo: brand on bad TLD
+    if sus_token_count > 0:
+        scam_score += min(sus_token_count, 2)  # Suspicious tokens
     if dga_resource_count > 0:
         scam_score += 1
     if has_mcp_injection:
@@ -1847,34 +1986,17 @@ def fast_scan(url: str) -> WebSecurityVerdict:
         risk_indicators.append(f"URL: rare_unknown_tld (.{tld})")
 
     # Brand impersonation check
-    has_brand_impersonation = False
-    impersonated_brand = ""
-    _compound_fs = ".".join(parts[-2:]) if len(parts) >= 2 else ""
-    _is_compound_fs = _compound_fs in COMPOUND_TLD_SUFFIXES
-    _sld_idx_fs = -3 if _is_compound_fs and len(parts) >= 3 else -2
-    _sld_fs = parts[_sld_idx_fs] if abs(_sld_idx_fs) <= len(parts) else ""
-    domain_without_tld = ".".join(parts[:-1]) if len(parts) > 1 else ""
-    _legit_tlds_fs = {"com", "co", "jp", "org", "net", "io", "dev"}
-    for label in domain_without_tld.split("."):
-        label_lower = label.lower()
-        if label_lower in IMPERSONATED_BRANDS:
-            if label_lower == _sld_fs and tld in _legit_tlds_fs:
-                continue
-            if tld not in _legit_tlds_fs:
-                has_brand_impersonation = True
-                impersonated_brand = label_lower
-                risk_indicators.append(
-                    f"Brand: impersonation_detected ({label_lower} on .{tld})"
-                )
-                evidence_refs.append(hostname)
-                break
-            has_brand_impersonation = True
-            impersonated_brand = label_lower
-            risk_indicators.append(
-                f"Brand: subdomain_impersonation ({label_lower})"
-            )
-            evidence_refs.append(hostname)
-            break
+    # Brand impersonation (unified: substring + Punycode + IDN)
+    has_brand_impersonation, impersonated_brand, brand_indicators = (
+        detect_brand_impersonation(hostname)
+    )
+    risk_indicators.extend(brand_indicators)
+    if has_brand_impersonation:
+        evidence_refs.append(hostname)
+
+    # Suspicious URL tokens
+    sus_token_count, sus_token_indicators = count_suspicious_url_tokens(hostname)
+    risk_indicators.extend(sus_token_indicators)
 
     # HTTP-only
     if parsed.scheme == "http":
@@ -1884,7 +2006,10 @@ def fast_scan(url: str) -> WebSecurityVerdict:
     score = 0
     if is_dga:
         score += 3
-    if on_suspicious_tld:
+    on_freenom_tld = tld in FREENOM_TLDS
+    if on_freenom_tld:
+        score += 3  # Freenom TLDs almost universally abused
+    elif on_suspicious_tld:
         score += 2
     elif on_elevated_cc and is_dga:
         score += 2
@@ -1896,6 +2021,8 @@ def fast_scan(url: str) -> WebSecurityVerdict:
         score += 4
     if has_brand_impersonation and on_suspicious_tld:
         score += 2
+    if sus_token_count > 0:
+        score += min(sus_token_count, 2)  # Suspicious URL tokens
     if parsed.scheme == "http":
         score += 1
 

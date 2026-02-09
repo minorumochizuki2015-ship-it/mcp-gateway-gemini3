@@ -28,7 +28,7 @@ import yaml
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from . import evidence, registry, scanner
 
@@ -4912,6 +4912,130 @@ async def demo_page_clean() -> HTMLResponse:
 async def demo_page_clickjack() -> HTMLResponse:
     """Test page: clickjacking with transparent overlay."""
     return HTMLResponse(_TEST_PAGE_CLICKJACK)
+
+
+# ---------------------------------------------------------------------------
+# Demo Scan — analyse pre-configured demo pages without SSRF issues
+# ---------------------------------------------------------------------------
+
+_DEMO_SCAN_PAGES: dict[str, dict[str, str]] = {
+    "phishing": {
+        "url": "https://login-apple-verify.tk/secure",
+        "html": _TEST_PAGE_PHISHING,
+        "label": "Phishing Login Page",
+    },
+    "clean": {
+        "url": "https://docs.example.com/api/reference",
+        "html": _TEST_PAGE_CLEAN,
+        "label": "Clean Documentation",
+    },
+    "clickjack": {
+        "url": "https://free-tools.example.net/converter",
+        "html": _TEST_PAGE_CLICKJACK,
+        "label": "Clickjacking Page",
+    },
+}
+
+
+class DemoScanRequest(BaseModel):
+    page: str = Field(
+        ...,
+        description="Demo page to scan: phishing, clean, or clickjack",
+    )
+
+
+@app.post("/api/web-sandbox/scan-demo")
+async def web_sandbox_scan_demo(body: DemoScanRequest) -> JSONResponse:
+    """Scan a pre-configured demo page (no network fetch, no SSRF issues).
+
+    Runs the full analysis pipeline on built-in HTML content,
+    bypassing URL fetch to avoid SSRF blocking on localhost.
+    """
+    from . import causal_sandbox
+
+    page_key = body.page.lower().strip()
+    if page_key not in _DEMO_SCAN_PAGES:
+        return JSONResponse(
+            {"error": f"Unknown page: {page_key}. Use: phishing, clean, clickjack"},
+            status_code=400,
+        )
+
+    demo = _DEMO_SCAN_PAGES[page_key]
+    demo_url = demo["url"]
+    html = demo["html"]
+    run_id = str(uuid.uuid4())
+
+    # Run analysis pipeline directly on HTML (no fetch)
+    bundle_result = causal_sandbox.WebBundleResult(
+        bundle_id=run_id,
+        url=demo_url,
+        sha256=sha256(html.encode()).hexdigest(),
+        resource_count=0,
+        blocked_resources=[],
+        timestamp=datetime.now(timezone.utc).isoformat(),
+        content_length=len(html),
+        status_code=200,
+    )
+
+    dom_threats = causal_sandbox.analyze_dom_security(html, demo_url)
+    a11y_tree = causal_sandbox.extract_accessibility_tree(html)
+    network_traces = causal_sandbox.trace_network_requests(demo_url, html)
+    visible_text = causal_sandbox.extract_visible_text(html)
+
+    # Get rule-based verdict (always available)
+    rule_verdict = causal_sandbox._rule_based_verdict(
+        demo_url, dom_threats, a11y_tree, network_traces, visible_text,
+    )
+
+    # Also get fast_scan for comparison panel
+    fast_verdict = causal_sandbox.fast_scan(demo_url)
+
+    # Build response
+    result: dict[str, Any] = {
+        "run_id": run_id,
+        "url": demo_url,
+        "label": demo["label"],
+        "eval_method": "demo_preset",
+        "bundle": bundle_result.model_dump(),
+        "dom_threats": [t.model_dump() for t in dom_threats],
+        "a11y_suspicious": [
+            n.model_dump() for n in _flatten_a11y(a11y_tree) if n.suspicious
+        ],
+        "network_traces": [t.model_dump() for t in network_traces],
+        "verdict": {
+            "classification": rule_verdict.classification.value,
+            "confidence": rule_verdict.confidence,
+            "risk_indicators": rule_verdict.risk_indicators,
+            "evidence_refs": rule_verdict.evidence_refs,
+            "recommended_action": rule_verdict.recommended_action,
+            "summary": rule_verdict.summary,
+            "causal_chain": [s.model_dump() for s in rule_verdict.causal_chain],
+        },
+    }
+
+    # Rule-based-only verdict for comparison panel
+    fast_dict = fast_verdict.model_dump()
+    fast_dict["classification"] = fast_verdict.classification.value
+    fast_dict["causal_chain"] = [
+        s.model_dump() for s in fast_verdict.causal_chain
+    ]
+    result["rule_based_verdict"] = fast_dict
+
+    return JSONResponse(result)
+
+
+def _flatten_a11y(
+    nodes: list["causal_sandbox.A11yNode"],
+) -> list["causal_sandbox.A11yNode"]:
+    """Flatten a11y tree for suspicious node extraction."""
+    from . import causal_sandbox
+
+    flat: list[causal_sandbox.A11yNode] = []
+    for node in nodes:
+        flat.append(node)
+        if node.children:
+            flat.extend(_flatten_a11y(node.children))
+    return flat
 
 
 # ---------------------------------------------------------------------------
