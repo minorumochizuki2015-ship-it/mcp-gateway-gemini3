@@ -719,17 +719,8 @@ window.escapeHtml = function escapeHtml(str) {
     return ENABLE_MOCK;
   }
 
-  // Show "Demo Data" badge when mock fallback is active
-  let _mockBadgeShown = false;
-  function showMockBadge() {
-    if (_mockBadgeShown || DISABLE_MOCK) return;
-    _mockBadgeShown = true;
-    var badge = document.createElement("div");
-    badge.id = "mockBadge";
-    badge.style.cssText = "position:fixed;top:60px;right:12px;z-index:9999;background:#f59e0b;color:#000;font-size:11px;font-weight:700;padding:4px 10px;border-radius:4px;opacity:0.92;pointer-events:none;";
-    badge.textContent = "Demo Data";
-    document.body.appendChild(badge);
-  }
+  // Show "Demo Data" badge — disabled (user request: remove gold badge)
+  function showMockBadge() { }
 
   function isSaasMode() {
     return SAAS_MODE;
