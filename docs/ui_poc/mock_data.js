@@ -169,7 +169,7 @@ window.suiteScanData = {
     }
   },
   dashboard_summary: {
-    allowlist: { total: 8, active: 5, deny: 2, quarantine: 1 },
+    allowlist: { total: 8, active: 4, deny: 3, quarantine: 1 },
     scans: {
       total: 15,
       latest_status: "warn",
@@ -230,7 +230,7 @@ window.suiteScanData = {
     { name: "external-api-mcp", base_url: "npx @custom/external-api", status: "deny", reason: "Prompt injection detected in tool output (system_prompt_override pattern)", registered_at: "2026-02-08T13:50:00Z", last_scan_ts: "2026-02-08T13:55:00Z", council_session: "ev-pb-001", capabilities: ["network_read", "network_write"], risk_score: "high" }
   ],
   allowlist_status: {
-    total: 8, allow: 5, deny: 2, quarantine: 1,
+    total: 8, allow: 4, deny: 3, quarantine: 1,
     shadow_audit_chain_ok: true,
     policy_bundle_present_ok: true,
     policy_bundle_signature_status: "verified_ok",
@@ -386,6 +386,91 @@ window.suiteScanData = {
         { run_id: "ws-002", ts: "2026-02-08T13:50:04Z", event: "gemini_verdict", status: "ok", classification: "benign", confidence: 0.98 },
         { run_id: "ws-002", ts: "2026-02-08T13:50:05Z", event: "evidence_written", status: "ok", jsonl_path: "data/evidence.jsonl", memory_ledger_updated: true }
       ]
+    },
+    {
+      run_id: "ws-003",
+      timestamp: "2026-02-08T13:30:00Z",
+      event_count: 5,
+      classification: "clickjacking",
+      confidence: 0.76,
+      recommended_action: "warn",
+      eval_method: "gemini-3-flash-preview",
+      deterministic_config: { temperature: 0.0, seed: 42, model: "gemini-3-flash-preview" },
+      pipeline_trace: [
+        { step: 1, event: "page_bundle", status: 200, ts: "2026-02-08T13:30:01Z", detail: { sha256: "1a2b3c4d5e6f", size_bytes: 28900 } },
+        { step: 2, event: "dom_analysis", status: "ok", ts: "2026-02-08T13:30:02Z", detail: { threats_found: 1, patterns: ["transparent_iframe_overlay"] } },
+        { step: 3, event: "network_trace", status: "ok", ts: "2026-02-08T13:30:03Z", detail: { requests: 4, suspicious: 1 } },
+        { step: 4, event: "gemini_verdict", status: "ok", ts: "2026-02-08T13:30:04Z", detail: { classification: "clickjacking", confidence: 0.76 } },
+        { step: 5, event: "evidence_written", status: "ok", ts: "2026-02-08T13:30:05Z", detail: { jsonl_path: "data/evidence.jsonl", memory_ledger_updated: true } }
+      ],
+      events: [
+        { run_id: "ws-003", ts: "2026-02-08T13:30:01Z", event: "page_bundle", status: 200, sha256: "1a2b3c4d5e6f", size_bytes: 28900, classification: "clickjacking", confidence: 0.76, recommended_action: "warn", eval_method: "gemini-3-flash-preview", deterministic_config: { temperature: 0.0, seed: 42, model: "gemini-3-flash-preview" } },
+        { run_id: "ws-003", ts: "2026-02-08T13:30:02Z", event: "dom_analysis", status: "ok", threats_found: 1, patterns: ["transparent_iframe_overlay"] },
+        { run_id: "ws-003", ts: "2026-02-08T13:30:03Z", event: "network_trace", status: "ok", requests: 4, suspicious: 1 },
+        { run_id: "ws-003", ts: "2026-02-08T13:30:04Z", event: "gemini_verdict", status: "ok", classification: "clickjacking", confidence: 0.76 },
+        { run_id: "ws-003", ts: "2026-02-08T13:30:05Z", event: "evidence_written", status: "ok", jsonl_path: "data/evidence.jsonl", memory_ledger_updated: true }
+      ]
+    },
+    {
+      run_id: "ws-004",
+      timestamp: "2026-02-08T12:45:00Z",
+      event_count: 5,
+      classification: "scam",
+      confidence: 0.89,
+      recommended_action: "block",
+      eval_method: "gemini-3-flash-preview",
+      deterministic_config: { temperature: 0.0, seed: 42, model: "gemini-3-flash-preview" },
+      pipeline_trace: [
+        { step: 1, event: "page_bundle", status: 200, ts: "2026-02-08T12:45:01Z", detail: { sha256: "5e6f1a2b3c4d", size_bytes: 18700 } },
+        { step: 2, event: "dom_analysis", status: "ok", ts: "2026-02-08T12:45:02Z", detail: { threats_found: 2, patterns: ["deceptive_ui", "urgency_language"] } },
+        { step: 3, event: "network_trace", status: "ok", ts: "2026-02-08T12:45:03Z", detail: { requests: 7, suspicious: 3 } },
+        { step: 4, event: "gemini_verdict", status: "ok", ts: "2026-02-08T12:45:04Z", detail: { classification: "scam", confidence: 0.89 } },
+        { step: 5, event: "evidence_written", status: "ok", ts: "2026-02-08T12:45:05Z", detail: { jsonl_path: "data/evidence.jsonl", memory_ledger_updated: true } }
+      ],
+      events: [
+        { run_id: "ws-004", ts: "2026-02-08T12:45:01Z", event: "page_bundle", status: 200, sha256: "5e6f1a2b3c4d", size_bytes: 18700, classification: "scam", confidence: 0.89, recommended_action: "block", eval_method: "gemini-3-flash-preview", deterministic_config: { temperature: 0.0, seed: 42, model: "gemini-3-flash-preview" } },
+        { run_id: "ws-004", ts: "2026-02-08T12:45:02Z", event: "dom_analysis", status: "ok", threats_found: 2, patterns: ["deceptive_ui", "urgency_language"] },
+        { run_id: "ws-004", ts: "2026-02-08T12:45:03Z", event: "network_trace", status: "ok", requests: 7, suspicious: 3 },
+        { run_id: "ws-004", ts: "2026-02-08T12:45:04Z", event: "gemini_verdict", status: "ok", classification: "scam", confidence: 0.89 },
+        { run_id: "ws-004", ts: "2026-02-08T12:45:05Z", event: "evidence_written", status: "ok", jsonl_path: "data/evidence.jsonl", memory_ledger_updated: true }
+      ]
     }
-  ]
+  ],
+
+  // --- Audit QA Chat mock responses ---
+  audit_qa_mock: {
+    "Why was filesystem-mcp blocked?": {
+      answer: "filesystem-mcp was blocked because it is classified as an untrusted tool attempting to access restricted sinks (network_write, file_write). The source_sink_check detected that an untrusted tool was trying to write to /etc/passwd without approval. The AI Council unanimously voted to deny access (3/3 deny).",
+      evidence_refs: ["ev-ss-001", "ev-council-001"],
+      confidence: 0.92,
+      sources: ["source_sink_check deny event", "council_decision deny"]
+    },
+    "What threats were detected in the last scan?": {
+      answer: "The most recent scan (scan-001) on gateway-lab environment detected 4 findings: 1 HIGH severity (token audience mismatch at /gateway/tools, OWASP LLM01 - Prompt Injection), 2 MEDIUM severity (tool exposure missing owner tag, model allowlist bypass), and 1 LOW severity (verbose error response). The scan completed in 95 seconds with an overall 'passed' status.",
+      evidence_refs: ["scan-001", "ev-scan-001"],
+      confidence: 0.88,
+      sources: ["scan result scan-001", "security findings"]
+    },
+    "Explain the council decision for data-scraper-mcp": {
+      answer: "data-scraper-mcp was quarantined by the AI Council because it has network_read, network_write, and file_write capabilities as an untrusted tool. While the security score was moderate (0.45), the combination of write access capabilities from an untrusted source triggered the quarantine threshold. The council recommended manual review before allowing access.",
+      evidence_refs: ["ev-council-003", "ev-ss-003"],
+      confidence: 0.85,
+      sources: ["council_decision quarantine", "capability analysis"]
+    },
+    "What is the overall security posture?": {
+      answer: "Current security posture: 4 out of 8 MCP servers are allowed, 3 are denied, and 1 is quarantined. The deny rate is 37.5% which is above the 30% threshold, indicating heightened security enforcement. The Evidence Chain integrity is fully verified (chain_hash OK, policy_bundle present, signature verified_ok). 30 total tool call requests have been processed across all agents.",
+      evidence_refs: ["ev-summary-001"],
+      confidence: 0.90,
+      sources: ["dashboard summary", "evidence chain verification"]
+    }
+  },
+
+  // --- Self-tuning mock data ---
+  self_tuning_mock: {
+    current_weights: { security: 0.500, utility: 0.300, cost: 0.200 },
+    proposed_weights: { security: 0.545, utility: 0.273, cost: 0.182 },
+    metrics: { deny_rate: 0.375, quarantine_rate: 0.125, allow_rate: 0.500, avg_security_score: 0.62, lookback_count: 30 },
+    rationale: "Deny rate is 38%. Security weight increased to compensate.",
+    impact_estimate: "Higher security weight may increase denials."
+  }
 };

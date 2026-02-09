@@ -382,7 +382,24 @@ window.escapeHtml = function escapeHtml(str) {
     const data = await fetchJson(`${BASE}/mcp/${encodeURIComponent(serverId)}`);
     if (data && typeof data === "object") return data;
     if (DISABLE_MOCK) return null;
-    return (window.suiteScanData && window.suiteScanData.mcp_detail) || null;
+    // Compose mock detail from inventory + allowlist_entries
+    var inv = window.mcpInventoryMock && window.mcpInventoryMock.servers;
+    var entry = inv && inv.find(function(s) { return String(s.server_id) === String(serverId); });
+    var al = window.suiteScanData && window.suiteScanData.allowlist_entries;
+    var alEntry = al && al.find(function(a) { return entry && a.name === entry.name; });
+    if (!entry && al && al[0]) {
+      entry = { server_id: serverId, name: al[0].name, base_url: al[0].base_url, status: al[0].status, risk_level: al[0].risk_score, capabilities: al[0].capabilities, last_scan_ts: al[0].last_scan_ts };
+    }
+    if (entry) {
+      return {
+        server: { name: entry.name, base_url: entry.base_url, status: entry.status },
+        allowlist: { status: (alEntry || entry).status, risk_level: (alEntry ? alEntry.risk_score : entry.risk_level), capabilities: (alEntry || entry).capabilities || [] },
+        scan: { run_id: "scan-003", status: "passed", last_scan_ts: entry.last_scan_ts || "2026-02-08T08:00:00Z", severity_counts: { critical: 0, high: 0, medium: 1, low: 2 } },
+        council: { decision: (alEntry || entry).status === "allow" ? "allow" : "deny", rationale: alEntry ? alEntry.reason : "See allowlist for details", ts: entry.last_decision_ts || "2026-02-08T14:10:00Z" },
+        evidence: { scan_run_id: "scan-003", council_run_id: alEntry ? alEntry.council_session : "ev-cd-001" }
+      };
+    }
+    return null;
   }
 
   async function fetchMcpHistory(serverId) {
@@ -524,7 +541,13 @@ window.escapeHtml = function escapeHtml(str) {
 
   async function fetchSettingsEnvironments() {
     const data = await fetchJson(`${BASE}/settings/environments`);
-    if (data && Array.isArray(data)) return data;
+    if (data && Array.isArray(data) && data.length > 0) return data;
+    if (!DISABLE_MOCK && window.SUITE_SETTINGS_ENVIRONMENTS && window.SUITE_SETTINGS_ENVIRONMENTS.length > 0) {
+      showMockBadge();
+      return window.SUITE_SETTINGS_ENVIRONMENTS.map(function(e) {
+        return { id: e.name, name: e.name, endpoint_url: e.endpoint, status: e.status, memo: e.note };
+      });
+    }
     return [];
   }
 
@@ -533,7 +556,13 @@ window.escapeHtml = function escapeHtml(str) {
   }
 
   async function fetchControlUpstream() {
-    return requestJsonWithStatus(`${CONTROL_BASE}/control/upstream`, { auth: true });
+    var res = await requestJsonWithStatus(`${CONTROL_BASE}/control/upstream`, { auth: true });
+    if (res && res.ok) return res;
+    if (!DISABLE_MOCK && window.SUITE_SETTINGS_UPSTREAM) {
+      showMockBadge();
+      return { ok: true, data: window.SUITE_SETTINGS_UPSTREAM, status: 200 };
+    }
+    return res;
   }
 
   async function saveControlUpstream(payload) {
@@ -552,7 +581,13 @@ window.escapeHtml = function escapeHtml(str) {
   }
 
   async function fetchControlPolicyProfile() {
-    return requestJsonWithStatus(`${CONTROL_BASE}/control/policy-profile`, { auth: true });
+    var res = await requestJsonWithStatus(`${CONTROL_BASE}/control/policy-profile`, { auth: true });
+    if (res && res.ok) return res;
+    if (!DISABLE_MOCK && window.SUITE_SETTINGS_POLICY_PROFILE) {
+      showMockBadge();
+      return { ok: true, data: window.SUITE_SETTINGS_POLICY_PROFILE, status: 200 };
+    }
+    return res;
   }
 
   async function saveControlPolicyProfile(payload) {
@@ -584,7 +619,13 @@ window.escapeHtml = function escapeHtml(str) {
   }
 
   async function listControlTokens() {
-    return requestJsonWithStatus(`${CONTROL_BASE}/control/tokens`, { auth: true });
+    var res = await requestJsonWithStatus(`${CONTROL_BASE}/control/tokens`, { auth: true });
+    if (res && res.ok) return res;
+    if (!DISABLE_MOCK && window.SUITE_SETTINGS_TOKENS) {
+      showMockBadge();
+      return { ok: true, data: window.SUITE_SETTINGS_TOKENS, status: 200 };
+    }
+    return res;
   }
 
   async function revokeControlToken(tokenId) {
@@ -694,6 +735,37 @@ window.escapeHtml = function escapeHtml(str) {
     return SAAS_MODE;
   }
 
+  // --- Audit QA Chat API ---
+  async function fetchAuditQA(question, contextRunId) {
+    var res = await requestJsonWithStatus(
+      CONTROL_BASE + "/api/audit-qa/chat",
+      { method: "POST", body: { question: question, context_run_id: contextRunId || "", limit: 50 }, auth: true }
+    );
+    if (res && res.ok) return res;
+    // Mock fallback
+    if (!DISABLE_MOCK && window.suiteScanData && window.suiteScanData.audit_qa_mock) {
+      var mock = window.suiteScanData.audit_qa_mock;
+      var key = Object.keys(mock).find(function (k) { return question.toLowerCase().includes(k.toLowerCase().split(" ").slice(0, 3).join(" ")); });
+      if (key) { showMockBadge(); return { ok: true, data: mock[key], status: 200 }; }
+    }
+    return res;
+  }
+
+  // --- Self-tuning API ---
+  async function fetchSelfTuningSuggestion() {
+    var res = await requestJsonWithStatus(CONTROL_BASE + "/api/self-tuning/suggestion", { auth: true });
+    if (res && res.ok) return res;
+    if (!DISABLE_MOCK && window.suiteScanData && window.suiteScanData.self_tuning_mock) {
+      showMockBadge();
+      return { ok: true, data: window.suiteScanData.self_tuning_mock, status: 200 };
+    }
+    return res;
+  }
+
+  async function applySelfTuning() {
+    return await requestJsonWithStatus(CONTROL_BASE + "/api/self-tuning/apply", { method: "POST", auth: true });
+  }
+
   window.apiClient = {
     fetchScans,
     fetchScanDetail,
@@ -734,6 +806,11 @@ window.escapeHtml = function escapeHtml(str) {
     scanWebSandbox,
     fetchWebSandboxArtifact,
     fetchWebSandboxVerdicts,
+    // Audit QA Chat
+    fetchAuditQA,
+    // Self-tuning
+    fetchSelfTuningSuggestion,
+    applySelfTuning,
   };
 
   function injectOnboardingCard() {
@@ -1011,6 +1088,42 @@ window.escapeHtml = function escapeHtml(str) {
         tableActions: "Actions",
         actionViewDetails: "View Details"
       },
+      mcpInventory: {
+        title: "MCP Inventory",
+        subtitle: "Registered MCP servers and their security status",
+        statTotal: "Total Servers", statAllow: "Allowed", statQuarantine: "Quarantined", statDeny: "Denied", statHighRisk: "High/Critical Risk",
+        filterStatus: "Status", filterRisk: "Risk Level", filterSearch: "Search", filterSearchPlaceholder: "Name or URL...",
+        filterAllStatus: "All Status", filterAllRisk: "All Risk",
+        thName: "Name", thBaseUrl: "Base URL", thStatus: "Status", thRisk: "Risk", thCapabilities: "Capabilities",
+        thLastScan: "Last Scan", thLastDecision: "Last Decision", thActions: "Actions", actionDetails: "Details"
+      },
+      mcpDetail: {
+        title: "MCP Detail",
+        subtitle: "View MCP metadata, latest scan and council decisions (read-only)",
+        tabOverview: "Overview", tabHistory: "History",
+        sectionServer: "Server", sectionAllowList: "AllowList", sectionLatestScan: "Latest Scan",
+        sectionCouncilVerdict: "Council Verdict", sectionEvidenceTrail: "Evidence Trail",
+        labelName: "NAME", labelBaseUrl: "BASE URL", labelStatus: "STATUS", labelRisk: "RISK", labelCapabilities: "CAPABILITIES",
+        labelRunId: "RUN ID", labelStatusTime: "STATUS / TIME", labelSeverityCounts: "SEVERITY COUNTS",
+        labelDecision: "DECISION", labelRationale: "RATIONALE", labelTimestamp: "TIMESTAMP",
+        labelScanRunId: "SCAN RUN_ID", labelCouncilRunId: "COUNCIL RUN_ID",
+        readOnlyNote: "Links are for reference only (read-only)."
+      },
+      scanDetail: {
+        breadcrumbScans: "Scans",
+        labelEnvironment: "ENVIRONMENT", labelProfile: "PROFILE", labelStarted: "STARTED",
+        labelDuration: "DURATION", labelActor: "ACTOR",
+        sectionSeverity: "Severity Distribution", sectionFindings: "Security Findings",
+        thSeverity: "Severity", thCategory: "Category", thSummary: "Summary",
+        thResource: "Resource", thOwaspLlm: "OWASP LLM", thEvidence: "Evidence",
+        notFound: "Scan not found"
+      },
+      evidencePack: {
+        title: "Evidence Pack",
+        subtitle: "Consolidated audit trail with decision pipeline and deterministic config",
+        pipelineSteps: "pipeline steps", confidence: "Confidence",
+        noEntries: "No evidence pack entries", viewDetail: "View"
+      },
       billing: {
         title: "Billing & Subscription",
         subtitle: "Manage your subscription, payment method, and billing history",
@@ -1058,7 +1171,10 @@ window.escapeHtml = function escapeHtml(str) {
 	        adminTokenHint: "Environments → Start session",
 	        adminTokenHintLink: "Environments",
 	        emptyDefault: "No audit logs.",
-	        emptyNoToken: "Please establish an admin session."
+	        emptyNoToken: "Please establish an admin session.",
+	        qaChatTitle: "Audit Q&A (Gemini 3)",
+	        qaChatSub: "Ask Gemini to explain security decisions using evidence",
+	        qaSend: "Send"
 	      },
 	      common: {
 	        gatewayOnline: "Demo Mode",
@@ -1144,6 +1260,42 @@ window.escapeHtml = function escapeHtml(str) {
         tableActions: "操作",
         actionViewDetails: "詳細を開く"
       },
+      mcpInventory: {
+        title: "MCPインベントリ",
+        subtitle: "登録済みMCPサーバーとセキュリティ状態",
+        statTotal: "サーバー総数", statAllow: "許可", statQuarantine: "隔離", statDeny: "拒否", statHighRisk: "高/重大リスク",
+        filterStatus: "ステータス", filterRisk: "リスクレベル", filterSearch: "検索", filterSearchPlaceholder: "名前またはURL...",
+        filterAllStatus: "すべて", filterAllRisk: "すべて",
+        thName: "名前", thBaseUrl: "Base URL", thStatus: "ステータス", thRisk: "リスク", thCapabilities: "機能",
+        thLastScan: "最終スキャン", thLastDecision: "最終判定", thActions: "操作", actionDetails: "詳細"
+      },
+      mcpDetail: {
+        title: "MCP詳細",
+        subtitle: "MCPメタデータ、最新スキャンとCouncil判定の閲覧（読み取り専用）",
+        tabOverview: "概要", tabHistory: "履歴",
+        sectionServer: "サーバー", sectionAllowList: "AllowList", sectionLatestScan: "最新スキャン",
+        sectionCouncilVerdict: "Council判定", sectionEvidenceTrail: "エビデンス証跡",
+        labelName: "名前", labelBaseUrl: "BASE URL", labelStatus: "ステータス", labelRisk: "リスク", labelCapabilities: "機能",
+        labelRunId: "RUN ID", labelStatusTime: "ステータス / 時刻", labelSeverityCounts: "深刻度カウント",
+        labelDecision: "判定", labelRationale: "理由", labelTimestamp: "タイムスタンプ",
+        labelScanRunId: "SCAN RUN_ID", labelCouncilRunId: "COUNCIL RUN_ID",
+        readOnlyNote: "リンクは参照のみ（読み取り専用）。"
+      },
+      scanDetail: {
+        breadcrumbScans: "スキャン",
+        labelEnvironment: "環境", labelProfile: "プロファイル", labelStarted: "開始時刻",
+        labelDuration: "所要時間", labelActor: "実行者",
+        sectionSeverity: "深刻度分布", sectionFindings: "セキュリティ検出項目",
+        thSeverity: "深刻度", thCategory: "カテゴリ", thSummary: "概要",
+        thResource: "リソース", thOwaspLlm: "OWASP LLM", thEvidence: "エビデンス",
+        notFound: "スキャンが見つかりません"
+      },
+      evidencePack: {
+        title: "エビデンスパック",
+        subtitle: "判定パイプラインと決定論的設定による統合監査証跡",
+        pipelineSteps: "パイプラインステップ", confidence: "信頼度",
+        noEntries: "エビデンスパックはありません", viewDetail: "表示"
+      },
       billing: {
         title: "課金・サブスクリプション",
         subtitle: "サブスクリプション、支払い方法、請求履歴を管理",
@@ -1191,7 +1343,10 @@ window.escapeHtml = function escapeHtml(str) {
 	        adminTokenHint: "環境設定 → セッション開始",
 	        adminTokenHintLink: "環境設定",
 	        emptyDefault: "監査ログはありません。",
-	        emptyNoToken: "管理者セッションを確立してください。"
+	        emptyNoToken: "管理者セッションを確立してください。",
+	        qaChatTitle: "監査 Q&A (Gemini 3)",
+	        qaChatSub: "Gemini にセキュリティ判定の根拠を質問できます",
+	        qaSend: "送信"
 	      },
 	      common: {
 	        gatewayOnline: "Demo Mode",

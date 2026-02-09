@@ -1938,7 +1938,35 @@
     </div>
   </div>
 
+  <!-- OAuth2 PAR/DPoP Roadmap Card -->
+  <div style="max-width:1280px;margin:24px auto 0;padding:0 24px 24px;">
+    <div style="border:2px dashed var(--gray-300);border-radius:8px;padding:24px;background:var(--gray-50);">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;color:var(--primary);">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        <span style="font-size:16px;font-weight:700;" data-i18n="settingsEnv.oauth2Title">OAuth2 PAR + DPoP</span>
+        <span style="font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;background:#dbeafe;color:#1e40af;">Planned</span>
+        <span style="font-size:11px;color:var(--muted);">Q2-Q4 2026</span>
+      </div>
+      <div style="font-size:13px;color:var(--gray-700);line-height:1.6;">
+        <p style="margin:0 0 8px;" data-i18n="settingsEnv.oauth2Desc">Enterprise-grade token security replacing static Bearer tokens with Pushed Authorization Requests (RFC 9126) and Demonstration of Proof-of-Possession (RFC 9449).</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px;">
+          <div style="padding:12px;background:#fff;border:1px solid var(--gray-200);border-radius:6px;">
+            <div style="font-weight:600;font-size:12px;margin-bottom:4px;">PAR (RFC 9126)</div>
+            <div style="font-size:11px;color:var(--muted);" data-i18n="settingsEnv.oauth2Par">Server-side request storage eliminates token leakage via URL parameters. Gateway acts as the Authorization Server.</div>
+          </div>
+          <div style="padding:12px;background:#fff;border:1px solid var(--gray-200);border-radius:6px;">
+            <div style="font-weight:600;font-size:12px;margin-bottom:4px;">DPoP (RFC 9449)</div>
+            <div style="font-size:11px;color:var(--muted);" data-i18n="settingsEnv.oauth2Dpop">Client-bound proof-of-possession tokens prevent stolen token replay. Gateway terminates DPoP at the edge.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="mock_data.js"></script>
+  <script src="settings_mock.js"></script>
   <script src="api_client.js"></script>
   <script>
     // Auto-set active nav link based on current page
@@ -5737,6 +5765,10 @@
 
       // Check if wizard was already completed
       function shouldShowWizard() {
+        // In demo mode (mock data), skip auto-wizard for cleaner presentation
+        if (window.apiClient && typeof window.apiClient.isMockEnabled === 'function' && window.apiClient.isMockEnabled()) {
+          return false;
+        }
         if (localStorage.getItem(WIZARD_COMPLETED_KEY) === 'true') {
           return false;
         }

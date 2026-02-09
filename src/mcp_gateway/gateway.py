@@ -4575,6 +4575,233 @@ async def gemini_status(request: Request) -> JSONResponse:
 
 
 # ---------------------------------------------------------------------------
+# Audit QA Chat — Gemini explains its own security decisions
+# ---------------------------------------------------------------------------
+
+
+class AuditQARequest(BaseModel):
+    question: str
+    context_run_id: str = ""
+    limit: int = 50
+
+
+class AuditQAResponse(BaseModel):
+    answer: str
+    evidence_refs: list[str]
+    confidence: float
+    sources: list[str]
+
+
+def _gemini_audit_qa(question: str, events: list[dict]) -> AuditQAResponse | None:
+    """Call Gemini 3 for audit QA. Returns None if unavailable."""
+    api_key = os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        logger.info("Gemini API key not configured, using keyword fallback")
+        return None
+    try:
+        from google import genai
+        from google.genai import types
+        from .ai_council import GEMINI_MODEL
+
+        client = genai.Client(api_key=api_key)
+        evidence_blob = json.dumps(events, ensure_ascii=True)
+        prompt = (
+            "System: You are Audit QA for MCP Gateway. Answer questions about "
+            "security audit decisions using only the evidence provided. "
+            "If evidence is insufficient, say so and keep confidence low.\n"
+            f"Question: {question}\n"
+            "<untrusted_evidence>\n"
+            f"{evidence_blob}\n"
+            "</untrusted_evidence>\n"
+            "Return JSON that matches the AuditQAResponse schema."
+        )
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=AuditQAResponse,
+                thinking_config=types.ThinkingConfig(thinking_level="high"),
+                temperature=0.2,
+            ),
+        )
+        return AuditQAResponse.model_validate_json(response.text)
+    except ImportError:
+        logger.warning("google-genai not installed")
+        return None
+    except Exception as exc:
+        logger.warning("Gemini audit QA failed: %s: %s", type(exc).__name__, exc)
+        return None
+
+
+@app.post("/api/audit-qa/chat")
+async def audit_qa_chat(request: Request, body: AuditQARequest) -> JSONResponse:
+    """Answer audit QA questions using evidence + Gemini 3."""
+    if guard := _admin_auth_guard(request):
+        return guard
+    question = _RE_CONTROL.sub("", body.question or "").strip()
+    if not question:
+        return JSONResponse({"detail": "question is required"}, status_code=400)
+    question = question[:1000]
+    context_run_id = _RE_CONTROL.sub("", body.context_run_id or "").strip()
+    safe_limit = min(max(int(body.limit or 0), 0), AUDIT_MAX_LIMIT)
+
+    evidence_path = _evidence_path()
+    events: list[dict] = []
+    if safe_limit > 0 and evidence_path.exists():
+        for line in evidence_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(event, dict):
+                continue
+            if context_run_id and event.get("run_id") != context_run_id:
+                continue
+            events.append(event)
+        events.sort(key=lambda item: str(item.get("ts", "")), reverse=True)
+        events = events[:safe_limit]
+
+    qa_response = _gemini_audit_qa(question, events)
+    eval_method = "gemini"
+    if qa_response is None:
+        eval_method = "fallback"
+        q_lower = question.lower()
+
+        def _match(ev: dict) -> bool:
+            name = str(ev.get("event") or "").lower()
+            decision = str(ev.get("decision") or "").lower()
+            if "block" in q_lower or "deny" in q_lower:
+                return "block" in name or "deny" in name or decision == "deny"
+            if "threat" in q_lower or "scan" in q_lower:
+                return "scan" in name or "phish" in name or "malicious" in name
+            return True
+
+        matched = [ev for ev in events if _match(ev)] or events
+        evidence_refs: list[str] = []
+        for ev in matched[:3]:
+            ref = str(ev.get("run_id") or ev.get("evidence_id") or "")
+            if not ref:
+                ref = f"{ev.get('event', 'event')}@{ev.get('ts', '')}"
+            evidence_refs.append(ref)
+        confidence = 0.35 if matched else 0.2
+        answer = (
+            f"Keyword fallback (Gemini unavailable). Found {len(matched)} matching events."
+            if matched
+            else "Keyword fallback (Gemini unavailable). No evidence entries matched."
+        )
+        qa_response = AuditQAResponse(
+            answer=answer,
+            evidence_refs=[ref for ref in evidence_refs if ref],
+            confidence=confidence,
+            sources=[str(evidence_path)],
+        )
+
+    evidence.append(
+        {
+            "event": "audit_qa_chat",
+            "actor": "ui",
+            "trigger_source": "ui",
+            "question": question,
+            "context_run_id": context_run_id,
+            "limit": safe_limit,
+            "eval_method": eval_method,
+            "confidence": qa_response.confidence,
+            "evidence_refs": qa_response.evidence_refs,
+        },
+        path=_evidence_path(),
+    )
+    return JSONResponse(qa_response.model_dump())
+
+
+# ---------------------------------------------------------------------------
+# Self-Tuning Suggestion — propose weight adjustments with human approval
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/self-tuning/suggestion")
+async def self_tuning_suggestion(
+    request: Request, db_path: str = str(DEFAULT_DB_PATH)
+) -> JSONResponse:
+    """Return current weights and a proposed adjustment (no side-effects)."""
+    if guard := _admin_auth_guard(request):
+        return guard
+    from . import self_tuning
+
+    try:
+        db = sqlite_utils.Database(db_path)
+        current_params = self_tuning.load_params()
+        current_weights = current_params.get(
+            "weights", {"security": 0.5, "utility": 0.3, "cost": 0.2}
+        )
+        metrics = self_tuning.analyze_history(db)
+        proposed = self_tuning.adjust_weights(current_weights, metrics)
+        deny_rate = metrics.get("deny_rate", 0.0)
+        rationale = (
+            f"Deny rate is {deny_rate:.0%}. "
+            + (
+                "Security weight increased to compensate."
+                if deny_rate > 0.3
+                else (
+                    "Security weight slightly decreased (low deny rate)."
+                    if deny_rate < 0.1
+                    else "Weights are within normal range."
+                )
+            )
+        )
+        impact = (
+            "Higher security weight may increase denials."
+            if proposed.get("security", 0) > current_weights.get("security", 0)
+            else "Lower security weight may allow more tools through."
+            if proposed.get("security", 0) < current_weights.get("security", 0)
+            else "No significant change expected."
+        )
+        return JSONResponse({
+            "current_weights": current_weights,
+            "proposed_weights": proposed,
+            "metrics": metrics,
+            "rationale": rationale,
+            "impact_estimate": impact,
+        })
+    except Exception as exc:
+        logger.warning("Self-tuning suggestion failed: %s", exc)
+        return JSONResponse(
+            {"detail": "self-tuning analysis failed"}, status_code=500
+        )
+
+
+@app.post("/api/self-tuning/apply")
+async def self_tuning_apply(
+    request: Request, db_path: str = str(DEFAULT_DB_PATH)
+) -> JSONResponse:
+    """Apply the proposed weight adjustment (with evidence emission)."""
+    if guard := _admin_auth_guard(request):
+        return guard
+    from . import self_tuning
+
+    try:
+        result = self_tuning.run_self_tuning(
+            db_path=db_path,
+            evidence_path=_evidence_path(),
+        )
+        return JSONResponse({
+            "status": result.get("status", "ok"),
+            "run_id": result.get("run_id", ""),
+            "previous_weights": result.get("previous_weights", {}),
+            "new_weights": result.get("new_weights", {}),
+            "metrics": result.get("metrics", {}),
+        })
+    except Exception as exc:
+        logger.warning("Self-tuning apply failed: %s", exc)
+        return JSONResponse(
+            {"detail": "self-tuning apply failed"}, status_code=500
+        )
+
+
+# ---------------------------------------------------------------------------
 # Demo Scenario — seeds live data to showcase the full security pipeline
 # ---------------------------------------------------------------------------
 

@@ -278,9 +278,16 @@
         <h1 class="page-title" data-i18n="policyProfiles.title">Policy Profiles</h1>
         <p class="page-subtitle" data-i18n="policyProfiles.subtitle">Configure security policy profiles for MCP Gateway.</p>
       </div>
-      <div class="tabs">
-        <a class="tab" href="settings_environments.html">Environments</a>
-        <a class="tab active" href="settings_profiles.html">Profiles</a>
+      <div style="display:flex;align-items:center;gap:16px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:13px;color:var(--gray-500)">Language:</span>
+          <button type="button" class="lang-btn" id="langJa" data-lang="ja">JA</button>
+          <button type="button" class="lang-btn active" id="langEn" data-lang="en">EN</button>
+        </div>
+        <div class="tabs">
+          <a class="tab" href="settings_environments.html">Environments</a>
+          <a class="tab active" href="settings_profiles.html">Profiles</a>
+        </div>
       </div>
     </div>
 
@@ -368,6 +375,7 @@
   </div>
 
   <script src="mock_data.js"></script>
+  <script src="settings_mock.js"></script>
   <script src="api_client.js"></script>
   <script>
     // i18n dictionary for settings_profiles
@@ -481,22 +489,36 @@
           renderPresets();
           renderCoreRules();
         } else {
-          presetsList.innerHTML = `<p class="form-hint">${t('presetsLoadFailed')}</p>`;
+          loadMockPresets();
         }
       } catch (e) {
-        console.error('Failed to load presets:', e);
-        presetsList.innerHTML = `<p class="form-hint">${t('presetsLoadFailed')}</p>`;
+        console.warn('API unavailable, using mock presets:', e.message);
+        loadMockPresets();
+      }
+    }
+
+    function loadMockPresets() {
+      var mockProfiles = window.SUITE_SETTINGS_PROFILES || [];
+      if (mockProfiles.length) {
+        presets = mockProfiles.map(function(p) {
+          return { name: p.name, description: p.description, mode: p.mode, restricted_sinks: ["network_write", "file_write"], allow_untrusted_with_approvals: false };
+        });
+        coreRules = ["network_write", "file_write", "clipboard_write"];
+        renderPresets();
+        renderCoreRules();
+      } else {
+        presetsList.innerHTML = '<p class="form-hint">' + t('presetsLoadFailed') + '</p>';
       }
     }
 
     function renderPresets() {
       presetsList.innerHTML = presets.map(p => `
         <div class="preset-card ${p.name === profileSelect.value ? 'selected' : ''}"
-             data-preset="${p.name}" data-testid="preset-${p.name}">
-          <div class="preset-name">${p.name}</div>
-          <div class="preset-desc">${p.description || ''}</div>
-          ${p.restricted_sinks?.length ? `<div class="preset-sinks">${t('presetSinksLabel')} ${p.restricted_sinks.join(', ')}</div>` : ''}
-          <div class="preset-approvals ${p.allow_untrusted_with_approvals ? 'allowed' : 'denied'}" data-testid="preset-approvals-${p.name}">
+             data-preset="${escapeHtml(p.name)}" data-testid="preset-${escapeHtml(p.name)}">
+          <div class="preset-name">${escapeHtml(p.name)}</div>
+          <div class="preset-desc">${escapeHtml(p.description || '')}</div>
+          ${p.restricted_sinks?.length ? `<div class="preset-sinks">${t('presetSinksLabel')} ${escapeHtml(p.restricted_sinks.join(', '))}</div>` : ''}
+          <div class="preset-approvals ${p.allow_untrusted_with_approvals ? 'allowed' : 'denied'}" data-testid="preset-approvals-${escapeHtml(p.name)}">
             ${p.allow_untrusted_with_approvals ? t('presetUntrustedAllowed') : t('presetUntrustedDenied')}
           </div>
         </div>
@@ -673,6 +695,31 @@
 
     // Initialize
     loadPresets();
+  </script>
+  <script>
+    (function(){
+      var langJa = document.getElementById('langJa');
+      var langEn = document.getElementById('langEn');
+      function updateLangButtons() {
+        var lang = window.getLanguage ? window.getLanguage() : 'en';
+        if (langJa) langJa.classList.toggle('active', lang === 'ja');
+        if (langEn) langEn.classList.toggle('active', lang === 'en');
+      }
+      if (langJa) langJa.addEventListener('click', function() {
+        if (window.setLanguage) window.setLanguage('ja');
+        if (window.applyCommonI18n) window.applyCommonI18n();
+        updateLangButtons();
+        if (typeof renderPresets === 'function') renderPresets();
+      });
+      if (langEn) langEn.addEventListener('click', function() {
+        if (window.setLanguage) window.setLanguage('en');
+        if (window.applyCommonI18n) window.applyCommonI18n();
+        updateLangButtons();
+        if (typeof renderPresets === 'function') renderPresets();
+      });
+      if (window.applyCommonI18n) window.applyCommonI18n();
+      updateLangButtons();
+    })();
   </script>
 </body>
 

@@ -3730,3 +3730,337 @@ class TestCompareEndpoint:
         assert isinstance(adv["tool_count"], int)
 
 
+# ---------------------------------------------------------------------------
+# Audit QA Chat
+# ---------------------------------------------------------------------------
+
+
+class TestAuditQAChat:
+    """Tests for POST /api/audit-qa/chat endpoint."""
+
+    AUTH = {"Authorization": "Bearer admin-token"}
+
+    def test_audit_qa_requires_auth(self, tmp_path: Path):
+        """POST /api/audit-qa/chat requires admin auth."""
+        client = TestClient(app)
+        resp = client.post(
+            "/api/audit-qa/chat",
+            json={"question": "test"},
+        )
+        assert resp.status_code in (401, 503)
+
+    def test_audit_qa_empty_question(self, monkeypatch: pytest.MonkeyPatch):
+        """Empty question returns 400."""
+        monkeypatch.setenv("MCP_GATEWAY_ADMIN_TOKEN", "admin-token")
+        client = TestClient(app)
+        resp = client.post(
+            "/api/audit-qa/chat",
+            json={"question": ""},
+            headers=self.AUTH,
+        )
+        assert resp.status_code == 400
+        assert "question is required" in resp.json()["detail"]
+
+    def test_audit_qa_fallback_no_gemini(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ):
+        """Without Gemini API key, uses keyword fallback."""
+        monkeypatch.setenv("MCP_GATEWAY_ADMIN_TOKEN", "admin-token")
+        evidence_path = tmp_path / "evidence.jsonl"
+        evidence_path.write_text(
+            json.dumps(
+                {
+                    "event": "source_sink_check",
+                    "run_id": "test-run-1",
+                    "decision": "deny",
+                    "ts": "2026-02-08T10:00:00Z",
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        monkeypatch.setenv("MCP_GATEWAY_EVIDENCE_PATH", str(evidence_path))
+        old_key = os.environ.pop("GOOGLE_API_KEY", None)
+        try:
+            client = TestClient(app)
+            resp = client.post(
+                "/api/audit-qa/chat",
+                json={"question": "Why was it blocked?"},
+                headers=self.AUTH,
+            )
+            assert resp.status_code == 200
+            data = resp.json()
+            assert "answer" in data
+            assert "evidence_refs" in data
+            assert isinstance(data["confidence"], float)
+            assert data["confidence"] < 1.0
+        finally:
+            if old_key is not None:
+                os.environ["GOOGLE_API_KEY"] = old_key
+
+    def test_audit_qa_with_run_id_filter(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ):
+        """context_run_id filters evidence events."""
+        monkeypatch.setenv("MCP_GATEWAY_ADMIN_TOKEN", "admin-token")
+        evidence_path = tmp_path / "evidence.jsonl"
+        lines = [
+            json.dumps({"event": "scan", "run_id": "run-A", "ts": "2026-02-08T10:00:00Z"}),
+            json.dumps({"event": "scan", "run_id": "run-B", "ts": "2026-02-08T11:00:00Z"}),
+        ]
+        evidence_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        monkeypatch.setenv("MCP_GATEWAY_EVIDENCE_PATH", str(evidence_path))
+        old_key = os.environ.pop("GOOGLE_API_KEY", None)
+        try:
+            client = TestClient(app)
+            resp = client.post(
+                "/api/audit-qa/chat",
+                json={"question": "What happened?", "context_run_id": "run-A"},
+                headers=self.AUTH,
+            )
+            assert resp.status_code == 200
+            data = resp.json()
+            # Should reference only run-A events
+            for ref in data.get("evidence_refs", []):
+                if "run-B" in ref:
+                    pytest.fail("Should not contain run-B references")
+        finally:
+            if old_key is not None:
+                os.environ["GOOGLE_API_KEY"] = old_key
+
+    def test_audit_qa_emits_evidence(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ):
+        """QA chat emits an audit_qa_chat evidence event."""
+        monkeypatch.setenv("MCP_GATEWAY_ADMIN_TOKEN", "admin-token")
+        evidence_path = tmp_path / "evidence.jsonl"
+        monkeypatch.setenv("MCP_GATEWAY_EVIDENCE_PATH", str(evidence_path))
+        old_key = os.environ.pop("GOOGLE_API_KEY", None)
+        try:
+            client = TestClient(app)
+            resp = client.post(
+                "/api/audit-qa/chat",
+                json={"question": "test question"},
+                headers=self.AUTH,
+            )
+            assert resp.status_code == 200
+            assert evidence_path.exists()
+            events = [
+                json.loads(line)
+                for line in evidence_path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            qa_events = [e for e in events if e.get("event") == "audit_qa_chat"]
+            assert len(qa_events) >= 1
+            assert qa_events[-1]["question"] == "test question"
+        finally:
+            if old_key is not None:
+                os.environ["GOOGLE_API_KEY"] = old_key
+
+
+# ---------------------------------------------------------------------------
+# Self-Tuning Suggestion
+# ---------------------------------------------------------------------------
+
+
+class TestSelfTuning:
+    """Tests for self-tuning suggestion endpoints."""
+
+    AUTH = {"Authorization": "Bearer admin-token"}
+
+    def test_self_tuning_suggestion_requires_auth(self):
+        """GET /api/self-tuning/suggestion requires admin auth."""
+        client = TestClient(app)
+        resp = client.get("/api/self-tuning/suggestion")
+        assert resp.status_code in (401, 503)
+
+    def test_self_tuning_suggestion_success(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ):
+        """GET /api/self-tuning/suggestion returns weights and proposal."""
+        monkeypatch.setenv("MCP_GATEWAY_ADMIN_TOKEN", "admin-token")
+        db_file = tmp_path / "test.db"
+        db = registry.init_db(db_file)
+        client = TestClient(app)
+        resp = client.get(
+            f"/api/self-tuning/suggestion?db_path={db_file}",
+            headers=self.AUTH,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "current_weights" in data
+        assert "proposed_weights" in data
+        assert "rationale" in data
+        assert "security" in data["current_weights"]
+
+    def test_self_tuning_apply_requires_auth(self):
+        """POST /api/self-tuning/apply requires admin auth."""
+        client = TestClient(app)
+        resp = client.post("/api/self-tuning/apply")
+        assert resp.status_code in (401, 503)
+
+
+# ---------------------------------------------------------------------------
+# Audit QA Chat — Edge Cases (E5 S3-F2)
+# ---------------------------------------------------------------------------
+
+
+class TestAuditQAChatEdgeCases:
+    """Edge case tests for POST /api/audit-qa/chat (E5 findings)."""
+
+    AUTH = {"Authorization": "Bearer admin-token"}
+
+    def test_audit_qa_control_chars_stripped(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ):
+        """Control characters in question are stripped."""
+        monkeypatch.setenv("MCP_GATEWAY_ADMIN_TOKEN", "admin-token")
+        evidence_path = tmp_path / "evidence.jsonl"
+        monkeypatch.setenv("MCP_GATEWAY_EVIDENCE_PATH", str(evidence_path))
+        old_key = os.environ.pop("GOOGLE_API_KEY", None)
+        try:
+            client = TestClient(app)
+            resp = client.post(
+                "/api/audit-qa/chat",
+                json={"question": "test\x00\x01\x02question"},
+                headers=self.AUTH,
+            )
+            assert resp.status_code == 200
+            # Verify evidence shows sanitized question
+            events = [
+                json.loads(line)
+                for line in evidence_path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            qa_events = [e for e in events if e.get("event") == "audit_qa_chat"]
+            assert len(qa_events) >= 1
+            # Control chars should be stripped
+            assert "\x00" not in qa_events[-1]["question"]
+        finally:
+            if old_key is not None:
+                os.environ["GOOGLE_API_KEY"] = old_key
+
+    def test_audit_qa_long_question_truncated(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ):
+        """Questions longer than 1000 chars are truncated."""
+        monkeypatch.setenv("MCP_GATEWAY_ADMIN_TOKEN", "admin-token")
+        evidence_path = tmp_path / "evidence.jsonl"
+        monkeypatch.setenv("MCP_GATEWAY_EVIDENCE_PATH", str(evidence_path))
+        old_key = os.environ.pop("GOOGLE_API_KEY", None)
+        try:
+            client = TestClient(app)
+            long_q = "A" * 2000
+            resp = client.post(
+                "/api/audit-qa/chat",
+                json={"question": long_q},
+                headers=self.AUTH,
+            )
+            assert resp.status_code == 200
+            events = [
+                json.loads(line)
+                for line in evidence_path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            qa_events = [e for e in events if e.get("event") == "audit_qa_chat"]
+            assert len(qa_events[-1]["question"]) <= 1000
+        finally:
+            if old_key is not None:
+                os.environ["GOOGLE_API_KEY"] = old_key
+
+    def test_audit_qa_malformed_evidence(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ):
+        """Malformed evidence lines (non-dict, broken JSON) are skipped by the endpoint."""
+        monkeypatch.setenv("MCP_GATEWAY_ADMIN_TOKEN", "admin-token")
+        # Use separate files: input evidence (malformed) and output evidence (clean)
+        input_evidence = tmp_path / "input_evidence.jsonl"
+        output_evidence = tmp_path / "output_evidence.jsonl"
+        input_evidence.write_text(
+            'not valid json\n"just a string"\n[1,2,3]\n'
+            + json.dumps({"event": "scan", "run_id": "ok-1", "ts": "2026-02-08T10:00:00Z"})
+            + "\n",
+            encoding="utf-8",
+        )
+        # Point evidence path to output (clean) file for evidence.append()
+        monkeypatch.setenv("MCP_GATEWAY_EVIDENCE_PATH", str(output_evidence))
+        old_key = os.environ.pop("GOOGLE_API_KEY", None)
+        try:
+            # Patch _evidence_path to return input for reading, but evidence.append uses env
+            from unittest.mock import patch
+
+            original_evidence_path = None
+            import src.mcp_gateway.gateway as gw
+
+            original_evidence_path = gw._evidence_path
+
+            call_count = {"n": 0}
+
+            def _patched_evidence_path():
+                call_count["n"] += 1
+                # First call is for reading evidence, subsequent for writing
+                if call_count["n"] == 1:
+                    return input_evidence
+                return output_evidence
+
+            with patch.object(gw, "_evidence_path", _patched_evidence_path):
+                client = TestClient(app)
+                resp = client.post(
+                    "/api/audit-qa/chat",
+                    json={"question": "test"},
+                    headers=self.AUTH,
+                )
+            assert resp.status_code == 200
+            data = resp.json()
+            assert "answer" in data
+        finally:
+            if old_key is not None:
+                os.environ["GOOGLE_API_KEY"] = old_key
+
+    def test_audit_qa_empty_evidence_file(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ):
+        """Empty evidence file returns a response without errors."""
+        monkeypatch.setenv("MCP_GATEWAY_ADMIN_TOKEN", "admin-token")
+        evidence_path = tmp_path / "evidence.jsonl"
+        evidence_path.write_text("", encoding="utf-8")
+        monkeypatch.setenv("MCP_GATEWAY_EVIDENCE_PATH", str(evidence_path))
+        old_key = os.environ.pop("GOOGLE_API_KEY", None)
+        try:
+            client = TestClient(app)
+            resp = client.post(
+                "/api/audit-qa/chat",
+                json={"question": "anything"},
+                headers=self.AUTH,
+            )
+            assert resp.status_code == 200
+            data = resp.json()
+            assert "answer" in data
+        finally:
+            if old_key is not None:
+                os.environ["GOOGLE_API_KEY"] = old_key
+
+    def test_audit_qa_limit_zero(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ):
+        """limit=0 returns response with no evidence loaded."""
+        monkeypatch.setenv("MCP_GATEWAY_ADMIN_TOKEN", "admin-token")
+        evidence_path = tmp_path / "evidence.jsonl"
+        evidence_path.write_text(
+            json.dumps({"event": "scan", "run_id": "r1", "ts": "2026-02-08T10:00:00Z"}) + "\n",
+            encoding="utf-8",
+        )
+        monkeypatch.setenv("MCP_GATEWAY_EVIDENCE_PATH", str(evidence_path))
+        old_key = os.environ.pop("GOOGLE_API_KEY", None)
+        try:
+            client = TestClient(app)
+            resp = client.post(
+                "/api/audit-qa/chat",
+                json={"question": "test", "limit": 0},
+                headers=self.AUTH,
+            )
+            assert resp.status_code == 200
+        finally:
+            if old_key is not None:
+                os.environ["GOOGLE_API_KEY"] = old_key
+

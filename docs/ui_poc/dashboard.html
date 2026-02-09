@@ -237,7 +237,7 @@
       </div>
       <p class="muted" style="margin-bottom: 10px; font-size: 13px;" id="dashGeminiDesc">Enter your Google AI Studio API key to enable Gemini-powered analysis across all features (Council, Scanner, RedTeam, Web Sandbox).</p>
       <form id="dashGeminiForm" style="display: flex; gap: 8px; align-items: center;">
-        <input type="text" id="dashGeminiInput" placeholder="AIza..." style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; font-family: monospace;">
+        <input type="password" id="dashGeminiInput" placeholder="AIza..." autocomplete="off" style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; font-family: monospace;">
         <button type="submit" id="dashGeminiBtn" style="padding: 8px 20px; background: var(--primary); color: #fff; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;">Set Key</button>
       </form>
       <div id="dashGeminiError" style="display: none; color: var(--danger); font-size: 13px; margin-top: 6px;"></div>
@@ -462,6 +462,35 @@
     </div>
   </div>
 
+  <!-- Self-Tuning Suggestion Card -->
+  <div style="max-width:1280px;margin:24px auto 0;padding:0 24px;">
+    <div class="section-card" id="selfTuningCard">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div>
+          <div class="section-title" id="selfTuningTitle">Self-Tuning Weights</div>
+          <div class="section-sub" id="selfTuningSub">AI Council weight optimization based on historical decisions</div>
+        </div>
+        <span class="pill info" style="font-size:10px;">Beta</span>
+      </div>
+      <div id="selfTuningContent" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div>
+          <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;" id="stCurrentLabel">Current Weights</div>
+          <div id="stCurrentBars"></div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;" id="stProposedLabel">Proposed Weights</div>
+          <div id="stProposedBars"></div>
+        </div>
+      </div>
+      <div id="stRationale" style="margin-top:12px;font-size:13px;color:var(--gray-700);"></div>
+      <div id="stImpact" style="margin-top:4px;font-size:12px;color:var(--muted);font-style:italic;"></div>
+      <div style="margin-top:16px;display:flex;gap:8px;">
+        <button id="stApplyBtn" style="padding:8px 16px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-weight:600;font-size:13px;cursor:pointer;">Apply Suggestion</button>
+        <button id="stRefreshBtn" style="padding:8px 16px;background:var(--gray-100);color:var(--gray-700);border:1px solid var(--gray-300);border-radius:6px;font-size:13px;cursor:pointer;">Refresh</button>
+      </div>
+    </div>
+  </div>
+
   <script src="mock_data.js"></script>
   <script src="api_client.js"></script>
   <script>
@@ -641,6 +670,7 @@
       sevLabels.forEach(function(lbl, i) { if (sevKeys[i]) lbl.textContent = sevKeys[i]; });
       // Gemini API key section
       if (el('dashGeminiTitle') && d.geminiTitle) el('dashGeminiTitle').textContent = d.geminiTitle;
+      if (window._geminiRefreshI18n) window._geminiRefreshI18n();
       // lang buttons
       var ja = el('langJa'), en = el('langEn');
       if (ja) ja.classList.toggle('active', lang === 'ja');
@@ -1423,21 +1453,26 @@
       }
 
       function updateStatus(configured) {
+        if (typeof configured !== 'undefined') updateStatus._configured = configured;
+        var isConfigured = updateStatus._configured;
         var dl = I18N[getLang()] || I18N.en;
-        if (configured) {
+        if (isConfigured) {
           geminiStatus.textContent = dl.geminiConfigured || '\u2713 Configured';
           geminiStatus.style.background = 'var(--success)';
           geminiInput.placeholder = '\u2022\u2022\u2022\u2022 (configured)';
           geminiBtn.textContent = dl.geminiUpdateKey || 'Update Key';
+          updateStatus._lastBtnLabel = dl.geminiUpdateKey || 'Update Key';
           geminiDesc.textContent = dl.geminiDescActive || 'Gemini API key is active. All AI-powered features are enabled.';
         } else {
           geminiStatus.textContent = dl.geminiNotConfigured || 'Not configured';
           geminiStatus.style.background = 'var(--danger)';
           geminiInput.placeholder = 'AIza...';
           geminiBtn.textContent = dl.geminiSetKey || 'Set Key';
+          updateStatus._lastBtnLabel = dl.geminiSetKey || 'Set Key';
           geminiDesc.textContent = dl.geminiDesc || 'Enter your Google AI Studio API key to enable Gemini-powered analysis across all features (Council, Scanner, RedTeam, Web Sandbox).';
         }
       }
+      window._geminiRefreshI18n = function() { updateStatus(); };
 
       async function checkStatus() {
         try {
@@ -1492,6 +1527,80 @@
       });
 
       checkStatus();
+    })();
+  </script>
+  <script>
+    // --- Self-Tuning Card Logic ---
+    (function () {
+      var currentBars = document.getElementById('stCurrentBars');
+      var proposedBars = document.getElementById('stProposedBars');
+      var rationale = document.getElementById('stRationale');
+      var impact = document.getElementById('stImpact');
+      var applyBtn = document.getElementById('stApplyBtn');
+      var refreshBtn = document.getElementById('stRefreshBtn');
+      if (!currentBars) return;
+
+      function renderBars(container, weights) {
+        var colors = { security: '#ef4444', utility: '#3b82f6', cost: '#22c55e' };
+        container.innerHTML = '';
+        var safeKeys = ['security', 'utility', 'cost'];
+        Object.keys(weights).forEach(function (k) {
+          if (safeKeys.indexOf(k) === -1) return;
+          var pct = Math.min(Math.max(parseFloat(weights[k]) || 0, 0), 1) * 100;
+          var pctStr = pct.toFixed(1);
+          var div = document.createElement('div');
+          div.style.cssText = 'margin-bottom:6px;';
+          var row = document.createElement('div');
+          row.style.cssText = 'display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px;';
+          var label = document.createElement('span');
+          label.style.textTransform = 'capitalize';
+          label.textContent = k;
+          var val = document.createElement('span');
+          val.style.fontWeight = '600';
+          val.textContent = pctStr + '%';
+          row.appendChild(label); row.appendChild(val);
+          var track = document.createElement('div');
+          track.style.cssText = 'height:8px;background:var(--gray-100);border-radius:4px;overflow:hidden;';
+          var bar = document.createElement('div');
+          bar.style.cssText = 'height:100%;width:' + pctStr + '%;background:' + (colors[k] || '#6b7280') + ';border-radius:4px;transition:width 0.3s;';
+          track.appendChild(bar);
+          div.appendChild(row); div.appendChild(track);
+          container.appendChild(div);
+        });
+      }
+
+      async function loadSuggestion() {
+        try {
+          var res = window.apiClient && await window.apiClient.fetchSelfTuningSuggestion();
+          if (res && res.ok && res.data) {
+            renderBars(currentBars, res.data.current_weights || {});
+            renderBars(proposedBars, res.data.proposed_weights || {});
+            if (rationale) rationale.textContent = res.data.rationale || '';
+            if (impact) impact.textContent = res.data.impact_estimate || '';
+          }
+        } catch (e) {
+          if (rationale) rationale.textContent = 'Failed to load: ' + e.message;
+        }
+      }
+
+      if (applyBtn) applyBtn.addEventListener('click', async function () {
+        applyBtn.disabled = true;
+        try {
+          var res = window.apiClient && await window.apiClient.applySelfTuning();
+          if (res && res.ok) {
+            if (rationale) rationale.textContent = 'Weights applied successfully.';
+            await loadSuggestion();
+          } else {
+            if (rationale) rationale.textContent = 'Apply failed. Try again.';
+          }
+        } catch (e) {
+          if (rationale) rationale.textContent = 'Error: ' + e.message;
+        } finally {
+          applyBtn.disabled = false;
+        }
+      });
+      if (refreshBtn) refreshBtn.addEventListener('click', loadSuggestion);
+      loadSuggestion();
     })();
   </script>
   <script>

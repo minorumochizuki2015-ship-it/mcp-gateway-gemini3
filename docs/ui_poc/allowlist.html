@@ -567,7 +567,7 @@
       if (present === false) {
         updateBadgeTone(bundleSignatureBadge, "warn", t("common.policyBundleSignatureNA", "Signature: N/A"));
       } else if (present === true) {
-        if (kind === "verified") {
+        if (kind === "verified" || raw.startsWith("verified")) {
           updateBadgeTone(bundleSignatureBadge, "ok", t("common.policyBundleSignatureVerified", "Signature: Verified"));
         } else if (kind === "skip" && !isBundleMissing) {
           updateBadgeTone(bundleSignatureBadge, "warn", t("common.policyBundleSignatureNotVerified", "Signature: Not verified"));

@@ -2,7 +2,7 @@
 
 > **The first security gateway that makes AI tool access _auditable_, not just allow/deny.**
 
-**Gemini 3 Hackathon Submission** | [Live Pipeline Demo](#live-pipeline-demo) | [Quick Start](#quick-start-30-seconds) | [6 Gemini Integration Points](#6-gemini-3-integration-points)
+**Gemini 3 Hackathon Submission** | [Live Pipeline Demo](#live-pipeline-demo) | [Quick Start](#quick-start-30-seconds) | [7 Gemini Integration Points](#7-gemini-3-integration-points)
 
 ---
 
@@ -44,7 +44,7 @@ MCP Gateway is a **security-first proxy** between AI clients (ChatGPT, Claude, G
 
 ## Why Gemini 3? (Not Just "Any LLM")
 
-MCP Gateway uses **5 Gemini 3 exclusive features** across **all 6 integration points** — not just one component:
+MCP Gateway uses **5 Gemini 3 exclusive features** across **all 7 integration points** — not just one component:
 
 | Gemini 3 Feature | Used In | Why Only Gemini 3 |
 |-----------|--------|---------------|
@@ -52,7 +52,7 @@ MCP Gateway uses **5 Gemini 3 exclusive features** across **all 6 integration po
 | **Function Calling** | Agent Scan (multi-turn tool use) | Gemini **autonomously decides** which security tools to invoke — not a fixed pipeline |
 | **URL Context** | Web Sandbox | Gemini 3 **browses the URL itself** — multimodal page analysis without our own renderer |
 | **Google Search Grounding** | AI Council + Scanner + Sandbox + Agent Scan | Real-time threat intel: "Has this server/domain/package been reported as malicious?" |
-| **Structured Output** | All 6 components (typed JSON schemas) | Combine browsing + search + typed verdict in a single API call |
+| **Structured Output** | All 7 components (typed JSON schemas) | Combine browsing + search + typed verdict in a single API call |
 
 **Architecture**: Gemini 3 is not a "classifier at the end" — it is the **reasoning engine** that browses, searches, thinks, and decides:
 
@@ -79,7 +79,7 @@ verdict = WebSecurityVerdict.model_validate_json(response.text)
 **Without Gemini 3**: Rule-based only (DGA entropy, brand matching, TLD scoring). Works but misses semantic attacks.
 **With Gemini 3**: Deep reasoning about WHY a page is dangerous, real-time threat intel, visual page analysis.
 
-## 6 Gemini 3 Integration Points
+## 7 Gemini 3 Integration Points
 
 | # | Component | Schema | Gemini 3 Features Used |
 |---|-----------|--------|-------------|
@@ -89,6 +89,7 @@ verdict = WebSecurityVerdict.model_validate_json(response.text)
 | 4 | **RedTeam Evaluator** | `PayloadSafetyVerdict` | **thinking_level=high** + structured output for safety assessment |
 | 5 | **Causal Web Sandbox** | `WebSecurityVerdict` | **thinking_level + URL Context + Google Search + structured output** |
 | 6 | **Agent Scan** | `AgentScanResult` | **function_calling + thinking_level=high + Google Search + multi-turn** |
+| 7 | **Audit QA Chat** | `AuditQAResponse` | **thinking_level=high** + structured output — Gemini explains its own security decisions using evidence |
 
 ### Causal Web Sandbox: The "Only Gemini 3 Can Do This" Feature
 
@@ -177,14 +178,14 @@ Each step streams as a Server-Sent Event with visual indicators (Gemini badges, 
 
 | Page | Purpose |
 |------|---------|
-| **Dashboard** | KPI cards, Gateway Flow diagram, Live Pipeline Demo, Attack Detection Timeline, Recent Decisions |
+| **Dashboard** | KPI cards, Gateway Flow diagram, Live Pipeline Demo, Attack Detection Timeline, Recent Decisions, **Self-Tuning Weights** |
 | **Environments** | Setup wizard, system diagnostics, environment registration |
 | **Scans** | Security scan results with severity/OWASP breakdown |
 | **AllowList** | MCP server registration, trust status, scan history |
 | **Web Sandbox** | Live URL scanner with DOM threats, network traces, a11y issues, Gemini verdict |
-| **Audit Log** | Expandable decision evidence trail with evidence IDs |
+| **Audit Log** | Expandable decision evidence trail with evidence IDs + **Audit QA Chat (Gemini 3)** |
 | **Billing** | Token consumption, API call counts, cost estimation |
-| **Settings** | OWASP LLM Top 10 policy configuration |
+| **Settings** | OWASP LLM Top 10 policy configuration + OAuth2 PAR/DPoP roadmap |
 
 ### Attack Detection Timeline
 
@@ -330,7 +331,7 @@ gcloud run services describe mcp-gateway --format='value(status.url)'
 ## Test Suite
 
 ```bash
-# 401 tests
+# 414 tests
 python -m pytest tests/ -v
 
 # Gemini integration tests only
@@ -374,6 +375,13 @@ GOOGLE_API_KEY=xxx python scripts/benchmark.py --gemini
 | POST | `/api/mcp/intercept` | Intercept MCP tool call, two-tier scan |
 | GET | `/api/mcp/intercept/history` | Recent interception results |
 | GET | `/api/mcp/intercept/stats` | Interception statistics |
+
+### Audit QA & Self-Tuning
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/audit-qa/chat` | Ask Gemini to explain security decisions (7th integration) |
+| GET | `/api/self-tuning/suggestion` | Proposed weight adjustments with rationale |
+| POST | `/api/self-tuning/apply` | Apply weight suggestion (with evidence) |
 
 ### Management
 | Method | Path | Description |

@@ -125,11 +125,10 @@
       MCP Gateway Suite
     </div>
     <div class="nav-links">
+      <a href="settings_environments.html" class="nav-link">Environments</a>
       <a href="dashboard.html" class="nav-link">Dashboard</a>
       <a href="scans.html" class="nav-link">Scans</a>
-      <a href="settings_environments.html" class="nav-link">Environments</a>
       <a href="allowlist.html" class="nav-link">AllowList</a>
-      <a href="mcp_detail.html" class="nav-link active">MCP Detail</a>
       <a href="web_sandbox.html" class="nav-link">Web Sandbox</a>
       <a href="audit_log.html" class="nav-link">Audit Log</a>
       <a href="evidence_pack.html" class="nav-link">Evidence Pack</a>
@@ -140,15 +139,21 @@
     </div>
   </nav>
   <div class="container">
-    <div class="header">
-      <h1>MCP Detail</h1>
-      <p class="muted">View MCP metadata, latest scan and council decisions (read-only)</p>
-      <div data-admin-session-banner-anchor="page-header"></div>
+    <div class="header" style="display:flex;align-items:flex-start;justify-content:space-between;">
+      <div>
+        <h1 data-i18n="mcpDetail.title">MCP Detail</h1>
+        <p class="muted" data-i18n="mcpDetail.subtitle">View MCP metadata, latest scan and council decisions (read-only)</p>
+        <div data-admin-session-banner-anchor="page-header"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button type="button" class="lang-btn" id="langJa" data-lang="ja">JA</button>
+        <button type="button" class="lang-btn active" id="langEn" data-lang="en">EN</button>
+      </div>
     </div>
 
     <div class="tabs">
-      <button class="tab active" id="tabOverview" type="button" aria-selected="true">Overview</button>
-      <button class="tab" id="tabHistory" type="button" aria-selected="false">History</button>
+      <button class="tab active" id="tabOverview" type="button" aria-selected="true" data-i18n="mcpDetail.tabOverview">Overview</button>
+      <button class="tab" id="tabHistory" type="button" aria-selected="false" data-i18n="mcpDetail.tabHistory">History</button>
     </div>
 
     <div id="overviewSection">
@@ -158,52 +163,52 @@
 
     <div class="grid">
       <div class="card" id="serverCard">
-        <div class="section-title">Server</div>
-        <div class="label">Name</div>
+        <div class="section-title" data-i18n="mcpDetail.sectionServer">Server</div>
+        <div class="label" data-i18n="mcpDetail.labelName">NAME</div>
         <div class="value" id="srvName">-</div>
-        <div class="label">Base URL</div>
+        <div class="label" data-i18n="mcpDetail.labelBaseUrl">BASE URL</div>
         <div class="value" id="srvUrl">-</div>
         <div class="badges" id="srvStatus"></div>
       </div>
       <div class="card" id="allowCard">
-        <div class="section-title">AllowList</div>
-        <div class="label">Status</div>
+        <div class="section-title" data-i18n="mcpDetail.sectionAllowList">AllowList</div>
+        <div class="label" data-i18n="mcpDetail.labelStatus">STATUS</div>
         <div class="value" id="allowStatus">-</div>
-        <div class="label">Risk</div>
+        <div class="label" data-i18n="mcpDetail.labelRisk">RISK</div>
         <div class="value" id="allowRisk">-</div>
-        <div class="label">Capabilities</div>
+        <div class="label" data-i18n="mcpDetail.labelCapabilities">CAPABILITIES</div>
         <ul class="list" id="allowCaps"></ul>
       </div>
     </div>
 
     <div class="grid">
       <div class="card" id="scanCard">
-        <div class="section-title">Latest Scan</div>
-        <div class="label">Run ID</div>
+        <div class="section-title" data-i18n="mcpDetail.sectionLatestScan">Latest Scan</div>
+        <div class="label" data-i18n="mcpDetail.labelRunId">RUN ID</div>
         <div class="value" id="scanRun">-</div>
-        <div class="label">Status / Time</div>
+        <div class="label" data-i18n="mcpDetail.labelStatusTime">STATUS / TIME</div>
         <div class="value" id="scanStatus">-</div>
-        <div class="label">Severity Counts</div>
+        <div class="label" data-i18n="mcpDetail.labelSeverityCounts">SEVERITY COUNTS</div>
         <div class="value" id="scanSev">-</div>
       </div>
       <div class="card" id="councilCard">
-        <div class="section-title">Council Verdict</div>
-        <div class="label">Decision</div>
+        <div class="section-title" data-i18n="mcpDetail.sectionCouncilVerdict">Council Verdict</div>
+        <div class="label" data-i18n="mcpDetail.labelDecision">DECISION</div>
         <div class="value" id="councilDecision">-</div>
-        <div class="label">Rationale</div>
+        <div class="label" data-i18n="mcpDetail.labelRationale">RATIONALE</div>
         <div class="value" id="councilRationale">-</div>
-        <div class="label">Timestamp</div>
+        <div class="label" data-i18n="mcpDetail.labelTimestamp">TIMESTAMP</div>
         <div class="value" id="councilTs">-</div>
       </div>
     </div>
 
     <div class="card">
-      <div class="section-title">Evidence Trail</div>
-      <div class="label">Scan run_id</div>
+      <div class="section-title" data-i18n="mcpDetail.sectionEvidenceTrail">Evidence Trail</div>
+      <div class="label" data-i18n="mcpDetail.labelScanRunId">SCAN RUN_ID</div>
       <div class="value" id="evScan">-</div>
-      <div class="label">Council run_id</div>
+      <div class="label" data-i18n="mcpDetail.labelCouncilRunId">COUNCIL RUN_ID</div>
       <div class="value" id="evCouncil">-</div>
-      <div class="small">Links are for reference only (read-only).</div>
+      <div class="small" data-i18n="mcpDetail.readOnlyNote">Links are for reference only (read-only).</div>
     </div>
     </div>
 
@@ -226,6 +231,7 @@
   </div>
 
   <script src="mock_data.js"></script>
+  <script src="mcp_inventory_mock.js"></script>
   <script src="api_client.js"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
@@ -398,6 +404,29 @@
     window.renderHistory = renderHistory;
 
     init();
+  </script>
+  <script>
+    (function(){
+      var langJa = document.getElementById('langJa');
+      var langEn = document.getElementById('langEn');
+      function updateLangButtons() {
+        var lang = window.getLanguage ? window.getLanguage() : 'en';
+        if (langJa) langJa.classList.toggle('active', lang === 'ja');
+        if (langEn) langEn.classList.toggle('active', lang === 'en');
+      }
+      if (langJa) langJa.addEventListener('click', function() {
+        if (window.setLanguage) window.setLanguage('ja');
+        if (window.applyCommonI18n) window.applyCommonI18n();
+        updateLangButtons();
+      });
+      if (langEn) langEn.addEventListener('click', function() {
+        if (window.setLanguage) window.setLanguage('en');
+        if (window.applyCommonI18n) window.applyCommonI18n();
+        updateLangButtons();
+      });
+      if (window.applyCommonI18n) window.applyCommonI18n();
+      updateLangButtons();
+    })();
   </script>
 </body>
 </html>

@@ -143,9 +143,10 @@
       MCP Gateway Suite
     </div>
     <div class="nav-links">
-      <a href="scans.html" class="nav-link active">Scans</a>
       <a href="settings_environments.html" class="nav-link">Environments</a>
       <a href="dashboard.html" class="nav-link">Dashboard</a>
+      <a href="scans.html" class="nav-link active">Scans</a>
+      <a href="allowlist.html" class="nav-link">AllowList</a>
       <a href="web_sandbox.html" class="nav-link">Web Sandbox</a>
       <a href="audit_log.html" class="nav-link">Audit Log</a>
       <a href="evidence_pack.html" class="nav-link">Evidence Pack</a>
@@ -158,27 +159,32 @@
 
   <div class="container">
     <div class="breadcrumb">
-      <a href="scans.html">Scans</a>
+      <a href="scans.html" data-i18n="scanDetail.breadcrumbScans">Scans</a>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
       <span id="breadcrumbId">Scan Details</span>
     </div>
 
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px;">
+      <button type="button" class="lang-btn" id="langJa" data-lang="ja">JA</button>
+      <button type="button" class="lang-btn active" id="langEn" data-lang="en">EN</button>
+    </div>
+
     <div id="summary"></div>
 
-    <h2 class="section-title">
+    <h2 class="section-title" id="findingsTitle">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-      Security Findings
+      <span data-i18n="scanDetail.sectionFindings">Security Findings</span>
     </h2>
     <div class="table-container">
       <table>
         <thead>
           <tr>
-            <th style="width:90px">Severity</th>
-            <th style="width:100px">Category</th>
-            <th>Summary</th>
-            <th style="width:140px">Resource</th>
-            <th style="width:90px">OWASP LLM</th>
-            <th style="width:120px">Evidence</th>
+            <th style="width:90px" data-i18n="scanDetail.thSeverity">Severity</th>
+            <th style="width:100px" data-i18n="scanDetail.thCategory">Category</th>
+            <th data-i18n="scanDetail.thSummary">Summary</th>
+            <th style="width:140px" data-i18n="scanDetail.thResource">Resource</th>
+            <th style="width:90px" data-i18n="scanDetail.thOwaspLlm">OWASP LLM</th>
+            <th style="width:120px" data-i18n="scanDetail.thEvidence">Evidence</th>
           </tr>
         </thead>
         <tbody id="findingRows"></tbody>
@@ -190,7 +196,11 @@
   <script src="api_client.js"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
-    const id = params.get("id");
+    // Default to first scan if no id param (demo mode friendly)
+    var id = params.get("id");
+    if (!id && window.suiteScanData && window.suiteScanData.scans && window.suiteScanData.scans.length) {
+      id = window.suiteScanData.scans[0].id;
+    }
     const summary = document.getElementById("summary");
     const rows = document.getElementById("findingRows");
     const breadcrumbId = document.getElementById("breadcrumbId");
@@ -206,9 +216,11 @@
       return `<span class="pill ${cls}">${status}</span>`;
     }
 
+    function t(key) { return window.tCommon ? window.tCommon(key) : key.split('.').pop(); }
+
     function renderMeta(scan) {
       if (!scan) {
-        summary.innerHTML = `<div class="empty-state"><p>Scan not found for id=${escapeHtml(id || "N/A")}</p></div>`;
+        summary.innerHTML = `<div class="empty-state"><p>${t('scanDetail.notFound')} (id=${escapeHtml(id || "N/A")})</p></div>`;
         return;
       }
       breadcrumbId.textContent = scan.id;
@@ -223,15 +235,15 @@
         </div>
 
         <div class="meta-grid">
-          <div class="meta-card"><div class="meta-label">Environment</div><div class="meta-value">${escapeHtml(scan.environment)}</div></div>
-          <div class="meta-card"><div class="meta-label">Profile</div><div class="meta-value">${escapeHtml(scan.profile || "-")}</div></div>
-          <div class="meta-card"><div class="meta-label">Started</div><div class="meta-value">${escapeHtml(formatTimestamp(scan.startedAt))}</div></div>
-          <div class="meta-card"><div class="meta-label">Duration</div><div class="meta-value">${scan.durationSeconds}s</div></div>
-          <div class="meta-card"><div class="meta-label">Actor</div><div class="meta-value mono">${escapeHtml(scan.actor || "-")}</div></div>
+          <div class="meta-card"><div class="meta-label">${t('scanDetail.labelEnvironment')}</div><div class="meta-value">${escapeHtml(scan.environment)}</div></div>
+          <div class="meta-card"><div class="meta-label">${t('scanDetail.labelProfile')}</div><div class="meta-value">${escapeHtml(scan.profile || "-")}</div></div>
+          <div class="meta-card"><div class="meta-label">${t('scanDetail.labelStarted')}</div><div class="meta-value">${escapeHtml(formatTimestamp(scan.startedAt))}</div></div>
+          <div class="meta-card"><div class="meta-label">${t('scanDetail.labelDuration')}</div><div class="meta-value">${scan.durationSeconds}s</div></div>
+          <div class="meta-card"><div class="meta-label">${t('scanDetail.labelActor')}</div><div class="meta-value mono">${escapeHtml(scan.actor || "-")}</div></div>
         </div>
 
         <div class="severity-summary">
-          <h3>Severity Distribution</h3>
+          <h3>${t('scanDetail.sectionSeverity')}</h3>
           <div class="severity-bars">
             <div class="severity-item"><div class="severity-bar critical" style="width:${Math.max(40, (sev.critical || 0) * 20)}px"></div><span class="severity-count">Critical: ${sev.critical || 0}</span></div>
             <div class="severity-item"><div class="severity-bar high" style="width:${Math.max(40, (sev.high || 0) * 20)}px"></div><span class="severity-count">High: ${sev.high || 0}</span></div>
@@ -272,6 +284,31 @@
     }
 
     init();
+  </script>
+  <script>
+    (function(){
+      var langJa = document.getElementById('langJa');
+      var langEn = document.getElementById('langEn');
+      function updateLangButtons() {
+        var lang = window.getLanguage ? window.getLanguage() : 'en';
+        if (langJa) langJa.classList.toggle('active', lang === 'ja');
+        if (langEn) langEn.classList.toggle('active', lang === 'en');
+      }
+      if (langJa) langJa.addEventListener('click', function() {
+        if (window.setLanguage) window.setLanguage('ja');
+        if (window.applyCommonI18n) window.applyCommonI18n();
+        updateLangButtons();
+        init();
+      });
+      if (langEn) langEn.addEventListener('click', function() {
+        if (window.setLanguage) window.setLanguage('en');
+        if (window.applyCommonI18n) window.applyCommonI18n();
+        updateLangButtons();
+        init();
+      });
+      if (window.applyCommonI18n) window.applyCommonI18n();
+      updateLangButtons();
+    })();
   </script>
 </body>
 </html>

@@ -136,11 +136,10 @@
       MCP Gateway Suite
     </div>
     <div class="nav-links">
-      <a href="scans.html" class="nav-link">Scans</a>
-      <a href="allowlist.html" class="nav-link">AllowList</a>
-      <a href="mcp_inventory.html" class="nav-link active">MCP Inventory</a>
       <a href="settings_environments.html" class="nav-link">Environments</a>
       <a href="dashboard.html" class="nav-link">Dashboard</a>
+      <a href="scans.html" class="nav-link">Scans</a>
+      <a href="allowlist.html" class="nav-link">AllowList</a>
       <a href="web_sandbox.html" class="nav-link">Web Sandbox</a>
       <a href="audit_log.html" class="nav-link">Audit Log</a>
       <a href="evidence_pack.html" class="nav-link">Evidence Pack</a>
@@ -154,36 +153,41 @@
   <div class="container">
     <div class="page-header">
       <div>
-        <h1 class="page-title">MCP Inventory</h1>
-        <p class="page-subtitle">Registered MCP servers and their security status</p>
+        <h1 class="page-title" data-i18n="mcpInventory.title">MCP Inventory</h1>
+        <p class="page-subtitle" data-i18n="mcpInventory.subtitle">Registered MCP servers and their security status</p>
         <div data-admin-session-banner-anchor="page-header"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
+        <span style="font-size:13px;color:var(--gray-500)">Language:</span>
+        <button type="button" class="lang-btn" id="langJa" data-lang="ja">JA</button>
+        <button type="button" class="lang-btn active" id="langEn" data-lang="en">EN</button>
       </div>
     </div>
 
     <div class="stats-grid" id="statsGrid">
-      <div class="stat-card"><div class="stat-label">Total Servers</div><div class="stat-value" id="statTotal">-</div></div>
-      <div class="stat-card"><div class="stat-label">Allowed</div><div class="stat-value success" id="statAllow">-</div></div>
-      <div class="stat-card"><div class="stat-label">Quarantined</div><div class="stat-value warning" id="statQuarantine">-</div></div>
-      <div class="stat-card"><div class="stat-label">Denied</div><div class="stat-value danger" id="statDeny">-</div></div>
-      <div class="stat-card"><div class="stat-label">High/Critical Risk</div><div class="stat-value danger" id="statHighRisk">-</div></div>
+      <div class="stat-card"><div class="stat-label" data-i18n="mcpInventory.statTotal">Total Servers</div><div class="stat-value" id="statTotal">-</div></div>
+      <div class="stat-card"><div class="stat-label" data-i18n="mcpInventory.statAllow">Allowed</div><div class="stat-value success" id="statAllow">-</div></div>
+      <div class="stat-card"><div class="stat-label" data-i18n="mcpInventory.statQuarantine">Quarantined</div><div class="stat-value warning" id="statQuarantine">-</div></div>
+      <div class="stat-card"><div class="stat-label" data-i18n="mcpInventory.statDeny">Denied</div><div class="stat-value danger" id="statDeny">-</div></div>
+      <div class="stat-card"><div class="stat-label" data-i18n="mcpInventory.statHighRisk">High/Critical Risk</div><div class="stat-value danger" id="statHighRisk">-</div></div>
     </div>
 
     <div class="error-banner" id="errorBanner"></div>
 
     <div class="filters-bar">
       <div class="filter-group">
-        <label class="filter-label">Status</label>
+        <label class="filter-label" data-i18n="mcpInventory.filterStatus">Status</label>
         <select id="statusFilter" class="filter-select">
-          <option value="">All Status</option>
+          <option value="" data-i18n="mcpInventory.filterAllStatus">All Status</option>
           <option value="active">Active/Allow</option>
           <option value="quarantine">Quarantine</option>
           <option value="deny">Deny</option>
         </select>
       </div>
       <div class="filter-group">
-        <label class="filter-label">Risk Level</label>
+        <label class="filter-label" data-i18n="mcpInventory.filterRisk">Risk Level</label>
         <select id="riskFilter" class="filter-select">
-          <option value="">All Risk</option>
+          <option value="" data-i18n="mcpInventory.filterAllRisk">All Risk</option>
           <option value="critical">Critical</option>
           <option value="high">High</option>
           <option value="medium">Medium</option>
@@ -191,8 +195,8 @@
         </select>
       </div>
       <div class="filter-group">
-        <label class="filter-label">Search</label>
-        <input id="searchFilter" class="filter-input" placeholder="Name or URL..." />
+        <label class="filter-label" data-i18n="mcpInventory.filterSearch">Search</label>
+        <input id="searchFilter" class="filter-input" data-i18n-placeholder="mcpInventory.filterSearchPlaceholder" placeholder="Name or URL..." />
       </div>
     </div>
 
@@ -200,14 +204,14 @@
       <table>
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Base URL</th>
-            <th>Status</th>
-            <th>Risk</th>
-            <th>Capabilities</th>
-            <th>Last Scan</th>
-            <th>Last Decision</th>
-            <th>Actions</th>
+            <th data-i18n="mcpInventory.thName">Name</th>
+            <th data-i18n="mcpInventory.thBaseUrl">Base URL</th>
+            <th data-i18n="mcpInventory.thStatus">Status</th>
+            <th data-i18n="mcpInventory.thRisk">Risk</th>
+            <th data-i18n="mcpInventory.thCapabilities">Capabilities</th>
+            <th data-i18n="mcpInventory.thLastScan">Last Scan</th>
+            <th data-i18n="mcpInventory.thLastDecision">Last Decision</th>
+            <th data-i18n="mcpInventory.thActions">Actions</th>
           </tr>
         </thead>
         <tbody id="mcpRows"></tbody>
@@ -295,7 +299,7 @@
         return;
       }
 
-      rows.innerHTML = filtered.map(s => `<tr onclick="location.href='mcp_detail.html?id=${escapeHtml(s.server_id)}'">
+      rows.innerHTML = filtered.map(s => `<tr onclick="location.href='mcp_detail.html?server_id=${escapeHtml(s.server_id)}'">
         <td><strong>${escapeHtml(s.name || "-")}</strong></td>
         <td><span class="url-text">${escapeHtml(s.base_url || "-")}</span></td>
         <td>${statusBadge(s.status)}</td>
@@ -303,7 +307,7 @@
         <td>${capTags(s.capabilities)}</td>
         <td>${formatTimestamp(s.last_scan_ts)}</td>
         <td>${formatTimestamp(s.last_decision_ts)}</td>
-        <td><a href="mcp_detail.html?id=${escapeHtml(s.server_id)}" class="action-link" onclick="event.stopPropagation()">Details</a></td>
+        <td><a href="mcp_detail.html?server_id=${escapeHtml(s.server_id)}" class="action-link" onclick="event.stopPropagation()">Details</a></td>
       </tr>`).join("");
     }
 
@@ -333,10 +337,8 @@
         errorBanner.classList.remove("show");
       } else if (allowMockFallback()) {
         mcpServers = (window.mcpInventoryMock && window.mcpInventoryMock.servers) || [];
-        if (!apiData) {
-          errorBanner.textContent = "API unavailable - showing mock data";
-          errorBanner.classList.add("show");
-        }
+        // In demo mode, suppress the error banner for cleaner presentation
+        errorBanner.classList.remove("show");
       } else {
         mcpServers = [];
         errorBanner.textContent = "API unavailable - mock disabled";
@@ -351,6 +353,31 @@
     riskFilter.addEventListener("change", render);
     searchFilter.addEventListener("input", render);
     init();
+  </script>
+  <script>
+    (function(){
+      var langJa = document.getElementById('langJa');
+      var langEn = document.getElementById('langEn');
+      function updateLangButtons() {
+        var lang = window.getLanguage ? window.getLanguage() : 'en';
+        if (langJa) langJa.classList.toggle('active', lang === 'ja');
+        if (langEn) langEn.classList.toggle('active', lang === 'en');
+      }
+      if (langJa) langJa.addEventListener('click', function() {
+        if (window.setLanguage) window.setLanguage('ja');
+        if (window.applyCommonI18n) window.applyCommonI18n();
+        updateLangButtons();
+        if (typeof render === 'function') render();
+      });
+      if (langEn) langEn.addEventListener('click', function() {
+        if (window.setLanguage) window.setLanguage('en');
+        if (window.applyCommonI18n) window.applyCommonI18n();
+        updateLangButtons();
+        if (typeof render === 'function') render();
+      });
+      if (window.applyCommonI18n) window.applyCommonI18n();
+      updateLangButtons();
+    })();
   </script>
 </body>
 </html>

@@ -409,6 +409,32 @@
     </div>
   </div>
 
+  <!-- Audit QA Chat -->
+  <div style="max-width:1280px;margin:24px auto 0;padding:0 24px;">
+    <div class="card" style="border:1px solid var(--gray-200);border-radius:8px;padding:24px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div>
+          <div style="font-size:16px;font-weight:700;" data-i18n="auditLog.qaChatTitle">Audit Q&amp;A (Gemini 3)</div>
+          <div style="font-size:12px;color:var(--muted);" data-i18n="auditLog.qaChatSub">Ask Gemini to explain security decisions using evidence</div>
+        </div>
+        <span class="pill info" style="font-size:10px;">Beta</span>
+      </div>
+      <!-- Template question buttons -->
+      <div id="qaTemplates" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+        <button class="qa-tpl" data-q="Why was filesystem-mcp blocked?" style="font-size:12px;padding:4px 10px;border:1px solid var(--gray-300);border-radius:14px;background:#fff;cursor:pointer;">Why was filesystem-mcp blocked?</button>
+        <button class="qa-tpl" data-q="What threats were detected in the last scan?" style="font-size:12px;padding:4px 10px;border:1px solid var(--gray-300);border-radius:14px;background:#fff;cursor:pointer;">What threats were detected?</button>
+        <button class="qa-tpl" data-q="Explain the council decision for data-scraper-mcp" style="font-size:12px;padding:4px 10px;border:1px solid var(--gray-300);border-radius:14px;background:#fff;cursor:pointer;">Explain council decision</button>
+      </div>
+      <!-- Chat messages -->
+      <div id="qaChatMessages" style="max-height:320px;overflow-y:auto;margin-bottom:12px;display:flex;flex-direction:column;gap:10px;"></div>
+      <!-- Input -->
+      <div style="display:flex;gap:8px;">
+        <input id="qaInput" type="text" placeholder="Ask about a security decision..." style="flex:1;padding:8px 12px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px;" maxlength="1000">
+        <button id="qaSendBtn" style="padding:8px 16px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-weight:600;font-size:13px;cursor:pointer;" data-i18n="auditLog.qaSend">Send</button>
+      </div>
+    </div>
+  </div>
+
   <script src="mock_data.js"></script>
   <script src="api_client.js"></script>
   <script>
@@ -569,6 +595,81 @@
     }
 
     init();
+  </script>
+  <script>
+    // --- Audit QA Chat Logic ---
+    (function () {
+      var chatBox = document.getElementById('qaChatMessages');
+      var qaInput = document.getElementById('qaInput');
+      var qaSendBtn = document.getElementById('qaSendBtn');
+      if (!chatBox || !qaInput || !qaSendBtn) return;
+
+      var QA_MOCK = (window.suiteScanData && window.suiteScanData.audit_qa_mock) || {};
+      var DISABLE_MOCK = (new URLSearchParams(window.location.search)).get('disable_mock') === '1';
+
+      function escHtml(s) { return window.escapeHtml ? window.escapeHtml(String(s || '')) : String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+
+      function addBubble(role, html) {
+        var div = document.createElement('div');
+        div.style.cssText = role === 'user'
+          ? 'align-self:flex-end;background:#dbeafe;color:#1e3a5f;padding:8px 12px;border-radius:12px 12px 2px 12px;max-width:80%;font-size:13px;'
+          : 'align-self:flex-start;background:var(--gray-100);padding:8px 12px;border-radius:12px 12px 12px 2px;max-width:80%;font-size:13px;';
+        div.innerHTML = html;
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }
+
+      function formatAnswer(data) {
+        var h = '<div>' + escHtml(data.answer) + '</div>';
+        if (data.confidence != null) {
+          var pct = (data.confidence * 100).toFixed(0);
+          var cls = data.confidence >= 0.7 ? 'allow' : data.confidence >= 0.4 ? 'quarantine' : 'deny';
+          h += '<span class="pill ' + cls + '" style="font-size:10px;margin-top:6px;display:inline-block;">' + pct + '% confidence</span>';
+        }
+        if (data.evidence_refs && data.evidence_refs.length > 0) {
+          h += '<div style="margin-top:6px;font-size:11px;color:var(--muted);">Refs: ' + data.evidence_refs.map(function (r) { return '<code>' + escHtml(r) + '</code>'; }).join(', ') + '</div>';
+        }
+        if (data.eval_method === 'fallback' || (!data.eval_method && data.confidence < 0.5)) {
+          h += '<span class="pill" style="font-size:9px;background:#fef3c7;color:#92400e;margin-top:4px;display:inline-block;">Demo Response</span>';
+        }
+        return h;
+      }
+
+      async function sendQuestion(q) {
+        if (!q) return;
+        addBubble('user', escHtml(q));
+        qaInput.value = '';
+        qaSendBtn.disabled = true;
+        try {
+          if (window.apiClient && window.apiClient.fetchAuditQA) {
+            var res = await window.apiClient.fetchAuditQA(q);
+            if (res && res.ok && res.data) {
+              addBubble('assistant', formatAnswer(res.data));
+              return;
+            }
+          }
+          // Mock fallback (only when mock not disabled)
+          if (DISABLE_MOCK) { addBubble('assistant', formatAnswer({ answer: 'Gemini API unavailable. Configure your API key to enable QA.', evidence_refs: [], confidence: 0.0, eval_method: 'fallback' })); return; }
+          var mockKey = Object.keys(QA_MOCK).find(function (k) { return q.toLowerCase().includes(k.toLowerCase().split(' ').slice(0, 3).join(' ')); });
+          if (mockKey) {
+            var mock = QA_MOCK[mockKey];
+            addBubble('assistant', formatAnswer(Object.assign({ eval_method: 'fallback' }, mock)));
+          } else {
+            addBubble('assistant', formatAnswer({ answer: 'No matching evidence found for your question. Try asking about specific decisions or threats.', evidence_refs: [], confidence: 0.1, eval_method: 'fallback' }));
+          }
+        } catch (e) {
+          addBubble('assistant', '<span style="color:var(--danger);">Error: ' + escHtml(e.message) + '</span>');
+        } finally {
+          qaSendBtn.disabled = false;
+        }
+      }
+
+      qaSendBtn.addEventListener('click', function () { sendQuestion(qaInput.value.trim()); });
+      qaInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') sendQuestion(qaInput.value.trim()); });
+      document.querySelectorAll('.qa-tpl').forEach(function (btn) {
+        btn.addEventListener('click', function () { sendQuestion(this.getAttribute('data-q')); });
+      });
+    })();
   </script>
   <script>
     // Language toggle
