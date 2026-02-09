@@ -291,11 +291,6 @@ gcloud run services describe mcp-gateway --format='value(status.url)'
                     +--------+---------+
                              |
                     +--------v---------+
-                    |   ACL Proxy      |  ← Rust ACL-aware proxy
-                    |   (acl-proxy/)   |    URL policy + TLS inspection
-                    +--------+---------+
-                             |
-                    +--------v---------+
                     |   MCP Gateway    |  ← Python FastAPI
                     |  + Dashboard UI  |    6-layer security pipeline
                     +--+--+--+--+-----+
@@ -504,7 +499,7 @@ curl -X POST http://localhost:4100/api/mcp/intercept \
 
 ## Security Notice
 
-This gateway is designed for **local / internal network use**. Do not expose directly to the public internet. Use an authenticating proxy (e.g., `acl-proxy/`) in front.
+This gateway is designed for **local / internal network use**. Do not expose directly to the public internet. Use an authenticating reverse proxy in front.
 
 ## License
 
