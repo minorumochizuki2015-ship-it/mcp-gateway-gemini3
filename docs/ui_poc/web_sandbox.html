@@ -366,6 +366,18 @@
         </div>
       </div>
 
+      <!-- Attack Narrative + MCP Threats (Gemini-only) -->
+      <div class="grid-2" style="margin-top: 16px;" id="geminiInsightsRow">
+        <div class="card" id="narrativeCard" style="display:none;">
+          <div class="section-title"><span id="narrativeTitle">Attack Narrative</span> <span class="count" style="background:#fef3c7;color:#92400e;">Gemini 3</span></div>
+          <p id="narrativeText" style="font-size:13px;line-height:1.6;color:var(--gray-700);"></p>
+        </div>
+        <div class="card" id="mcpThreatsCard" style="display:none;">
+          <div class="section-title"><span id="mcpThreatsTitle">MCP-Specific Threats</span> <span class="count" style="background:#fee2e2;color:#991b1b;" id="mcpThreatCount">0</span></div>
+          <ul id="mcpThreatsList" style="font-size:13px;line-height:1.6;padding-left:18px;color:var(--gray-700);"></ul>
+        </div>
+      </div>
+
       <!-- Bundle Info + Risk Indicators -->
       <div class="grid-2" style="margin-top: 16px;">
         <div class="card">
@@ -640,9 +652,26 @@
           document.getElementById('compareTraditionalBadge').className = 'compare-badge none';
         }
 
-        // Gemini side: show actual scan result or fallback notice
-        var isRuleBased = data.eval_method === 'rule_based' || data.eval_method === 'demo_preset';
-        if (isRuleBased) {
+        // Gemini side: show actual scan result, demo_gemini, or fallback notice
+        var isOnlyRuleBased = data.eval_method === 'rule_based' || data.eval_method === 'demo_preset';
+        var hasGemini = data.eval_method === 'gemini' || data.eval_method === 'demo_gemini';
+        if (hasGemini) {
+          // Gemini (real or demo) — show the richer verdict
+          var sevText = cls.toUpperCase() + (cls === 'benign' ? '' : ' DETECTED');
+          document.getElementById('compareSemanticVerdict').textContent = sevText;
+          document.getElementById('compareSemanticVerdict').className = 'compare-verdict ' + (cls === 'benign' ? 'safe' : 'threat');
+          document.getElementById('compareSemanticVerdict').style.color = '';
+          var indicatorCount = (v.risk_indicators || []).length;
+          var badgeText = indicatorCount + (d.compareIndicators || ' risk indicators found');
+          if (data.eval_method === 'demo_gemini') badgeText += ' (demo)';
+          document.getElementById('compareSemanticBadge').textContent = badgeText;
+          document.getElementById('compareSemanticBadge').className = 'compare-badge ' + (cls === 'benign' ? 'none' : 'detected');
+          // Show Gemini detail: attack narrative or summary
+          var gDetail = document.getElementById('compareSemanticDetail');
+          if (gDetail) {
+            gDetail.textContent = v.attack_narrative || v.summary || '';
+          }
+        } else if (isOnlyRuleBased) {
           // Gemini not configured — show clear CTA
           document.getElementById('compareSemanticVerdict').textContent = d.geminiNotActive || 'GEMINI NOT ACTIVE';
           document.getElementById('compareSemanticVerdict').className = 'compare-verdict';
@@ -650,12 +679,12 @@
           document.getElementById('compareSemanticBadge').textContent = d.geminiConfigCta || 'Set API key above to enable';
           document.getElementById('compareSemanticBadge').className = 'compare-badge none';
         } else {
-          var sevText = cls.toUpperCase() + (cls === 'benign' ? '' : ' DETECTED');
-          document.getElementById('compareSemanticVerdict').textContent = sevText;
+          var sevText2 = cls.toUpperCase() + (cls === 'benign' ? '' : ' DETECTED');
+          document.getElementById('compareSemanticVerdict').textContent = sevText2;
           document.getElementById('compareSemanticVerdict').className = 'compare-verdict ' + (cls === 'benign' ? 'safe' : 'threat');
           document.getElementById('compareSemanticVerdict').style.color = '';
-          var indicatorCount = (v.risk_indicators || []).length;
-          document.getElementById('compareSemanticBadge').textContent = indicatorCount + (d.compareIndicators || ' risk indicators found');
+          var indicatorCount2 = (v.risk_indicators || []).length;
+          document.getElementById('compareSemanticBadge').textContent = indicatorCount2 + (d.compareIndicators || ' risk indicators found');
           document.getElementById('compareSemanticBadge').className = 'compare-badge ' + (cls === 'benign' ? 'none' : 'detected');
         }
         // i18n titles
@@ -677,6 +706,27 @@
           document.getElementById('compareBadge').style.background = '#dbeafe';
           document.getElementById('compareBadge').style.color = '#1d4ed8';
         }
+      }
+
+      // Attack narrative + MCP threats (Gemini insights)
+      var narrativeCard = document.getElementById('narrativeCard');
+      var mcpCard = document.getElementById('mcpThreatsCard');
+      var narrative = v.attack_narrative || '';
+      var mcpThreats = v.mcp_specific_threats || [];
+      if (narrative) {
+        narrativeCard.style.display = '';
+        document.getElementById('narrativeText').textContent = narrative;
+      } else {
+        narrativeCard.style.display = 'none';
+      }
+      if (mcpThreats.length > 0) {
+        mcpCard.style.display = '';
+        document.getElementById('mcpThreatCount').textContent = mcpThreats.length;
+        document.getElementById('mcpThreatsList').innerHTML = mcpThreats.map(function(t) {
+          return '<li>' + escapeHtml(t) + '</li>';
+        }).join('');
+      } else {
+        mcpCard.style.display = 'none';
       }
 
       // Risk indicators
@@ -842,6 +892,24 @@
       const url = urlInput.value.trim();
       if (!url) return;
 
+      // URL validation
+      try {
+        var parsed = new URL(url);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+          scanError.textContent = getWsLang() === 'ja'
+            ? 'http:// または https:// で始まるURLを入力してください'
+            : 'Please enter a URL starting with http:// or https://';
+          scanError.style.display = '';
+          return;
+        }
+      } catch (_) {
+        scanError.textContent = getWsLang() === 'ja'
+          ? '有効なURLを入力してください（例: https://example.com）'
+          : 'Please enter a valid URL (e.g. https://example.com)';
+        scanError.style.display = '';
+        return;
+      }
+
       scanError.style.display = 'none';
       scanLoading.style.display = '';
       scanBtn.disabled = true;
@@ -962,6 +1030,8 @@
         compareGeminiCaught: 'Gemini 3 caught what rules missed!',
         compareBothDetected: 'Both detected threats',
         compareWhyGemini: 'Why Gemini 3?',
+        narrativeTitle: 'Attack Narrative',
+        mcpThreatsTitle: 'MCP-Specific Threats',
       },
       ja: {
         pageTitle: 'Causal Web Sandbox',
@@ -1031,6 +1101,8 @@
         compareGeminiCaught: 'ルールが見逃した脅威をGemini 3が検出！',
         compareBothDetected: '両方式で脅威を検出',
         compareWhyGemini: 'なぜGemini 3？',
+        narrativeTitle: '攻撃シナリオ',
+        mcpThreatsTitle: 'MCP固有の脅威',
       }
     };
     const LANG_KEY = 'suite_language';
@@ -1066,6 +1138,8 @@
       if (el('lblConfidence')) el('lblConfidence').textContent = d.lblConfidence;
       if (el('lblAction')) el('lblAction').textContent = d.lblAction;
       // Section titles
+      if (el('narrativeTitle')) el('narrativeTitle').textContent = d.narrativeTitle || 'Attack Narrative';
+      if (el('mcpThreatsTitle')) el('mcpThreatsTitle').textContent = d.mcpThreatsTitle || 'MCP-Specific Threats';
       if (el('pageBundleTitle')) el('pageBundleTitle').textContent = d.pageBundle;
       if (el('riskIndicatorsTitle')) el('riskIndicatorsTitle').textContent = d.riskIndicators;
       if (el('domThreatsTitle')) el('domThreatsTitle').textContent = d.domThreats;
