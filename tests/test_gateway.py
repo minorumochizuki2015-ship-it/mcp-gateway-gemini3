@@ -3323,7 +3323,7 @@ class TestGemini3Integration:
             assert resp.status_code == 200
             data = resp.json()
             points = data["gemini_integration_points"]
-            assert len(points) == 6
+            assert len(points) == 7
 
             # Council: thinking_level_high + google_search
             council = points[0]

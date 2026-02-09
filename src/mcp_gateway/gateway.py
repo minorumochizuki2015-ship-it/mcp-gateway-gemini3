@@ -1535,6 +1535,16 @@ async def about() -> JSONResponse:
                     "multi_turn",
                 ],
             },
+            {
+                "id": 7,
+                "component": "Audit QA Chat",
+                "schema": "AuditQAResponse",
+                "gemini_features": [
+                    "thinking_level_high",
+                    "structured_output",
+                    "system_instruction",
+                ],
+            },
         ],
         "security_layers": [
             "L1: Source/Sink Policy (deterministic)",
@@ -1557,7 +1567,7 @@ async def about() -> JSONResponse:
             {"protocol": "MCP stdio", "command": "python -m src.mcp_gateway.mcp_security_server"},
             {"protocol": "MCP Streamable HTTP", "endpoint": "/mcp/security"},
         ],
-        "test_count": 373,
+        "test_count": 416,
     })
 
 
