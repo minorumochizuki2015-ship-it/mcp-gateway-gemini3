@@ -13,3 +13,4 @@ settings.local.json
 node_modules/
 target/
 test-results/
+results/

@@ -3800,6 +3800,66 @@ async def get_control_audit(request: Request, limit: int = AUDIT_DEFAULT_LIMIT):
     return _audit_entries(_evidence_path(), safe_limit)
 
 
+@app.get("/api/evidence/pack/{run_id}")
+async def get_evidence_pack(run_id: str, request: Request) -> JSONResponse:
+    """Get consolidated evidence pack for a specific run.
+
+    Bundles: scan findings + council verdict + deterministic config
+    + pipeline trace + allowlist mutation into single auditable artifact.
+    """
+    if guard := _admin_auth_guard(request):
+        return guard
+
+    evidence_path = _evidence_path()
+    if not evidence_path.exists():
+        return JSONResponse({"detail": "no evidence trail"}, status_code=404)
+
+    # Gather all events matching run_id
+    pack_events = []
+    for line in evidence_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("run_id") == run_id:
+            pack_events.append(event)
+
+    if not pack_events:
+        return JSONResponse({"detail": "run_id not found"}, status_code=404)
+
+    # Build structured pack
+    primary = pack_events[0]
+    pack = {
+        "run_id": run_id,
+        "timestamp": primary.get("ts", ""),
+        "event_count": len(pack_events),
+        "classification": primary.get("classification", "unknown"),
+        "confidence": primary.get("confidence"),
+        "recommended_action": primary.get("recommended_action", "unknown"),
+        "eval_method": primary.get("eval_method", "unknown"),
+        "deterministic_config": primary.get("deterministic_config", {}),
+        "pipeline_trace": [
+            {
+                "step": i + 1,
+                "event": e.get("event", "unknown"),
+                "status": e.get("status", "unknown"),
+                "ts": e.get("ts", ""),
+                "detail": {
+                    k: v
+                    for k, v in e.items()
+                    if k not in ("run_id", "ts", "event", "status")
+                },
+            }
+            for i, e in enumerate(pack_events)
+        ],
+        "events": pack_events,
+    }
+    return JSONResponse(pack)
+
+
 @app.get("/api/control/diagnostics")
 async def get_control_diagnostics(
     request: Request, db_path: str = str(DEFAULT_DB_PATH)

@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCP Gateway Suite - Evidence Pack</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;600;700&display=swap');
+
+    html {
+      background: #f9fafb;
+    }
+
+    body {
+      opacity: 1;
+      transition: opacity 0.08s ease-out;
+    }
+
+    body.loading {
+      opacity: 0;
+    }
+
+    :root {
+      --primary: #0066ff;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-900: #111827;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-900);
+      line-height: 1.5;
+      padding-top: 56px;
+    }
+
+    .nav {
+      background: var(--gray-900);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      height: 56px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-brand {
+      color: #fff;
+      font-weight: 700;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-brand svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 4px;
+      margin-left: 40px;
+    }
+
+    .nav-link {
+      color: var(--gray-300);
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+
+    .nav-link:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .nav-link.active {
+      color: #fff;
+      background: var(--primary);
+    }
+
+    .nav-status {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--gray-300);
+      font-size: 13px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .page-title {
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .page-subtitle {
+      color: var(--gray-600);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    .lang-btn {
+      padding: 6px 12px;
+      border: 1px solid var(--gray-300);
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.15s;
+      color: var(--gray-700);
+    }
+
+    .lang-btn:hover {
+      background: var(--gray-50);
+    }
+
+    .lang-btn.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    .card {
+      background: #fff;
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--gray-200);
+      margin: 16px 0;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 8px 16px;
+      font-size: 14px;
+    }
+
+    .meta-key {
+      font-weight: 600;
+      color: var(--gray-600);
+    }
+
+    .meta-val {
+      color: var(--gray-900);
+      word-break: break-word;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .pill.phishing { background: #fee2e2; color: #991b1b; }
+    .pill.benign { background: #dcfce7; color: #166534; }
+    .pill.malware { background: #fef3c7; color: #92400e; }
+    .pill.block { background: #fee2e2; color: #991b1b; }
+    .pill.allow { background: #dcfce7; color: #166534; }
+    .pill.warn { background: #fef3c7; color: #92400e; }
+
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .timeline-item {
+      display: grid;
+      grid-template-columns: 40px 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .timeline-step {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .timeline-content {
+      background: var(--gray-50);
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+
+    .timeline-content strong {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .timeline-content .muted {
+      color: var(--gray-600);
+      font-size: 12px;
+    }
+
+    .table-simple {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .table-simple th {
+      background: var(--gray-50);
+      font-weight: 600;
+      text-align: left;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--gray-200);
+    }
+
+    .table-simple td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--gray-100);
+    }
+
+    .table-simple tr:last-child td {
+      border-bottom: none;
+    }
+
+    details {
+      margin-top: 12px;
+    }
+
+    summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--primary);
+      font-size: 14px;
+      user-select: none;
+    }
+
+    summary:hover {
+      text-decoration: underline;
+    }
+
+    pre {
+      background: var(--gray-900);
+      color: #e5e7eb;
+      padding: 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 12px;
+      line-height: 1.5;
+      margin-top: 8px;
+    }
+
+    .empty {
+      text-align: center;
+      color: var(--gray-600);
+      padding: 24px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+  <nav class="nav">
+    <div class="nav-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+      </svg>
+      MCP Gateway Suite
+    </div>
+    <div class="nav-links">
+      <a href="settings_environments.html" class="nav-link">Environments</a>
+      <a href="dashboard.html" class="nav-link">Dashboard</a>
+      <a href="scans.html" class="nav-link">Scans</a>
+      <a href="allowlist.html" class="nav-link">AllowList</a>
+      <a href="web_sandbox.html" class="nav-link">Web Sandbox</a>
+      <a href="audit_log.html" class="nav-link">Audit Log</a>
+      <a href="evidence_pack.html" class="nav-link">Evidence Pack</a>
+    </div>
+    <div class="nav-status">
+      <span class="status-dot"></span>
+      Demo Mode
+    </div>
+  </nav>
+
+  <div class="container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+      <div>
+        <h1 class="page-title">Evidence Pack</h1>
+        <p class="page-subtitle">Consolidated audit trail with decision pipeline and deterministic config</p>
+      </div>
+      <div style="display: flex; gap: 4px;">
+        <button type="button" class="lang-btn" id="langJa" data-lang="ja">JA</button>
+        <button type="button" class="lang-btn" id="langEn" data-lang="en">EN</button>
+      </div>
+    </div>
+
+    <div id="content"></div>
+  </div>
+
+  <script src="mock_data.js"></script>
+  <script src="api_client.js"></script>
+  <script>
+    (function () {
+      if (!window.location || !window.location.pathname) return;
+      const currentFile = window.location.pathname.split('/').pop() || 'evidence_pack.html';
+      document.querySelectorAll('.nav-link').forEach(link => {
+        const href = link.getAttribute('href');
+        if (href === currentFile) {
+          link.classList.add('active');
+        } else {
+          link.classList.remove('active');
+        }
+      });
+    })();
+  </script>
+  <script>
+    const content = document.getElementById('content');
+    const apiClient = window.apiClient || {};
+    const urlParams = new URLSearchParams(window.location.search);
+    const runId = urlParams.get('run_id');
+
+    function escapeHtml(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatTimestamp(ts) {
+      if (!ts) return '-';
+      const d = new Date(ts);
+      return isNaN(d.getTime()) ? '-' : d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    async function renderPack() {
+      if (!runId) {
+        content.innerHTML = '<div class="empty">No run_id specified. Please provide ?run_id=xxx in the URL.</div>';
+        return;
+      }
+
+      let pack;
+      if (apiClient.fetchEvidencePack) {
+        const res = await apiClient.fetchEvidencePack(runId);
+        if (res && res.ok) {
+          pack = res.data;
+        }
+      }
+
+      // Fallback to mock
+      if (!pack && window.suiteScanData && window.suiteScanData._DEMO_EVIDENCE_PACKS) {
+        pack = window.suiteScanData._DEMO_EVIDENCE_PACKS.find(p => p.run_id === runId);
+      }
+
+      if (!pack) {
+        content.innerHTML = `<div class="empty">Evidence Pack not found for run_id: ${escapeHtml(runId)}</div>`;
+        return;
+      }
+
+      const classificationPill = `<span class="pill ${pack.classification}">${escapeHtml(pack.classification)}</span>`;
+      const actionPill = `<span class="pill ${pack.recommended_action}">${escapeHtml(pack.recommended_action)}</span>`;
+
+      let html = `
+        <div class="card">
+          <div class="card-title">Evidence Pack Header</div>
+          <div class="meta-grid">
+            <div class="meta-key">Run ID</div>
+            <div class="meta-val"><code>${escapeHtml(pack.run_id)}</code></div>
+            <div class="meta-key">Timestamp</div>
+            <div class="meta-val">${formatTimestamp(pack.timestamp)}</div>
+            <div class="meta-key">Classification</div>
+            <div class="meta-val">${classificationPill}</div>
+            <div class="meta-key">Confidence</div>
+            <div class="meta-val">${pack.confidence !== null && pack.confidence !== undefined ? (pack.confidence * 100).toFixed(0) + '%' : 'N/A'}</div>
+            <div class="meta-key">Recommended Action</div>
+            <div class="meta-val">${actionPill}</div>
+            <div class="meta-key">Event Count</div>
+            <div class="meta-val">${pack.event_count}</div>
+            <div class="meta-key">Eval Method</div>
+            <div class="meta-val"><code>${escapeHtml(pack.eval_method || 'N/A')}</code></div>
+          </div>
+        </div>
+      `;
+
+      if (pack.pipeline_trace && pack.pipeline_trace.length > 0) {
+        html += `
+          <div class="card">
+            <div class="card-title">Pipeline Trace</div>
+            <div class="timeline">
+        `;
+        pack.pipeline_trace.forEach((step, idx) => {
+          const statusBadge = step.status === 'ok' || step.status === 200 || step.status === '200' ? '<span class="pill allow">OK</span>' :
+                              step.status === 'error' || step.status >= 400 ? '<span class="pill block">ERROR</span>' :
+                              `<span class="pill warn">${escapeHtml(step.status)}</span>`;
+          html += `
+            <div class="timeline-item">
+              <div class="timeline-step">${step.step}</div>
+              <div class="timeline-content">
+                <strong>${escapeHtml(step.event)} ${statusBadge}</strong>
+                <div class="muted">${formatTimestamp(step.ts)}</div>
+                ${step.detail && Object.keys(step.detail).length > 0 ? '<div class="muted" style="margin-top:4px;">' + Object.entries(step.detail).slice(0, 3).map(([k, v]) => `${escapeHtml(k)}: ${escapeHtml(String(v).substring(0, 60))}`).join(', ') + '</div>' : ''}
+              </div>
+            </div>
+          `;
+        });
+        html += `
+            </div>
+          </div>
+        `;
+      }
+
+      if (pack.deterministic_config && Object.keys(pack.deterministic_config).length > 0) {
+        html += `
+          <div class="card">
+            <div class="card-title">Deterministic Config</div>
+            <table class="table-simple">
+              <thead>
+                <tr>
+                  <th>Parameter</th>
+                  <th>Value</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+        for (const [key, val] of Object.entries(pack.deterministic_config)) {
+          html += `
+                <tr>
+                  <td><strong>${escapeHtml(key)}</strong></td>
+                  <td><code>${escapeHtml(JSON.stringify(val))}</code></td>
+                </tr>
+          `;
+        }
+        html += `
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      html += `
+        <div class="card">
+          <div class="card-title">Raw Evidence</div>
+          <details>
+            <summary>View full JSONL events (${pack.events.length} events)</summary>
+            <pre>${escapeHtml(JSON.stringify(pack.events, null, 2))}</pre>
+          </details>
+        </div>
+      `;
+
+      content.innerHTML = html;
+    }
+
+    renderPack();
+  </script>
+  <script>
+    const langJa = document.getElementById('langJa');
+    const langEn = document.getElementById('langEn');
+    function updateLangButtons() {
+      const lang = window.getLanguage ? window.getLanguage() : 'en';
+      if (langJa) langJa.classList.toggle('active', lang === 'ja');
+      if (langEn) langEn.classList.toggle('active', lang === 'en');
+    }
+    if (langJa) langJa.addEventListener('click', () => {
+      if (window.setLanguage) window.setLanguage('ja');
+      updateLangButtons();
+    });
+    if (langEn) langEn.addEventListener('click', () => {
+      if (window.setLanguage) window.setLanguage('en');
+      updateLangButtons();
+    });
+    updateLangButtons();
+  </script>
+</body>
+
+</html>

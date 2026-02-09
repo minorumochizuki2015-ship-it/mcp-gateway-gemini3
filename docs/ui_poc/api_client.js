@@ -600,6 +600,10 @@ window.escapeHtml = function escapeHtml(str) {
     return res;
   }
 
+  async function fetchEvidencePack(runId) {
+    return requestJsonWithStatus(`${BASE}/evidence/pack/${encodeURIComponent(runId)}`, { auth: true });
+  }
+
   async function fetchControlDiagnostics() {
     return requestJsonWithStatus(`${CONTROL_BASE}/control/diagnostics`, { auth: true, timeoutMs: 8000 });
   }
@@ -703,6 +707,7 @@ window.escapeHtml = function escapeHtml(str) {
     listControlTokens,
     revokeControlToken,
     fetchControlAudit,
+    fetchEvidencePack,
     fetchControlDiagnostics,
     createControlSession,
     enableDangerMode,

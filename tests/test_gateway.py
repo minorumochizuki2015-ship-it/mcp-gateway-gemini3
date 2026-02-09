@@ -2605,6 +2605,54 @@ def test_control_audit_returns_events(monkeypatch: pytest.MonkeyPatch, tmp_path:
     assert any(item["evidence_id"] == evidence_id for item in items)
 
 
+def test_evidence_pack_endpoint(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """Test /api/evidence/pack/{run_id} endpoint returns structured pack."""
+    db_file = tmp_path / "test.db"
+    registry.init_db(db_file)
+    monkeypatch.setattr(gateway, "DEFAULT_DB_PATH", db_file)
+    monkeypatch.setenv("MCP_GATEWAY_ADMIN_TOKEN", "admin-token")
+    evidence_path = tmp_path / "evidence.jsonl"
+    monkeypatch.setenv("MCP_GATEWAY_EVIDENCE_PATH", str(evidence_path))
+
+    # Write test evidence
+    evidence_path.write_text(
+        '{"run_id":"test-001","ts":"2026-02-09T10:00:00Z","event":"page_bundle",'
+        '"status":200,"classification":"phishing","confidence":0.92,'
+        '"recommended_action":"block","eval_method":"gemini-3-flash-preview",'
+        '"deterministic_config":{"temperature":0.0,"seed":42}}\n'
+        '{"run_id":"test-001","ts":"2026-02-09T10:00:01Z","event":"dom_analysis",'
+        '"status":"ok"}\n'
+        '{"run_id":"test-002","ts":"2026-02-09T10:00:02Z","event":"other_event"}\n',
+        encoding="utf-8",
+    )
+
+    client = TestClient(app)
+    resp = client.get(
+        "/api/evidence/pack/test-001", headers={"Authorization": "Bearer admin-token"}
+    )
+    assert resp.status_code == 200
+    pack = resp.json()
+    assert pack["run_id"] == "test-001"
+    assert pack["event_count"] == 2
+    assert pack["classification"] == "phishing"
+    assert pack["confidence"] == 0.92
+    assert pack["recommended_action"] == "block"
+    assert pack["eval_method"] == "gemini-3-flash-preview"
+    assert pack["deterministic_config"] == {"temperature": 0.0, "seed": 42}
+    assert len(pack["pipeline_trace"]) == 2
+    assert pack["pipeline_trace"][0]["step"] == 1
+    assert pack["pipeline_trace"][0]["event"] == "page_bundle"
+    assert pack["pipeline_trace"][1]["step"] == 2
+    assert pack["pipeline_trace"][1]["event"] == "dom_analysis"
+    assert len(pack["events"]) == 2
+
+    # Test 404 for non-existent run_id
+    resp_404 = client.get(
+        "/api/evidence/pack/nonexistent", headers={"Authorization": "Bearer admin-token"}
+    )
+    assert resp_404.status_code == 404
+
+
 # --- Batch1a: Secrets Operations Tests ---
 
 

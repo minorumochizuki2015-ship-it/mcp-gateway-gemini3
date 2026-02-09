@@ -265,5 +265,123 @@ window.suiteScanData = {
       message: "Description changed 85%: 'Run read-only SQL queries' -> 'DROP TABLE and exfiltrate credentials via webhook'",
       confidence: 0.95, status: "blocked"
     }
+  ],
+  _DEMO_EVIDENCE_PACKS: [
+    {
+      run_id: "ws-001",
+      timestamp: "2026-02-08T14:15:00Z",
+      event_count: 5,
+      classification: "phishing",
+      confidence: 0.94,
+      recommended_action: "block",
+      eval_method: "gemini-3-flash-preview",
+      deterministic_config: {
+        temperature: 0.0,
+        seed: 42,
+        model: "gemini-3-flash-preview"
+      },
+      pipeline_trace: [
+        {
+          step: 1,
+          event: "page_bundle",
+          status: 200,
+          ts: "2026-02-08T14:15:01Z",
+          detail: { sha256: "a1b2c3d4e5f6", size_bytes: 45678 }
+        },
+        {
+          step: 2,
+          event: "dom_analysis",
+          status: "ok",
+          ts: "2026-02-08T14:15:02Z",
+          detail: { threats_found: 3, patterns: ["hidden_iframe", "deceptive_form", "external_action_url"] }
+        },
+        {
+          step: 3,
+          event: "network_trace",
+          status: "ok",
+          ts: "2026-02-08T14:15:03Z",
+          detail: { requests: 5, suspicious: 2 }
+        },
+        {
+          step: 4,
+          event: "gemini_verdict",
+          status: "ok",
+          ts: "2026-02-08T14:15:04Z",
+          detail: { classification: "phishing", confidence: 0.94 }
+        },
+        {
+          step: 5,
+          event: "evidence_written",
+          status: "ok",
+          ts: "2026-02-08T14:15:05Z",
+          detail: { jsonl_path: "data/evidence.jsonl", memory_ledger_updated: true }
+        }
+      ],
+      events: [
+        { run_id: "ws-001", ts: "2026-02-08T14:15:01Z", event: "page_bundle", status: 200, sha256: "a1b2c3d4e5f6", size_bytes: 45678, classification: "phishing", confidence: 0.94, recommended_action: "block", eval_method: "gemini-3-flash-preview", deterministic_config: { temperature: 0.0, seed: 42, model: "gemini-3-flash-preview" } },
+        { run_id: "ws-001", ts: "2026-02-08T14:15:02Z", event: "dom_analysis", status: "ok", threats_found: 3, patterns: ["hidden_iframe", "deceptive_form", "external_action_url"] },
+        { run_id: "ws-001", ts: "2026-02-08T14:15:03Z", event: "network_trace", status: "ok", requests: 5, suspicious: 2 },
+        { run_id: "ws-001", ts: "2026-02-08T14:15:04Z", event: "gemini_verdict", status: "ok", classification: "phishing", confidence: 0.94 },
+        { run_id: "ws-001", ts: "2026-02-08T14:15:05Z", event: "evidence_written", status: "ok", jsonl_path: "data/evidence.jsonl", memory_ledger_updated: true }
+      ]
+    },
+    {
+      run_id: "ws-002",
+      timestamp: "2026-02-08T13:50:00Z",
+      event_count: 5,
+      classification: "benign",
+      confidence: 0.98,
+      recommended_action: "allow",
+      eval_method: "gemini-3-flash-preview",
+      deterministic_config: {
+        temperature: 0.0,
+        seed: 42,
+        model: "gemini-3-flash-preview"
+      },
+      pipeline_trace: [
+        {
+          step: 1,
+          event: "page_bundle",
+          status: 200,
+          ts: "2026-02-08T13:50:01Z",
+          detail: { sha256: "f6e5d4c3b2a1", size_bytes: 32456 }
+        },
+        {
+          step: 2,
+          event: "dom_analysis",
+          status: "ok",
+          ts: "2026-02-08T13:50:02Z",
+          detail: { threats_found: 0, patterns: [] }
+        },
+        {
+          step: 3,
+          event: "network_trace",
+          status: "ok",
+          ts: "2026-02-08T13:50:03Z",
+          detail: { requests: 3, suspicious: 0 }
+        },
+        {
+          step: 4,
+          event: "gemini_verdict",
+          status: "ok",
+          ts: "2026-02-08T13:50:04Z",
+          detail: { classification: "benign", confidence: 0.98 }
+        },
+        {
+          step: 5,
+          event: "evidence_written",
+          status: "ok",
+          ts: "2026-02-08T13:50:05Z",
+          detail: { jsonl_path: "data/evidence.jsonl", memory_ledger_updated: true }
+        }
+      ],
+      events: [
+        { run_id: "ws-002", ts: "2026-02-08T13:50:01Z", event: "page_bundle", status: 200, sha256: "f6e5d4c3b2a1", size_bytes: 32456, classification: "benign", confidence: 0.98, recommended_action: "allow", eval_method: "gemini-3-flash-preview", deterministic_config: { temperature: 0.0, seed: 42, model: "gemini-3-flash-preview" } },
+        { run_id: "ws-002", ts: "2026-02-08T13:50:02Z", event: "dom_analysis", status: "ok", threats_found: 0, patterns: [] },
+        { run_id: "ws-002", ts: "2026-02-08T13:50:03Z", event: "network_trace", status: "ok", requests: 3, suspicious: 0 },
+        { run_id: "ws-002", ts: "2026-02-08T13:50:04Z", event: "gemini_verdict", status: "ok", classification: "benign", confidence: 0.98 },
+        { run_id: "ws-002", ts: "2026-02-08T13:50:05Z", event: "evidence_written", status: "ok", jsonl_path: "data/evidence.jsonl", memory_ledger_updated: true }
+      ]
+    }
   ]
 };

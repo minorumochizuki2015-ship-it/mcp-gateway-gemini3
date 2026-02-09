@@ -27,7 +27,7 @@
 2. **Signature Cloaking**: Description changes from "List data" to "Execute command"
 3. **Prompt Injection**: Hidden instructions in tool outputs
 
-> "94% attack success rate. Existing scanners catch only 3.3%."
+> "94% attack success rate. Existing scanners catch as few as ~3%."
 
 ---
 

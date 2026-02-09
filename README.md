@@ -18,7 +18,7 @@ The MCP (Model Context Protocol) ecosystem has exploded to **13,000+ servers**, 
 
 ### Real-World Validation
 
-The MCP ecosystem has **17,500+ servers** ([mcp.so](https://mcp.so/), Feb 2026) with a **94% attack success rate** across 12 attack categories ([Zhao et al., arxiv:2509.24272](https://arxiv.org/abs/2509.24272)). Existing scanners like mcp-scan detect only **3.3%** of malicious servers.
+The MCP ecosystem has **17,500+ servers** ([mcp.so](https://mcp.so/), Feb 2026) with a **94% attack success rate** across 12 attack categories ([Zhao et al., arxiv:2509.24272](https://arxiv.org/abs/2509.24272)). Existing scanners achieve as low as **~3% detection rate** (4 out of 120 malicious servers detected; derived from Zhao et al. Table 3).
 
 In February 2026, security researchers at [Koi Security](https://thehackernews.com/2026/02/researchers-find-341-malicious-clawhub.html) found **341 malicious skills (12%)** in the OpenClaw ClawHub marketplace (2,857 skills audited). OpenClaw's response — integrating VirusTotal hash-based scanning — addresses **known malware signatures**. But hash-based scanning alone cannot catch MCP-specific threats:
 
@@ -29,7 +29,7 @@ In February 2026, security researchers at [Koi Security](https://thehackernews.c
 | Approach | Catches Known Malware | Catches Semantic Attacks | Catches Novel Threats |
 |----------|----------------------|-------------------------|----------------------|
 | Hash-based (VirusTotal) | Yes | No | No |
-| Rule-based (mcp-scan: 3.3%) | Partial | Partial | No |
+| Rule-based (~3% detection) | Partial | Partial | No |
 | **Gemini 3 Reasoning (MCP Gateway)** | Partial | **Yes** | **Yes** |
 
 **MCP Gateway complements hash-based scanning** with Gemini 3's semantic reasoning — detecting the **novel, intent-based attacks** that signature matching cannot catch.
@@ -337,6 +337,25 @@ python -m pytest tests/ -v
 python -m pytest tests/test_council.py tests/test_scanner.py \
   tests/test_redteam.py tests/test_causal_sandbox.py -v
 ```
+
+## Benchmark
+
+Reproducible detection benchmark comparing rule-based vs Gemini 3:
+
+```bash
+# Rule-based only (no API key needed)
+python scripts/benchmark.py
+
+# Full comparison with Gemini 3
+GOOGLE_API_KEY=xxx python scripts/benchmark.py --gemini
+```
+
+| Method | Precision | Recall | F1 | Avg Latency |
+|--------|-----------|--------|----|-------------|
+| Rule-based | 0.846 | 0.846 | 0.846 | ~15ms |
+| Gemini 3 Agent | 1.000 | 1.000 | 1.000 | ~2500ms |
+
+26-case fixed corpus: 13 benign + 13 malicious (DGA, brand impersonation, suspicious TLD, MCP injection, leet speak, homograph).
 
 ## API Endpoints (50 total)
 
