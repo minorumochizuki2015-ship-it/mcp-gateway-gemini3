@@ -613,8 +613,8 @@
       document.getElementById('netThead').innerHTML = '<tr><th>' + [d.thSource, d.thUrl, d.thNetMethod, d.thThreat].map(escapeHtml).join('</th><th>') + '</th></tr>';
       document.getElementById('a11yThead').innerHTML = '<tr><th>' + [d.thRole, d.thName, d.thDeceptiveLabel].map(escapeHtml).join('</th><th>') + '</th></tr>';
 
-      // Bundle
-      const b = data.bundle;
+      // Bundle (guard against null when URL is unreachable)
+      const b = data.bundle || {};
       document.getElementById('bundleMeta').innerHTML = [
         { label: d.bundleSha, val: b.sha256 ? b.sha256.slice(0, 16) + '...' : '-' },
         { label: d.bundleSize, val: b.content_length ? (b.content_length / 1024).toFixed(1) + ' KB' : '-' },
@@ -654,7 +654,6 @@
         }
 
         // Gemini side: show actual scan result, demo_gemini, or fallback notice
-        var isOnlyRuleBased = data.eval_method === 'rule_based' || data.eval_method === 'demo_preset';
         var hasGemini = data.eval_method === 'gemini' || data.eval_method === 'demo_gemini';
         if (hasGemini) {
           // Gemini (real or demo) — show the richer verdict
@@ -672,20 +671,23 @@
           if (gDetail) {
             gDetail.textContent = v.attack_narrative || v.summary || '';
           }
-        } else if (isOnlyRuleBased) {
-          // Gemini not configured — show clear CTA
+        } else if (!_wsGeminiConfigured) {
+          // Gemini truly not configured — show CTA to set API key
           document.getElementById('compareSemanticVerdict').textContent = d.geminiNotActive || 'GEMINI NOT ACTIVE';
           document.getElementById('compareSemanticVerdict').className = 'compare-verdict';
           document.getElementById('compareSemanticVerdict').style.color = '#6b7280';
           document.getElementById('compareSemanticBadge').textContent = d.geminiConfigCta || 'Set API key above to enable';
           document.getElementById('compareSemanticBadge').className = 'compare-badge none';
         } else {
+          // Gemini IS configured but this scan used rule-based fallback
           var sevText2 = cls.toUpperCase() + (cls === 'benign' ? '' : ' DETECTED');
           document.getElementById('compareSemanticVerdict').textContent = sevText2;
           document.getElementById('compareSemanticVerdict').className = 'compare-verdict ' + (cls === 'benign' ? 'safe' : 'threat');
           document.getElementById('compareSemanticVerdict').style.color = '';
           var indicatorCount2 = (v.risk_indicators || []).length;
-          document.getElementById('compareSemanticBadge').textContent = indicatorCount2 + (d.compareIndicators || ' risk indicators found');
+          var fbText = indicatorCount2 + (d.compareIndicators || ' risk indicators found');
+          fbText += ' (' + (d.geminiFallbackNote || 'rule-based fallback') + ')';
+          document.getElementById('compareSemanticBadge').textContent = fbText;
           document.getElementById('compareSemanticBadge').className = 'compare-badge ' + (cls === 'benign' ? 'none' : 'detected');
         }
         // i18n titles
@@ -1023,6 +1025,7 @@
         compareNoThreats: 'NO THREATS DETECTED',
         geminiNotActive: 'GEMINI NOT ACTIVE',
         geminiConfigCta: 'Set API key above to enable Gemini analysis',
+        geminiFallbackNote: 'rule-based fallback',
         compare0Matches: '0 pattern matches',
         compareIndicators: ' risk indicators found',
         compareNoData: 'N/A',
@@ -1094,6 +1097,7 @@
         compareNoThreats: '脅威検出なし',
         geminiNotActive: 'GEMINI 未設定',
         geminiConfigCta: '上のAPI Keyを設定してGemini分析を有効化',
+        geminiFallbackNote: 'ルールベースにフォールバック',
         compare0Matches: 'パターン一致 0件',
         compareIndicators: ' 件のリスク指標を検出',
         compareNoData: 'N/A',
