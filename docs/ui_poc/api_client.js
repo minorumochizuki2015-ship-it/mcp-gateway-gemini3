@@ -1081,7 +1081,15 @@ window.escapeHtml = function escapeHtml(str) {
 	        policyBundleSignatureNA: "Signature: N/A",
 	        shadowChainOk: "Shadow Audit chain: OK",
 	        shadowChainNg: "Shadow Audit chain: NG",
-	        shadowChainNA: "Shadow Audit chain: N/A"
+	        shadowChainNA: "Shadow Audit chain: N/A",
+	        navEnvironments: "Environments",
+	        navDashboard: "Dashboard",
+	        navScans: "Scans",
+	        navAllowList: "AllowList",
+	        navWebSandbox: "Web Sandbox",
+	        navAuditLog: "Audit Log",
+	        navEvidencePack: "Evidence Pack",
+	        navDemoMode: "Demo Mode"
 	      }
 	    },
 	    ja: {
@@ -1103,10 +1111,10 @@ window.escapeHtml = function escapeHtml(str) {
         statusSummary: "AllowList 健全性のサマリ（読み取り専用）",
         detailsLink: "詳細を開く",
         statusUnavailable: "ステータスを取得できませんでした",
-        noEntries: "No allowlist entries"
+        noEntries: "AllowList エントリはありません"
       },
       scans: {
-        title: "Security Scans",
+        title: "セキュリティスキャン",
         subtitle: "MCP Gateway のセキュリティスキャン結果を表示・分析します",
         statTotal: "総スキャン数",
         statPassed: "合格",
@@ -1160,12 +1168,12 @@ window.escapeHtml = function escapeHtml(str) {
         errorLoad: "課金データの読み込みに失敗しました"
       },
 	      auditLog: {
-	        title: "Audit Log",
-	        subtitle: "操作と判定の監査ログ（read-only）",
-        typeLabel: "Type",
+	        title: "監査ログ",
+	        subtitle: "操作と判定の監査ログ（読み取り専用）",
+        typeLabel: "タイプ",
         typeTitle: "イベントタイプ: 上流設定、トークン発行・失効、環境、Proxy/MCP ブロック",
         typeFilterTitle: "監査ログのイベントタイプで絞り込む",
-        actorLabel: "Actor",
+        actorLabel: "操作者",
         actorTitle: "操作を実施したユーザー/システム",
         actorPlaceholder: "admin / service-account...",
         actorFilterTitle: "操作者名で検索",
@@ -1206,7 +1214,15 @@ window.escapeHtml = function escapeHtml(str) {
 	        policyBundleSignatureNA: "署名: N/A",
 	        shadowChainOk: "監査チェーン（Shadow Audit）: OK",
 	        shadowChainNg: "監査チェーン（Shadow Audit）: NG",
-	        shadowChainNA: "監査チェーン（Shadow Audit）: N/A"
+	        shadowChainNA: "監査チェーン（Shadow Audit）: N/A",
+	        navEnvironments: "環境設定",
+	        navDashboard: "ダッシュボード",
+	        navScans: "スキャン",
+	        navAllowList: "AllowList",
+	        navWebSandbox: "Web Sandbox",
+	        navAuditLog: "監査ログ",
+	        navEvidencePack: "エビデンスパック",
+	        navDemoMode: "デモモード"
 	      }
 	    }
 	  };
@@ -1554,6 +1570,28 @@ window.escapeHtml = function escapeHtml(str) {
       for (const k of keys) { val = val && val[k]; }
       if (val !== undefined && val !== null) el.setAttribute('title', val);
     });
+    // Translate nav links
+    var navMap = {
+      'settings_environments.html': dict.common && dict.common.navEnvironments,
+      'dashboard.html': dict.common && dict.common.navDashboard,
+      'scans.html': dict.common && dict.common.navScans,
+      'allowlist.html': dict.common && dict.common.navAllowList,
+      'web_sandbox.html': dict.common && dict.common.navWebSandbox,
+      'audit_log.html': dict.common && dict.common.navAuditLog,
+      'evidence_pack.html': dict.common && dict.common.navEvidencePack
+    };
+    document.querySelectorAll('.nav-link').forEach(function(el) {
+      var href = el.getAttribute('href');
+      if (href && navMap[href]) el.textContent = navMap[href];
+    });
+    // Translate "Demo Mode" status
+    var navStatusEl = document.querySelector('.nav-status');
+    if (navStatusEl && dict.common && dict.common.navDemoMode) {
+      var dot = navStatusEl.querySelector('.status-dot');
+      navStatusEl.textContent = '';
+      if (dot) navStatusEl.appendChild(dot);
+      navStatusEl.appendChild(document.createTextNode(' ' + dict.common.navDemoMode));
+    }
 	    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
 	      const key = el.getAttribute('data-i18n-placeholder');
 	      const keys = key.split('.');
