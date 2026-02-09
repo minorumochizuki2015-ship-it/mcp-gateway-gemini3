@@ -1,0 +1,215 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" font-family="Inter, system-ui, sans-serif">
+  <defs>
+    <linearGradient id="gBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4285f4"/><stop offset="100%" stop-color="#1a73e8"/>
+    </linearGradient>
+    <linearGradient id="gRed" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ea4335"/><stop offset="100%" stop-color="#c5221f"/>
+    </linearGradient>
+    <linearGradient id="gGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34a853"/><stop offset="100%" stop-color="#1e8e3e"/>
+    </linearGradient>
+    <linearGradient id="gYellow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbc04"/><stop offset="100%" stop-color="#f9ab00"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="sh"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.12"/></filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="600" rx="16" fill="#0f172a"/>
+  <text x="450" y="36" text-anchor="middle" font-size="18" font-weight="700" fill="#f1f5f9">MCP Gateway — Live Security Pipeline Demo</text>
+  <text x="450" y="56" text-anchor="middle" font-size="11" fill="#94a3b8">Animated flow: AI Client → 6-Layer Pipeline → Verdict</text>
+
+  <!-- Step 1: AI Client -->
+  <g>
+    <rect x="30" y="85" width="160" height="60" rx="12" fill="#1e293b" stroke="#6366f1" stroke-width="2" filter="url(#sh)">
+      <animate attributeName="stroke-opacity" values="0.3;1;0.3" dur="3s" repeatCount="indefinite"/>
+    </rect>
+    <text x="110" y="112" text-anchor="middle" font-size="13" font-weight="600" fill="#a5b4fc">AI Client</text>
+    <text x="110" y="130" text-anchor="middle" font-size="10" fill="#6366f1">browser_navigate(url)</text>
+  </g>
+
+  <!-- Arrow 1 animated -->
+  <line x1="190" y1="115" x2="250" y2="115" stroke="#6366f1" stroke-width="2" stroke-dasharray="6 4">
+    <animate attributeName="stroke-dashoffset" values="10;0" dur="0.8s" repeatCount="indefinite"/>
+  </line>
+
+  <!-- Step 2: MCP Gateway Pipeline -->
+  <rect x="250" y="75" width="400" height="80" rx="14" fill="url(#gBlue)" filter="url(#sh)">
+    <animate attributeName="opacity" values="0.85;1;0.85" dur="4s" repeatCount="indefinite"/>
+  </rect>
+  <text x="450" y="100" text-anchor="middle" font-size="15" font-weight="700" fill="#fff">MCP Gateway</text>
+
+  <!-- 6 Layers with sequential highlight -->
+  <g transform="translate(260, 112)">
+    <rect width="55" height="26" rx="5" fill="rgba(255,255,255,0.15)">
+      <animate attributeName="fill" values="rgba(255,255,255,0.15);rgba(255,255,255,0.5);rgba(255,255,255,0.15)" dur="6s" begin="0s" repeatCount="indefinite"/>
+    </rect>
+    <text x="27" y="17" text-anchor="middle" font-size="8.5" fill="#fff" font-weight="600">L1 Policy</text>
+  </g>
+  <g transform="translate(322, 112)">
+    <rect width="55" height="26" rx="5" fill="rgba(255,255,255,0.15)">
+      <animate attributeName="fill" values="rgba(255,255,255,0.15);rgba(255,255,255,0.5);rgba(255,255,255,0.15)" dur="6s" begin="1s" repeatCount="indefinite"/>
+    </rect>
+    <text x="27" y="17" text-anchor="middle" font-size="8.5" fill="#fff" font-weight="600">L2 Static</text>
+  </g>
+  <g transform="translate(384, 112)">
+    <rect width="60" height="26" rx="5" fill="rgba(255,255,255,0.15)">
+      <animate attributeName="fill" values="rgba(255,255,255,0.15);rgba(255,255,255,0.5);rgba(255,255,255,0.15)" dur="6s" begin="2s" repeatCount="indefinite"/>
+    </rect>
+    <text x="30" y="17" text-anchor="middle" font-size="8.5" fill="#fff" font-weight="600">L3 Semantic</text>
+  </g>
+  <g transform="translate(451, 112)">
+    <rect width="55" height="26" rx="5" fill="rgba(255,255,255,0.15)">
+      <animate attributeName="fill" values="rgba(255,255,255,0.15);rgba(255,255,255,0.5);rgba(255,255,255,0.15)" dur="6s" begin="3s" repeatCount="indefinite"/>
+    </rect>
+    <text x="27" y="17" text-anchor="middle" font-size="8.5" fill="#fff" font-weight="600">L4 Council</text>
+  </g>
+  <g transform="translate(513, 112)">
+    <rect width="55" height="26" rx="5" fill="rgba(255,255,255,0.15)">
+      <animate attributeName="fill" values="rgba(255,255,255,0.15);rgba(255,255,255,0.5);rgba(255,255,255,0.15)" dur="6s" begin="4s" repeatCount="indefinite"/>
+    </rect>
+    <text x="27" y="17" text-anchor="middle" font-size="8.5" fill="#fff" font-weight="600">L5 Sanitize</text>
+  </g>
+  <g transform="translate(575, 112)">
+    <rect width="60" height="26" rx="5" fill="rgba(255,255,255,0.15)">
+      <animate attributeName="fill" values="rgba(255,255,255,0.15);rgba(255,255,255,0.5);rgba(255,255,255,0.15)" dur="6s" begin="5s" repeatCount="indefinite"/>
+    </rect>
+    <text x="30" y="17" text-anchor="middle" font-size="8.5" fill="#fff" font-weight="600">L6 Sandbox</text>
+  </g>
+
+  <!-- Arrow 2 animated -->
+  <line x1="650" y1="115" x2="710" y2="115" stroke="#1a73e8" stroke-width="2" stroke-dasharray="6 4">
+    <animate attributeName="stroke-dashoffset" values="10;0" dur="0.8s" repeatCount="indefinite"/>
+  </line>
+
+  <!-- Step 3: Verdict -->
+  <rect x="710" y="85" width="160" height="60" rx="12" fill="#1e293b" stroke="#ef4444" stroke-width="2" filter="url(#sh)">
+    <animate attributeName="stroke" values="#ef4444;#f59e0b;#22c55e;#ef4444" dur="4s" repeatCount="indefinite"/>
+  </rect>
+  <text x="790" y="108" text-anchor="middle" font-size="12" font-weight="700" fill="#fbbf24">VERDICT</text>
+  <text x="790" y="128" text-anchor="middle" font-size="10" fill="#94a3b8">block / warn / allow</text>
+
+  <!-- Divider -->
+  <line x1="30" y1="175" x2="870" y2="175" stroke="#334155" stroke-width="1"/>
+  <text x="450" y="198" text-anchor="middle" font-size="14" font-weight="700" fill="#e2e8f0">Scanning: login-apple-verify.tk</text>
+  <rect x="310" y="206" width="280" height="20" rx="10" fill="#fee2e2">
+    <animate attributeName="opacity" values="0.6;1;0.6" dur="2s" repeatCount="indefinite"/>
+  </rect>
+  <text x="450" y="220" text-anchor="middle" font-size="10" font-weight="600" fill="#991b1b">Phishing attempt detected — 9 indicators</text>
+
+  <!-- Detection Cards Row 1 -->
+  <!-- Card 1: DGA -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;1" dur="0.3s" begin="0.5s" fill="freeze"/>
+    <rect x="30" y="240" width="200" height="100" rx="10" fill="#1e293b" stroke="#334155" stroke-width="1" filter="url(#sh)"/>
+    <rect x="30" y="240" width="200" height="28" rx="10" fill="url(#gRed)"/>
+    <text x="130" y="259" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">DGA Detection</text>
+    <text x="45" y="285" font-size="10" fill="#94a3b8">Shannon Entropy:</text>
+    <text x="155" y="285" font-size="10" font-weight="700" fill="#fbbf24">3.82 bits</text>
+    <text x="45" y="302" font-size="10" fill="#94a3b8">Consonant Ratio:</text>
+    <text x="155" y="302" font-size="10" font-weight="700" fill="#fbbf24">0.71</text>
+    <text x="45" y="319" font-size="10" fill="#94a3b8">Verdict:</text>
+    <text x="155" y="319" font-size="10" font-weight="700" fill="#22c55e">Not DGA</text>
+  </g>
+
+  <!-- Card 2: Brand Impersonation -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;1" dur="0.3s" begin="1.5s" fill="freeze"/>
+    <rect x="245" y="240" width="200" height="100" rx="10" fill="#1e293b" stroke="#334155" stroke-width="1" filter="url(#sh)"/>
+    <rect x="245" y="240" width="200" height="28" rx="10" fill="url(#gRed)"/>
+    <text x="345" y="259" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">Brand Impersonation</text>
+    <text x="260" y="285" font-size="10" fill="#94a3b8">Brand Match:</text>
+    <text x="370" y="285" font-size="10" font-weight="700" fill="#ef4444">apple</text>
+    <text x="260" y="302" font-size="10" fill="#94a3b8">Method:</text>
+    <text x="370" y="302" font-size="10" font-weight="700" fill="#f59e0b">Substring</text>
+    <text x="260" y="319" font-size="10" fill="#94a3b8">TLD Risk:</text>
+    <text x="370" y="319" font-size="10" font-weight="700" fill="#ef4444">.tk (Freenom)</text>
+  </g>
+
+  <!-- Card 3: Suspicious Tokens -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;1" dur="0.3s" begin="2.5s" fill="freeze"/>
+    <rect x="460" y="240" width="200" height="100" rx="10" fill="#1e293b" stroke="#334155" stroke-width="1" filter="url(#sh)"/>
+    <rect x="460" y="240" width="200" height="28" rx="10" fill="url(#gYellow)"/>
+    <text x="560" y="259" text-anchor="middle" font-size="11" font-weight="600" fill="#1e293b">Suspicious Tokens</text>
+    <text x="475" y="285" font-size="10" fill="#94a3b8">Tokens Found:</text>
+    <text x="595" y="285" font-size="10" font-weight="700" fill="#ef4444">login, verify</text>
+    <text x="475" y="302" font-size="10" fill="#94a3b8">Token Count:</text>
+    <text x="595" y="302" font-size="10" font-weight="700" fill="#f59e0b">2 / 2 threshold</text>
+    <text x="475" y="319" font-size="10" fill="#94a3b8">Score Added:</text>
+    <text x="595" y="319" font-size="10" font-weight="700" fill="#ef4444">+2</text>
+  </g>
+
+  <!-- Card 4: Gemini 3 -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;1" dur="0.3s" begin="3.5s" fill="freeze"/>
+    <rect x="675" y="240" width="200" height="100" rx="10" fill="#1e293b" stroke="#4285f4" stroke-width="1.5" filter="url(#sh)"/>
+    <rect x="675" y="240" width="200" height="28" rx="10" fill="url(#gBlue)"/>
+    <text x="775" y="259" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">Gemini 3 Verdict</text>
+    <text x="690" y="285" font-size="10" fill="#94a3b8">Classification:</text>
+    <text x="815" y="285" font-size="10" font-weight="700" fill="#ef4444">PHISHING</text>
+    <text x="690" y="302" font-size="10" fill="#94a3b8">Confidence:</text>
+    <text x="815" y="302" font-size="10" font-weight="700" fill="#22c55e">0.95</text>
+    <text x="690" y="319" font-size="10" fill="#94a3b8">Action:</text>
+    <text x="815" y="319" font-size="10" font-weight="700" fill="#ef4444">BLOCK</text>
+  </g>
+
+  <!-- Row 2: Evidence + Narrative -->
+  <!-- Evidence Trail -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;1" dur="0.3s" begin="4.5s" fill="freeze"/>
+    <rect x="30" y="360" width="420" height="110" rx="10" fill="#1e293b" stroke="#334155" stroke-width="1" filter="url(#sh)"/>
+    <rect x="30" y="360" width="420" height="28" rx="10" fill="url(#gGreen)"/>
+    <text x="240" y="379" text-anchor="middle" font-size="11" font-weight="600" fill="#fff">Evidence Trail (JSONL)</text>
+    <text x="45" y="405" font-size="9.5" fill="#6ee7b7" font-family="monospace">{"event":"causal_web_scan","url":"login-apple-verify.tk",</text>
+    <text x="45" y="420" font-size="9.5" fill="#6ee7b7" font-family="monospace"> "classification":"phishing","confidence":0.95,</text>
+    <text x="45" y="435" font-size="9.5" fill="#6ee7b7" font-family="monospace"> "recommended_action":"block","dom_threats":3,</text>
+    <text x="45" y="450" font-size="9.5" fill="#6ee7b7" font-family="monospace"> "bundle_sha256":"a1b2c3d4...","eval_method":"gemini"}</text>
+  </g>
+
+  <!-- Attack Narrative -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;1" dur="0.3s" begin="5.0s" fill="freeze"/>
+    <rect x="465" y="360" width="405" height="110" rx="10" fill="#1e293b" stroke="#4285f4" stroke-width="1" filter="url(#sh)"/>
+    <rect x="465" y="360" width="405" height="28" rx="10" fill="#1e3a5f"/>
+    <text x="667" y="379" text-anchor="middle" font-size="11" font-weight="600" fill="#60a5fa">Attack Narrative (Gemini 3)</text>
+    <text x="480" y="405" font-size="10" fill="#93c5fd">Step 1: Domain impersonates "Apple" brand</text>
+    <text x="480" y="422" font-size="10" fill="#93c5fd">Step 2: Hosted on .tk (Freenom high-abuse TLD)</text>
+    <text x="480" y="439" font-size="10" fill="#93c5fd">Step 3: URL tokens "login" + "verify" indicate</text>
+    <text x="480" y="456" font-size="10" fill="#93c5fd">        credential harvesting page</text>
+  </g>
+
+  <!-- MCP-Specific Threats -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;1" dur="0.3s" begin="5.5s" fill="freeze"/>
+    <rect x="30" y="490" width="420" height="80" rx="10" fill="#1e293b" stroke="#f87171" stroke-width="1" filter="url(#sh)"/>
+    <rect x="30" y="490" width="420" height="28" rx="10" fill="#7f1d1d"/>
+    <text x="240" y="509" text-anchor="middle" font-size="11" font-weight="600" fill="#fca5a5">MCP-Specific Threats</text>
+    <text x="45" y="536" font-size="10" fill="#fca5a5">1. AI agent could auto-fill credentials on this page</text>
+    <text x="45" y="554" font-size="10" fill="#fca5a5">2. Hidden iframe detected: potential prompt injection</text>
+  </g>
+
+  <!-- Final verdict banner -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;1" dur="0.5s" begin="6s" fill="freeze"/>
+    <rect x="465" y="490" width="405" height="80" rx="10" fill="#1e293b" stroke="#22c55e" stroke-width="2" filter="url(#sh)">
+      <animate attributeName="stroke-opacity" values="0.5;1;0.5" dur="1.5s" begin="6s" repeatCount="indefinite"/>
+    </rect>
+    <text x="667" y="524" text-anchor="middle" font-size="22" font-weight="800" fill="#ef4444">BLOCKED</text>
+    <text x="667" y="548" text-anchor="middle" font-size="11" fill="#94a3b8">Evidence-based verdict with full audit trail</text>
+    <text x="667" y="563" text-anchor="middle" font-size="10" fill="#4ade80">Powered by Gemini 3 structured output</text>
+  </g>
+
+  <!-- Gemini badge -->
+  <rect x="10" y="580" width="120" height="20" rx="10" fill="#4285f4"/>
+  <text x="70" y="594" text-anchor="middle" font-size="9" font-weight="600" fill="#fff">Powered by Gemini 3</text>
+
+  <!-- Test badge -->
+  <rect x="770" y="580" width="120" height="20" rx="10" fill="#34a853"/>
+  <text x="830" y="594" text-anchor="middle" font-size="9" font-weight="600" fill="#fff">395 Tests Passing</text>
+</svg>

@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480" font-family="Inter, system-ui, sans-serif">
+  <defs>
+    <filter id="sh"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.1"/></filter>
+  </defs>
+  <rect width="800" height="480" rx="12" fill="#f8fafc"/>
+
+  <text x="400" y="32" text-anchor="middle" font-size="18" font-weight="700" fill="#1f2937">Detection Matrix — 13/13 Verified</text>
+  <text x="400" y="52" text-anchor="middle" font-size="11" fill="#6b7280">All patterns validated with explicit pytest test cases</text>
+
+  <!-- Header -->
+  <rect x="20" y="70" width="760" height="30" rx="6" fill="#1f2937"/>
+  <text x="35" y="90" font-size="11" font-weight="600" fill="#fff">Threat Type</text>
+  <text x="220" y="90" font-size="11" font-weight="600" fill="#fff">Example</text>
+  <text x="480" y="90" font-size="11" font-weight="600" fill="#fff">Detection</text>
+  <text x="680" y="90" font-size="11" font-weight="600" fill="#fff">Action</text>
+  <text x="740" y="90" font-size="11" font-weight="600" fill="#fff">Test</text>
+
+  <!-- Rows -->
+  <g font-size="10.5" fill="#374151">
+    <!-- Row 1 -->
+    <rect x="20" y="102" width="760" height="26" rx="0" fill="#fff"/>
+    <text x="35" y="119" font-weight="600" fill="#dc2626">DGA Domain</text>
+    <text x="220" y="119">xkjhwqe.xyz</text>
+    <text x="480" y="119">Shannon entropy + consonant</text>
+    <text x="680" y="119" font-weight="600" fill="#dc2626">block</text>
+    <text x="745" y="119" fill="#16a34a">PASS</text>
+
+    <!-- Row 2 -->
+    <rect x="20" y="130" width="760" height="26" rx="0" fill="#f9fafb"/>
+    <text x="35" y="147" font-weight="600" fill="#dc2626">Freenom Phishing</text>
+    <text x="220" y="147">login-apple-verify.tk</text>
+    <text x="480" y="147">Brand + Freenom TLD + tokens</text>
+    <text x="680" y="147" font-weight="600" fill="#dc2626">block</text>
+    <text x="745" y="147" fill="#16a34a">PASS</text>
+
+    <!-- Row 3 -->
+    <rect x="20" y="158" width="760" height="26" rx="0" fill="#fff"/>
+    <text x="35" y="175" font-weight="600" fill="#dc2626">IDN Homograph</text>
+    <text x="220" y="175">xn--pple-43d.com (Cyrillic а)</text>
+    <text x="480" y="175">Punycode + confusable mapping</text>
+    <text x="680" y="175" font-weight="600" fill="#f59e0b">warn</text>
+    <text x="745" y="175" fill="#16a34a">PASS</text>
+
+    <!-- Row 4 -->
+    <rect x="20" y="186" width="760" height="26" rx="0" fill="#f9fafb"/>
+    <text x="35" y="203" font-weight="600" fill="#dc2626">Subdomain Impersonation</text>
+    <text x="220" y="203">apple.evil-site.tk</text>
+    <text x="480" y="203">Brand in subdomain</text>
+    <text x="680" y="203" font-weight="600" fill="#dc2626">block</text>
+    <text x="745" y="203" fill="#16a34a">PASS</text>
+
+    <!-- Row 5 -->
+    <rect x="20" y="214" width="760" height="26" rx="0" fill="#fff"/>
+    <text x="35" y="231" font-weight="600" fill="#ea580c">Leet-speak (google)</text>
+    <text x="220" y="231">g00gle.tk</text>
+    <text x="480" y="231">Leet normalize (0→o) + brand</text>
+    <text x="680" y="231" font-weight="600" fill="#dc2626">block</text>
+    <text x="745" y="231" fill="#16a34a">PASS</text>
+
+    <!-- Row 6 -->
+    <rect x="20" y="242" width="760" height="26" rx="0" fill="#f9fafb"/>
+    <text x="35" y="259" font-weight="600" fill="#ea580c">Leet-speak (paypal)</text>
+    <text x="220" y="259">p4yp4l-verify.ml</text>
+    <text x="480" y="259">Leet normalize (4→a) + brand</text>
+    <text x="680" y="259" font-weight="600" fill="#f59e0b">warn</text>
+    <text x="745" y="259" fill="#16a34a">PASS</text>
+
+    <!-- Row 7 -->
+    <rect x="20" y="270" width="760" height="26" rx="0" fill="#fff"/>
+    <text x="35" y="287" font-weight="600" fill="#ea580c">Suspicious Tokens</text>
+    <text x="220" y="287">secure-login-update.gq</text>
+    <text x="480" y="287">Token count + suspicious TLD</text>
+    <text x="680" y="287" font-weight="600" fill="#f59e0b">warn</text>
+    <text x="745" y="287" fill="#16a34a">PASS</text>
+
+    <!-- Row 8 -->
+    <rect x="20" y="298" width="760" height="26" rx="0" fill="#f9fafb"/>
+    <text x="35" y="315" font-weight="600" fill="#7c3aed">MCP Injection</text>
+    <text x="220" y="315">mcp-server-tools.tk</text>
+    <text x="480" y="315">MCP keyword + suspicious TLD</text>
+    <text x="680" y="315" font-weight="600" fill="#f59e0b">warn</text>
+    <text x="745" y="315" fill="#16a34a">PASS</text>
+
+    <!-- Row 9 -->
+    <rect x="20" y="326" width="760" height="26" rx="0" fill="#fff"/>
+    <text x="35" y="343" font-weight="600" fill="#dc2626">Elevated ccTLD + DGA</text>
+    <text x="220" y="343">xkjhwqe.ru</text>
+    <text x="480" y="343">DGA + elevated ccTLD combo</text>
+    <text x="680" y="343" font-weight="600" fill="#f59e0b">warn</text>
+    <text x="745" y="343" fill="#16a34a">PASS</text>
+
+    <!-- Row 10 -->
+    <rect x="20" y="354" width="760" height="26" rx="0" fill="#f9fafb"/>
+    <text x="35" y="371" font-weight="600" fill="#dc2626">Hyphenated Brand</text>
+    <text x="220" y="371">microsoft-support.cf</text>
+    <text x="480" y="371">Hyphen-split + Freenom TLD</text>
+    <text x="680" y="371" font-weight="600" fill="#dc2626">block</text>
+    <text x="745" y="371" fill="#16a34a">PASS</text>
+
+    <!-- Row 11 - Clean -->
+    <rect x="20" y="382" width="760" height="26" rx="0" fill="#f0fdf4"/>
+    <text x="35" y="399" font-weight="600" fill="#16a34a">Clean (docs)</text>
+    <text x="220" y="399">docs.example.com</text>
+    <text x="480" y="399">No threats detected</text>
+    <text x="680" y="399" font-weight="600" fill="#16a34a">allow</text>
+    <text x="745" y="399" fill="#16a34a">PASS</text>
+
+    <!-- Row 12 - Clean -->
+    <rect x="20" y="410" width="760" height="26" rx="0" fill="#f0fdf4"/>
+    <text x="35" y="427" font-weight="600" fill="#16a34a">Clean (GitHub)</text>
+    <text x="220" y="427">github.com</text>
+    <text x="480" y="427">Known safe TLD</text>
+    <text x="680" y="427" font-weight="600" fill="#16a34a">allow</text>
+    <text x="745" y="427" fill="#16a34a">PASS</text>
+
+    <!-- Row 13 - No FP -->
+    <rect x="20" y="438" width="760" height="26" rx="0" fill="#f0fdf4"/>
+    <text x="35" y="455" font-weight="600" fill="#16a34a">No False Positive</text>
+    <text x="220" y="455">apple.com (legit)</text>
+    <text x="480" y="455">Brand on legit TLD = allowed</text>
+    <text x="680" y="455" font-weight="600" fill="#16a34a">allow</text>
+    <text x="745" y="455" fill="#16a34a">PASS</text>
+  </g>
+</svg>

@@ -38,16 +38,7 @@ In February 2026, security researchers at [Koi Security](https://thehackernews.c
 
 MCP Gateway is a **security-first proxy** between AI clients (ChatGPT, Claude, Gemini CLI) and MCP servers. Every tool call passes through a 6-layer inspection pipeline powered by **Gemini 3 structured output**:
 
-```
-AI Client ──► MCP Gateway ──► MCP Servers
-               │
-               ├── L1: Source/Sink Policy (deterministic)
-               ├── L2: Static Scan (pattern matching)
-               ├── L3: Semantic Scan (Gemini 3)
-               ├── L4: AI Council Verdict (Gemini 3)
-               ├── L5: Prompt Sanitization (multi-level)
-               └── L6: Web Sandbox (Gemini 3 + DOM)
-```
+![Architecture Overview](docs/images/architecture-overview.svg)
 
 **Key insight**: Instead of binary allow/deny, every decision produces **structured evidence** — the _why_ behind every verdict — making security **auditable and explainable**.
 
@@ -152,6 +143,8 @@ Gemini 3 Agent Loop:
 
 ### Side-by-Side: Rule-Based vs Gemini Agent
 
+![Rule-based vs Gemini 3 Comparison](docs/images/comparison-panel.svg)
+
 ```bash
 curl -X POST http://localhost:4100/api/web-sandbox/compare \
   -H "Content-Type: application/json" \
@@ -163,6 +156,8 @@ Returns both verdicts in one response — showing exactly what Gemini 3 adds ove
 - `gemini_agent`: Deep reasoning with tool selection, Google Search threat intel, multi-turn analysis
 
 ## Live Pipeline Demo
+
+![Pipeline Demo Animation](docs/images/pipeline-demo.svg)
 
 The gateway includes a **real-time SSE pipeline** that demonstrates the full security flow in ~30 seconds:
 
@@ -200,6 +195,8 @@ The dashboard includes a visual attack timeline with **char-level diff rendering
 - **Bait & Switch**: Sensitive fields (`password`, `api_key`) highlighted inline
 
 ## Advanced Attack Detection
+
+![Detection Matrix — 13/13 Verified](docs/images/detection-matrix.svg)
 
 Three novel detectors targeting MCP supply-chain threats:
 
@@ -333,7 +330,7 @@ gcloud run services describe mcp-gateway --format='value(status.url)'
 ## Test Suite
 
 ```bash
-# 373 tests
+# 395 tests
 python -m pytest tests/ -v
 
 # Gemini integration tests only
