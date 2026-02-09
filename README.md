@@ -291,7 +291,7 @@ gcloud run services describe mcp-gateway --format='value(status.url)'
                              |
                     +--------v---------+
                     |   ACL Proxy      |  ← Rust ACL-aware proxy
-                    |   (acl-proxy/)   |    URL policy + HTTPS MITM
+                    |   (acl-proxy/)   |    URL policy + TLS inspection
                     +--------+---------+
                              |
                     +--------v---------+
