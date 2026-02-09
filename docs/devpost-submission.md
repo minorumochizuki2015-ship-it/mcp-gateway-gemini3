@@ -18,7 +18,7 @@
 
 6. **Audit QA Chat**: Gemini 3 explains its own security decisions by reasoning over the evidence trail. Users ask "Why was this blocked?" and get structured answers with confidence scores and evidence references.
 
-**Key differentiator**: Not just allow/deny. Every decision produces structured evidence - the *why* behind every verdict. **Audit QA Chat** lets users interrogate those decisions in natural language. Self-Tuning UI proposes AI Council weight adjustments based on historical metrics. 414 tests passing. Open source.
+**Key differentiator**: Not just allow/deny. Every decision produces structured evidence - the *why* behind every verdict. **Audit QA Chat** lets users interrogate those decisions in natural language. Self-Tuning UI proposes AI Council weight adjustments based on historical metrics. 416 tests passing. Open source.
 
 ### What's Next
 
