@@ -3050,14 +3050,17 @@ def test_smoke_endpoints_tools_and_mcp(monkeypatch: pytest.MonkeyPatch, tmp_path
     monkeypatch.setenv("MCP_GATEWAY_PROXY_TOKEN", "test-token")
     client = TestClient(app)
 
-    # /tools - 認証必要
-    resp = client.get("/tools", headers={"Authorization": "Bearer test-token"})
+    # /tools - 認証必要 (db_path as query param: default is evaluated at definition time)
+    resp = client.get(
+        f"/tools?db_path={db_file}",
+        headers={"Authorization": "Bearer test-token"},
+    )
     assert resp.status_code == 200
     assert isinstance(resp.json(), list)
 
     # /mcp (JSON-RPC initialize) - 認証必要
     resp = client.post(
-        "/mcp",
+        f"/mcp?db_path={db_file}",
         headers={
             "Authorization": "Bearer test-token",
             "Content-Type": "application/json",

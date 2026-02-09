@@ -746,7 +746,7 @@ window.escapeHtml = function escapeHtml(str) {
     if (!DISABLE_MOCK && window.suiteScanData && window.suiteScanData.audit_qa_mock) {
       var mock = window.suiteScanData.audit_qa_mock;
       var key = Object.keys(mock).find(function (k) { return question.toLowerCase().includes(k.toLowerCase().split(" ").slice(0, 3).join(" ")); });
-      if (key) { showMockBadge(); return { ok: true, data: mock[key], status: 200 }; }
+      if (key) { showMockBadge(); return { ok: true, data: Object.assign({}, mock[key], { eval_method: "fallback" }), status: 200 }; }
     }
     return res;
   }
