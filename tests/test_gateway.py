@@ -3880,10 +3880,13 @@ class TestSelfTuning:
         """GET /api/self-tuning/suggestion returns weights and proposal."""
         monkeypatch.setenv("MCP_GATEWAY_ADMIN_TOKEN", "admin-token")
         db_file = tmp_path / "test.db"
-        db = registry.init_db(db_file)
+        registry.init_db(db_file)
+        import src.mcp_gateway.gateway as gw
+
+        monkeypatch.setattr(gw, "DEFAULT_DB_PATH", db_file)
         client = TestClient(app)
         resp = client.get(
-            f"/api/self-tuning/suggestion?db_path={db_file}",
+            "/api/self-tuning/suggestion",
             headers=self.AUTH,
         )
         assert resp.status_code == 200
@@ -3898,6 +3901,38 @@ class TestSelfTuning:
         client = TestClient(app)
         resp = client.post("/api/self-tuning/apply")
         assert resp.status_code in (401, 503)
+
+    def test_self_tuning_apply_blocked_in_demo(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        """POST /api/self-tuning/apply is blocked in demo mode (F1 fix)."""
+        monkeypatch.setenv("MCP_GATEWAY_DEMO_MODE", "true")
+        client = TestClient(app)
+        resp = client.post("/api/self-tuning/apply")
+        assert resp.status_code == 403
+        assert "demo mode" in resp.json().get("detail", "").lower()
+
+    def test_self_tuning_apply_success(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ):
+        """POST /api/self-tuning/apply returns weights on success (F4 fix)."""
+        monkeypatch.setenv("MCP_GATEWAY_ADMIN_TOKEN", "admin-token")
+        db_file = tmp_path / "test.db"
+        registry.init_db(db_file)
+        evidence_path = tmp_path / "evidence.jsonl"
+        monkeypatch.setenv("MCP_GATEWAY_EVIDENCE_PATH", str(evidence_path))
+        import src.mcp_gateway.gateway as gw
+
+        monkeypatch.setattr(gw, "DEFAULT_DB_PATH", db_file)
+        client = TestClient(app)
+        resp = client.post(
+            "/api/self-tuning/apply",
+            headers=self.AUTH,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "status" in data
+        assert "new_weights" in data
 
 
 # ---------------------------------------------------------------------------

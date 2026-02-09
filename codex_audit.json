@@ -1,61 +1,88 @@
 {
   "pattern": "E5",
+  "timestamp": "2026-02-09T18:18:23Z",
+  "verdict": "APPROVE",
+  "consensus": "majority (initial) → REVISE 3/3 → fixed",
+  "scope": "feat: Audit QA Chat + Self-Tuning UI + OAuth2 Roadmap (Hackathon final)",
   "models": [
     {
       "model": "codex",
-      "thread_id": "019c3514-7382-7660-a83b-ba324df9ddd6",
-      "verdict": "REVISE",
-      "findings": [
-        "P0: SSRF redirect bypass - validate_url_ssrf only checks initial URL, httpx follows redirects to private IPs",
-        "P1: _WEB_SANDBOX_ARTIFACTS unbounded dict - memory exhaustion risk",
-        "P2: Prompt injection envelope is user-prompt only, not system instruction",
-        "P3: MAX_DOM_DEPTH defined but unused",
-        "P3: Mutable default list on A11yNode.children"
-      ],
-      "resolution": "P0/P1/P3 fixed in 9ca8add. P2 accepted as advisory (rule-based fallback provides deterministic guardrail)."
+      "thread_id": "019c4385-fd8e-7952-81ae-56ef62610715",
+      "focus": "Security (Prompt Injection, Input Sanitization, Auth, XSS)",
+      "verdict": "BLOCKED",
+      "note": "Sandbox restricted to meta-agent directory. Unable to read hackathon files."
     },
     {
       "model": "codex",
-      "thread_id": "019c3531-ca3c-7c90-8662-244ad1befeed",
-      "verdict": "PARTIAL",
-      "scope": "UI: web_sandbox.html + api_client.js + nav links + dashboard card",
+      "thread_id": "019c4386-9bea-7182-9efd-ea01aa7ceb2c",
+      "focus": "Reliability, Architecture, Error Handling, Pattern Consistency",
+      "verdict": "APPROVE",
       "findings": [
-        "CX-001 (LOW): Dashboard card mouse-only - fixed: div onclick→a href",
-        "CX-002 (LOW): Mock fallback for offline demos - deferred (live API demo)"
-      ],
-      "resolution": "CX-001 fixed. CX-002 deferred as non-blocking for hackathon demo."
+        {"id": "S2-F1", "severity": "MINOR", "status": "accepted-poc", "description": "read_text full memory load for evidence (existing pattern)"},
+        {"id": "S2-F2", "severity": "MINOR", "status": "accepted-poc", "description": "O(n log n) sort vs top-k heap"},
+        {"id": "S2-F3", "severity": "MAJOR", "status": "accepted-poc", "description": "Gemini sync blocking in async endpoint (hackathon scope)"},
+        {"id": "S2-F5", "severity": "MINOR", "status": "fixed", "description": "Exception string exposure in self-tuning 500 responses"},
+        {"id": "S2-F8", "severity": "MINOR", "status": "accepted-poc", "description": "QA template text and placeholder not i18n-aware"}
+      ]
     },
     {
-      "model": "claude-opus-4-6",
+      "model": "codex",
+      "thread_id": "019c438f-f6a4-7640-a1eb-5a1d890d0964",
+      "focus": "Test Coverage, Edge Cases, i18n, Mock/Real Separation, UX",
       "verdict": "APPROVE",
-      "findings": [],
-      "resolution": "Implementation author. All Codex and E3 findings addressed: escapeHtml XSS prevention, .slice().reverse() immutability, WCAG 2.1 AA compliance."
+      "findings": [
+        {"id": "S3-F1", "severity": "MAJOR", "status": "fixed", "description": "Mock fallback bypasses DISABLE_MOCK in audit_log.html"},
+        {"id": "S3-F2", "severity": "MINOR", "status": "fixed", "description": "Missing edge case tests (control chars, truncation, malformed JSONL, empty, limit=0)"},
+        {"id": "S3-F3", "severity": "MINOR", "status": "accepted-poc", "description": "Self-tuning apply success path test missing"},
+        {"id": "S3-F4", "severity": "MINOR", "status": "accepted-poc", "description": "Mock data schema validation missing"},
+        {"id": "S3-F5", "severity": "MINOR", "status": "fixed", "description": "renderBars innerHTML with unescaped keys - replaced with DOM API"},
+        {"id": "S3-F7", "severity": "MINOR", "status": "fixed", "description": "Duplicate escHtml - now delegates to window.escapeHtml"},
+        {"id": "S3-F8", "severity": "COSMETIC", "status": "accepted-poc", "description": "QA template questions hardcoded, not i18n-aware"},
+        {"id": "S3-F9", "severity": "COSMETIC", "status": "accepted-poc", "description": "No loading indicator for QA chat"},
+        {"id": "S3-F10", "severity": "COSMETIC", "status": "accepted-poc", "description": "OAuth2 roadmap card static and non-interactive"}
+      ]
     }
   ],
-  "consensus": "MAJORITY_CONDITIONAL",
-  "e5_phase2": {
-    "strategic_analysis": "CONDITIONAL (0.78) - SR-001/SR-002 production scope, accepted as PoC",
-    "deep_analysis": "CONDITIONAL (0.78) - DF-001 attribute context, DF-002 mXSS, accepted for hackathon"
+  "revise_audit": {
+    "timestamp": "2026-02-10T03:30:00Z",
+    "verdict": "REVISE → fixed",
+    "consensus": "unanimous (3/3 REVISE)",
+    "models": [
+      {"thread_id": "019c4399", "focus": "Security", "verdict": "REVISE"},
+      {"thread_id": "019c43a5", "focus": "Reliability", "verdict": "REVISE"},
+      {"thread_id": "019c43a9", "focus": "Test/UX", "verdict": "REVISE"}
+    ],
+    "findings": [
+      {"id": "R-F1", "severity": "MEDIUM", "status": "fixed", "description": "Demo mode auth bypass on /api/self-tuning/apply — added to _DEMO_BLOCKED_PREFIXES"},
+      {"id": "R-F2", "severity": "MEDIUM", "status": "fixed", "description": "Prompt injection defense — added system_instruction, _SAFE_FIELDS allowlist, 50KB evidence cap"},
+      {"id": "R-F3", "severity": "MEDIUM", "status": "fixed", "description": "db_path user-controlled parameter — removed query param, hardcoded DEFAULT_DB_PATH"},
+      {"id": "R-F4", "severity": "LOW", "status": "fixed", "description": "Missing tests — added test_self_tuning_apply_blocked_in_demo + test_self_tuning_apply_success"}
+    ]
   },
-  "timestamp": "2026-02-07T08:30:00Z",
-  "scope": "feat: Causal Web Sandbox - backend + UI PoC (Gemini 3 Hackathon)",
-  "files_changed": [
-    "src/mcp_gateway/causal_sandbox.py",
-    "src/mcp_gateway/gateway.py",
-    "tests/test_causal_sandbox.py",
-    "requirements.txt",
-    "README.md",
-    "docs/ui_poc/web_sandbox.html",
-    "docs/ui_poc/api_client.js",
-    "docs/ui_poc/dashboard.html",
-    "docs/ui_poc/allowlist.html",
-    "docs/ui_poc/audit_log.html",
-    "docs/ui_poc/billing.html",
-    "docs/ui_poc/mcp_detail.html",
-    "docs/ui_poc/mcp_inventory.html",
-    "docs/ui_poc/scan_detail.html",
-    "docs/ui_poc/scans.html",
-    "docs/ui_poc/settings_environments.html",
-    "docs/ui_poc/settings_profiles.html"
-  ]
+  "fixes_applied": [
+    "S2-F5: Removed exception string from self-tuning 500 response bodies",
+    "S3-F1: Added DISABLE_MOCK check to audit_log.html QA mock fallback",
+    "S3-F2: Added 5 edge case tests (control chars, truncation, malformed, empty, limit=0)",
+    "S3-F5: Replaced innerHTML with DOM API in renderBars, added safeKeys whitelist",
+    "S3-F7: escHtml now delegates to window.escapeHtml with fallback",
+    "R-F1: Added /api/self-tuning/apply to _DEMO_BLOCKED_PREFIXES",
+    "R-F2: Restructured Gemini audit QA call with system_instruction + _SAFE_FIELDS allowlist + 50KB cap",
+    "R-F3: Removed db_path query parameter, hardcoded DEFAULT_DB_PATH in self-tuning endpoints",
+    "R-F4: Added test_self_tuning_apply_blocked_in_demo + test_self_tuning_apply_success"
+  ],
+  "test_results": {
+    "total": 417,
+    "passed": 416,
+    "skipped": 1,
+    "failed": 0
+  },
+  "previous_audit": {
+    "timestamp": "2026-02-07T08:30:00Z",
+    "scope": "feat: Causal Web Sandbox - backend + UI PoC",
+    "consensus": "MAJORITY_CONDITIONAL",
+    "thread_ids": [
+      "019c3514-7382-7660-a83b-ba324df9ddd6",
+      "019c3531-ca3c-7c90-8662-244ad1befeed"
+    ]
+  }
 }
