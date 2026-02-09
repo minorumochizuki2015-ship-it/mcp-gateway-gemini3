@@ -91,6 +91,7 @@
     .threat-stat-value.primary { color: var(--primary); font-size: 16px; font-weight: 700; }
     .threat-stat-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
     .threat-stat-divider { width: 1px; height: 40px; background: #e5e7eb; flex-shrink: 0; }
+    .threat-cat-tag { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; }
     @media (max-width: 640px) { .threat-stats-row { flex-wrap: wrap; gap: 12px; } .threat-stat-divider { display: none; } .threat-stat { min-width: 45%; } }
     .agents-panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; box-shadow: var(--shadow-sm); margin-bottom: 16px; }
     .agents-panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
@@ -235,27 +236,27 @@
       <div id="dashGeminiError" style="display: none; color: var(--danger); font-size: 13px; margin-top: 6px;"></div>
     </div>
 
-    <!-- Threat Landscape Banner -->
+    <!-- Threat Landscape Banner (E5 verified: arxiv 2509.24272 + mcp.so) -->
     <div class="threat-landscape" id="threatLandscape">
       <div class="threat-landscape-header">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         <span id="threatLandscapeTitle">MCP Ecosystem Threat Landscape</span>
-        <span style="font-size: 10px; color: var(--muted); margin-left: auto;" id="threatLandscapeSource">Source: OpenClaw Disclosure, Feb 2026</span>
+        <span style="font-size: 10px; color: var(--muted); margin-left: auto;" id="threatLandscapeSource">Sources: mcp.so, Zhao et al. arxiv:2509.24272</span>
       </div>
       <div class="threat-stats-row">
         <div class="threat-stat">
-          <div class="threat-stat-value" id="threatServers" data-target="13000">0</div>
+          <div class="threat-stat-value" id="threatServers" data-target="17500">0</div>
           <div class="threat-stat-label" id="threatServersLabel">MCP Servers in Ecosystem</div>
         </div>
         <div class="threat-stat-divider"></div>
         <div class="threat-stat">
-          <div class="threat-stat-value danger" id="threatMalicious" data-target="12" data-suffix="%">0%</div>
-          <div class="threat-stat-label" id="threatMaliciousLabel">Skills Found Malicious</div>
+          <div class="threat-stat-value danger" id="threatAttackRate" data-target="94" data-suffix="%">0%</div>
+          <div class="threat-stat-label" id="threatAttackRateLabel">Attack Success Rate</div>
         </div>
         <div class="threat-stat-divider"></div>
         <div class="threat-stat">
-          <div class="threat-stat-value warning" id="threatInjection" data-target="91" data-suffix="%">0%</div>
-          <div class="threat-stat-label" id="threatInjectionLabel">Use Prompt Injection</div>
+          <div class="threat-stat-value warning" id="threatDetection" data-target="3" data-suffix=".3%">0%</div>
+          <div class="threat-stat-label" id="threatDetectionLabel">Detected by Existing Scanners</div>
         </div>
         <div class="threat-stat-divider"></div>
         <div class="threat-stat">
@@ -265,6 +266,14 @@
           </div>
           <div class="threat-stat-label" id="threatGapLabel">Gap: No Semantic Defense</div>
         </div>
+      </div>
+      <div class="threat-categories-row" style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid #fca5a5;">
+        <span class="threat-cat-tag" id="threatCat1">Tool Shadowing</span>
+        <span class="threat-cat-tag" id="threatCat2">Prompt Injection</span>
+        <span class="threat-cat-tag" id="threatCat3">Signature Cloaking</span>
+        <span class="threat-cat-tag" id="threatCat4">DGA Detection</span>
+        <span class="threat-cat-tag" id="threatCat5">Brand Impersonation</span>
+        <span class="threat-cat-tag" id="threatCat6">MCP Zero-Day</span>
       </div>
     </div>
 
@@ -479,10 +488,10 @@
         agentsTitle: 'Scenario Agents', agentsHint: 'Run scenario to connect agents',
         agentsEmpty: 'No agents in scenario. Click Run Security Scenario to start a multi-agent security scenario.',
         threatTitle: 'MCP Ecosystem Threat Landscape',
-        threatSource: 'Source: OpenClaw Disclosure, Feb 2026',
+        threatSource: 'Sources: mcp.so, Zhao et al. arxiv:2509.24272',
         threatServers: 'MCP Servers in Ecosystem',
-        threatMalicious: 'Skills Found Malicious',
-        threatInjection: 'Use Prompt Injection',
+        threatAttackRate: 'Attack Success Rate',
+        threatDetection: 'Detected by Existing Scanners',
         threatGap: 'Gap: No Semantic Defense',
       },
       ja: {
@@ -511,10 +520,10 @@
         agentsTitle: 'シナリオエージェント', agentsHint: 'シナリオ実行でエージェント接続',
         agentsEmpty: 'シナリオ未開始。セキュリティシナリオ実行で開始してください。',
         threatTitle: 'MCP エコシステム脅威状況',
-        threatSource: '出典: OpenClaw 開示, 2026年2月',
+        threatSource: '出典: mcp.so, Zhao et al. arxiv:2509.24272',
         threatServers: 'エコシステム内 MCP サーバー数',
-        threatMalicious: '悪意あるスキルの割合',
-        threatInjection: 'プロンプトインジェクション使用',
+        threatAttackRate: '攻撃成功率',
+        threatDetection: '既存スキャナの検出率',
         threatGap: 'ギャップ: セマンティック防御なし',
       }
     };
@@ -563,8 +572,8 @@
       if (el('threatLandscapeTitle')) el('threatLandscapeTitle').textContent = d.threatTitle || 'MCP Ecosystem Threat Landscape';
       if (el('threatLandscapeSource')) el('threatLandscapeSource').textContent = d.threatSource || '';
       if (el('threatServersLabel')) el('threatServersLabel').textContent = d.threatServers || '';
-      if (el('threatMaliciousLabel')) el('threatMaliciousLabel').textContent = d.threatMalicious || '';
-      if (el('threatInjectionLabel')) el('threatInjectionLabel').textContent = d.threatInjection || '';
+      if (el('threatAttackRateLabel')) el('threatAttackRateLabel').textContent = d.threatAttackRate || '';
+      if (el('threatDetectionLabel')) el('threatDetectionLabel').textContent = d.threatDetection || '';
       if (el('threatGapLabel')) el('threatGapLabel').textContent = d.threatGap || '';
       if (el('agentsPanelTitle')) el('agentsPanelTitle').textContent = d.agentsTitle || 'Connected Agents';
       if (el('agentsPanelHint') && _connectedAgents.length === 0) el('agentsPanelHint').textContent = d.agentsHint || 'Run pipeline to connect agents';
@@ -1269,7 +1278,6 @@
         stats.forEach(function(el) {
           var target = parseInt(el.getAttribute('data-target'), 10);
           var suffix = el.getAttribute('data-suffix') || '';
-          var prefix = target >= 1000 ? '' : '';
           var duration = 1800;
           var start = performance.now();
           function step(now) {

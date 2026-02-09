@@ -16,23 +16,23 @@ The MCP (Model Context Protocol) ecosystem has exploded to **13,000+ servers**, 
 
 **No existing tool catches these.** Static scanners miss semantic attacks. Rule-based systems can't reason about intent.
 
-### Real-World Validation: The OpenClaw Incident (Feb 2026)
+### Real-World Validation
 
-This threat is not theoretical. In February 2026, the [OpenClaw AI agent marketplace disclosed](https://thehackernews.com/2026/02/openclaw-integrates-virustotal-scanning.html) that **~12% of skills were malicious**, exposing **tens of thousands of AI agent instances** to prompt injection, credential exfiltration, and arbitrary code execution.
+The MCP ecosystem has **17,500+ servers** ([mcp.so](https://mcp.so/), Feb 2026) with a **94% attack success rate** across 12 attack categories ([Zhao et al., arxiv:2509.24272](https://arxiv.org/abs/2509.24272)). Existing scanners like mcp-scan detect only **3.3%** of malicious servers.
 
-OpenClaw's response — integrating VirusTotal hash-based scanning — addresses **known malware signatures**. But hash-based scanning alone cannot catch the MCP-specific threats where attacks use:
+In February 2026, security researchers at [Koi Security](https://thehackernews.com/2026/02/researchers-find-341-malicious-clawhub.html) found **341 malicious skills (12%)** in the OpenClaw ClawHub marketplace (2,857 skills audited). OpenClaw's response — integrating VirusTotal hash-based scanning — addresses **known malware signatures**. But hash-based scanning alone cannot catch MCP-specific threats:
 
 - **Semantic manipulation**: Tool descriptions that change meaning post-approval (signature cloaking)
-- **Prompt injection**: Instructions hidden in tool outputs (91% of observed attacks)
+- **Prompt injection**: Instructions hidden in tool outputs ([Snyk ToxicSkills, Feb 2026](https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub/))
 - **Typosquatting**: Character-level tool name mimicry (`read_fi1e` vs `read_file`)
 
 | Approach | Catches Known Malware | Catches Semantic Attacks | Catches Novel Threats |
 |----------|----------------------|-------------------------|----------------------|
 | Hash-based (VirusTotal) | Yes | No | No |
-| Rule-based (static) | Partial | Partial | No |
+| Rule-based (mcp-scan: 3.3%) | Partial | Partial | No |
 | **Gemini 3 Reasoning (MCP Gateway)** | Partial | **Yes** | **Yes** |
 
-**MCP Gateway complements hash-based scanning** with Gemini 3's semantic reasoning — detecting the **novel, intent-based attacks** that signature matching cannot catch. Together, they cover the full threat spectrum.
+**MCP Gateway complements hash-based scanning** with Gemini 3's semantic reasoning — detecting the **novel, intent-based attacks** that signature matching cannot catch.
 
 ## What MCP Gateway Does
 
