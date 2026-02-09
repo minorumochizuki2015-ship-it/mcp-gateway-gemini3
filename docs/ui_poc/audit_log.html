@@ -418,7 +418,13 @@
           <div style="font-size:16px;font-weight:700;" data-i18n="auditLog.qaChatTitle">Audit Q&amp;A (Gemini 3)</div>
           <div style="font-size:12px;color:var(--muted);" data-i18n="auditLog.qaChatSub">Ask Gemini to explain security decisions using evidence</div>
         </div>
-        <span class="pill info" style="font-size:10px;">Beta</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="pill info" style="font-size:10px;">Beta</span>
+          <div id="qaModeToggle" style="display:flex;background:var(--gray-100);border-radius:6px;overflow:hidden;font-size:11px;font-weight:600;">
+            <button id="qaModeDemo" style="padding:4px 12px;border:none;background:var(--primary);color:#fff;cursor:pointer;" onclick="window.qaForceDemo=true;this.style.background='var(--primary)';this.style.color='#fff';document.getElementById('qaModeLive').style.background='transparent';document.getElementById('qaModeLive').style.color='var(--gray-700)';">Demo</button>
+            <button id="qaModeLive" style="padding:4px 12px;border:none;background:transparent;color:var(--gray-700);cursor:pointer;" onclick="window.qaForceDemo=false;this.style.background='var(--primary)';this.style.color='#fff';document.getElementById('qaModeDemo').style.background='transparent';document.getElementById('qaModeDemo').style.color='var(--gray-700)';">Live API</button>
+          </div>
+        </div>
       </div>
       <!-- Template question buttons -->
       <div id="qaTemplates" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
@@ -607,6 +613,8 @@
 
       var QA_MOCK = (window.suiteScanData && window.suiteScanData.audit_qa_mock) || {};
       var DISABLE_MOCK = (new URLSearchParams(window.location.search)).get('disable_mock') === '1';
+      // Default to demo mode on page load
+      if (window.qaForceDemo === undefined) window.qaForceDemo = true;
 
       function escHtml(s) { return window.escapeHtml ? window.escapeHtml(String(s || '')) : String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 
@@ -630,7 +638,9 @@
         if (data.evidence_refs && data.evidence_refs.length > 0) {
           h += '<div style="margin-top:6px;font-size:11px;color:var(--muted);">Refs: ' + data.evidence_refs.map(function (r) { return '<code>' + escHtml(r) + '</code>'; }).join(', ') + '</div>';
         }
-        if (data.eval_method === 'fallback' || (!data.eval_method && data.confidence < 0.5)) {
+        if (data.eval_method === 'demo') {
+          h += '<span class="pill" style="font-size:9px;background:#dbeafe;color:#1e40af;margin-top:4px;display:inline-block;">Demo</span>';
+        } else if (data.eval_method === 'fallback' || (!data.eval_method && data.confidence < 0.5)) {
           h += '<span class="pill" style="font-size:9px;background:#fef3c7;color:#92400e;margin-top:4px;display:inline-block;">Demo Response</span>';
         }
         return h;

@@ -727,17 +727,71 @@ window.escapeHtml = function escapeHtml(str) {
   }
 
   // --- Audit QA Chat API ---
+  var _QA_KEYWORD_MAP = {
+    "blocked": "Why was filesystem-mcp blocked?",
+    "block": "Why was filesystem-mcp blocked?",
+    "\u30d6\u30ed\u30c3\u30af": "Why was filesystem-mcp blocked?",
+    "\u62d2\u5426": "Why was filesystem-mcp blocked?",
+    "filesystem": "Why was filesystem-mcp blocked?",
+    "threat": "What threats were detected in the last scan?",
+    "detect": "What threats were detected in the last scan?",
+    "scan": "What threats were detected in the last scan?",
+    "\u8105\u5a01": "What threats were detected in the last scan?",
+    "\u691c\u51fa": "What threats were detected in the last scan?",
+    "\u554f\u984c": "What threats were detected in the last scan?",
+    "council": "Explain the council decision for data-scraper-mcp",
+    "\u5408\u8b70": "Explain the council decision for data-scraper-mcp",
+    "\u5224\u5b9a": "Explain the council decision for data-scraper-mcp",
+    "decision": "Explain the council decision for data-scraper-mcp",
+    "security": "What is the overall security posture?",
+    "posture": "What is the overall security posture?",
+    "\u30bb\u30ad\u30e5\u30ea\u30c6\u30a3": "What is the overall security posture?",
+    "\u72b6\u614b": "What is the overall security posture?"
+  };
+
+  function _findMockQA(question, mock) {
+    // 1. Exact key match (original behavior)
+    var key = Object.keys(mock).find(function (k) {
+      return question.toLowerCase().includes(k.toLowerCase().split(" ").slice(0, 3).join(" "));
+    });
+    if (key) return mock[key];
+    // 2. Keyword map (JP/EN fuzzy)
+    var q = question.toLowerCase();
+    for (var kw in _QA_KEYWORD_MAP) {
+      if (q.includes(kw)) {
+        var mapped = _QA_KEYWORD_MAP[kw];
+        if (mock[mapped]) return mock[mapped];
+      }
+    }
+    return null;
+  }
+
   async function fetchAuditQA(question, contextRunId) {
+    // Demo mode: skip API, use mock directly
+    if (window.qaForceDemo && window.suiteScanData && window.suiteScanData.audit_qa_mock) {
+      var demoMock = window.suiteScanData.audit_qa_mock;
+      var demoMatch = _findMockQA(question, demoMock);
+      if (demoMatch) return { ok: true, data: Object.assign({}, demoMatch, { eval_method: "demo" }), status: 200 };
+      // Generic demo fallback
+      return { ok: true, data: {
+        answer: "Based on the evidence trail, the Gateway processed this request through the 6-layer inspection pipeline. The AI Council evaluated the risk using security (0.5), utility (0.3), and cost (0.2) weights. For detailed analysis, try asking about specific blocked tools, detected threats, or council decisions.",
+        evidence_refs: ["ev-summary-001"],
+        confidence: 0.75,
+        sources: ["evidence trail summary"],
+        eval_method: "demo"
+      }, status: 200 };
+    }
+    // Live API mode
     var res = await requestJsonWithStatus(
       CONTROL_BASE + "/api/audit-qa/chat",
       { method: "POST", body: { question: question, context_run_id: contextRunId || "", limit: 50 }, auth: true }
     );
     if (res && res.ok) return res;
-    // Mock fallback
+    // Auto-fallback to mock if API unavailable
     if (!DISABLE_MOCK && window.suiteScanData && window.suiteScanData.audit_qa_mock) {
       var mock = window.suiteScanData.audit_qa_mock;
-      var key = Object.keys(mock).find(function (k) { return question.toLowerCase().includes(k.toLowerCase().split(" ").slice(0, 3).join(" ")); });
-      if (key) { showMockBadge(); return { ok: true, data: Object.assign({}, mock[key], { eval_method: "fallback" }), status: 200 }; }
+      var match = _findMockQA(question, mock);
+      if (match) { showMockBadge(); return { ok: true, data: Object.assign({}, match, { eval_method: "fallback" }), status: 200 }; }
     }
     return res;
   }
