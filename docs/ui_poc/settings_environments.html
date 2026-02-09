@@ -269,7 +269,7 @@
     /* Content Grid */
     .content-grid {
       display: grid;
-      grid-template-columns: 1fr 380px;
+      grid-template-columns: 1fr 1fr;
       gap: 24px;
     }
 
@@ -279,8 +279,23 @@
       gap: 16px;
     }
 
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-top: 24px;
+    }
+
+    .bottom-grid > .card {
+      align-self: start;
+    }
+
     @media (max-width: 900px) {
       .content-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .bottom-grid {
         grid-template-columns: 1fr;
       }
     }
@@ -1511,8 +1526,11 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
 
-        <div class="card form-card">
+    <div class="bottom-grid">
+      <div class="card form-card">
           <div class="collapsible-header" data-section="upstream">
             <h3 id="upstreamTitle">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1934,32 +1952,62 @@
             </div>
           </div>
         </div>
-      </div>
     </div>
   </div>
 
   <!-- OAuth2 PAR/DPoP Roadmap Card -->
   <div style="max-width:1280px;margin:24px auto 0;padding:0 24px 24px;">
     <div style="border:2px dashed var(--gray-300);border-radius:8px;padding:24px;background:var(--gray-50);">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;color:var(--primary);">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px;color:var(--primary);flex-shrink:0;">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
         </svg>
-        <span style="font-size:16px;font-weight:700;" data-i18n="settingsEnv.oauth2Title">OAuth2 PAR + DPoP</span>
-        <span style="font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;background:#dbeafe;color:#1e40af;">Planned</span>
-        <span style="font-size:11px;color:var(--muted);">Q2-Q4 2026</span>
+        <span style="font-size:16px;font-weight:700;" data-i18n="settingsEnv.oauth2Title">OAuth2 PAR + DPoP &mdash; Next-Gen Token Security</span>
+        <span style="font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;background:#dbeafe;color:#1e40af;" data-i18n="settingsEnv.oauth2Planned">Planned</span>
+        <span style="font-size:11px;color:var(--gray-600);">Q2-Q4 2026</span>
       </div>
-      <div style="font-size:13px;color:var(--gray-700);line-height:1.6;">
-        <p style="margin:0 0 8px;" data-i18n="settingsEnv.oauth2Desc">Enterprise-grade token security replacing static Bearer tokens with Pushed Authorization Requests (RFC 9126) and Demonstration of Proof-of-Possession (RFC 9449).</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px;">
-          <div style="padding:12px;background:#fff;border:1px solid var(--gray-200);border-radius:6px;">
-            <div style="font-weight:600;font-size:12px;margin-bottom:4px;">PAR (RFC 9126)</div>
-            <div style="font-size:11px;color:var(--muted);" data-i18n="settingsEnv.oauth2Par">Server-side request storage eliminates token leakage via URL parameters. Gateway acts as the Authorization Server.</div>
+
+      <!-- Role description -->
+      <div style="font-size:13px;color:var(--gray-700);line-height:1.7;margin-bottom:16px;">
+        <p style="margin:0 0 10px;" data-i18n="settingsEnv.oauth2Desc">This section will replace the current static Bearer token flow (shown in the Gateway Connection Wizard above) with enterprise-grade OAuth2 security. Instead of long-lived tokens that can be stolen and reused, every client request will carry a cryptographic proof that binds the token to the requesting device.</p>
+        <p style="margin:0;font-size:12px;color:var(--gray-600);" data-i18n="settingsEnv.oauth2DescSub">Currently, MCP Gateway issues static tokens via the Connection Wizard. PAR + DPoP upgrades this to a two-layer defense: server-side authorization storage (PAR) and client-bound proof-of-possession (DPoP).</p>
+      </div>
+
+      <!-- PAR / DPoP detail cards -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div style="padding:16px;background:#fff;border:1px solid var(--gray-200);border-radius:8px;">
+          <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:var(--gray-900);" data-i18n="settingsEnv.oauth2ParTitle" data-i18n-html="true">PAR &mdash; Pushed Authorization Requests (RFC 9126)</div>
+          <div style="font-size:12px;color:var(--gray-600);line-height:1.6;" data-i18n="settingsEnv.oauth2Par" data-i18n-html="true">
+            Clients send authorization parameters directly to the Gateway's token endpoint via a back-channel POST &mdash; not through URL query strings. The Gateway stores the request server-side and returns a short-lived <code style="font-size:11px;background:#f3f4f6;padding:1px 4px;border-radius:3px;">request_uri</code>. This eliminates token leakage through browser history, referrer headers, and proxy logs.
           </div>
-          <div style="padding:12px;background:#fff;border:1px solid var(--gray-200);border-radius:6px;">
-            <div style="font-weight:600;font-size:12px;margin-bottom:4px;">DPoP (RFC 9449)</div>
-            <div style="font-size:11px;color:var(--muted);" data-i18n="settingsEnv.oauth2Dpop">Client-bound proof-of-possession tokens prevent stolen token replay. Gateway terminates DPoP at the edge.</div>
+          <div style="margin-top:10px;padding:10px;background:var(--gray-50);border-radius:6px;font-size:11px;color:var(--gray-600);line-height:1.7;font-family:'SF Mono',Monaco,monospace;">
+            Client &rarr; POST /oauth/par {params} &rarr; Gateway<br>
+            Gateway &rarr; 201 {request_uri, expires_in} &rarr; Client<br>
+            Client &rarr; GET /oauth/authorize?request_uri=... &rarr; Gateway
           </div>
+        </div>
+        <div style="padding:16px;background:#fff;border:1px solid var(--gray-200);border-radius:8px;">
+          <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:var(--gray-900);" data-i18n="settingsEnv.oauth2DpopTitle" data-i18n-html="true">DPoP &mdash; Demonstration of Proof-of-Possession (RFC 9449)</div>
+          <div style="font-size:12px;color:var(--gray-600);line-height:1.6;" data-i18n="settingsEnv.oauth2Dpop" data-i18n-html="true">
+            Each API request includes a signed JWT proof (<code style="font-size:11px;background:#f3f4f6;padding:1px 4px;border-radius:3px;">DPoP</code> header) generated with the client's private key. The Gateway verifies the signature, binding the token to the originating device. Even if a token is intercepted, it cannot be replayed from a different machine.
+          </div>
+          <div style="margin-top:10px;padding:10px;background:var(--gray-50);border-radius:6px;font-size:11px;color:var(--gray-600);line-height:1.7;font-family:'SF Mono',Monaco,monospace;">
+            Client &rarr; DPoP: {signed JWT} + Authorization: DPoP &lt;token&gt;<br>
+            Gateway &rarr; Verify JWK thumbprint matches token binding<br>
+            Gateway &rarr; Reject if proof is missing, expired, or mismatched
+          </div>
+        </div>
+      </div>
+
+      <!-- Combined flow -->
+      <div style="margin-top:16px;padding:14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;">
+        <div style="font-weight:600;font-size:12px;color:#1e40af;margin-bottom:6px;" data-i18n="settingsEnv.oauth2CombinedTitle">Combined Flow: PAR + DPoP</div>
+        <div style="font-size:11px;color:#1e3a5f;line-height:1.7;" data-i18n="settingsEnv.oauth2CombinedDesc" data-i18n-html="true">
+          <strong>1.</strong> Client generates an ephemeral key pair (per device) &rarr;
+          <strong>2.</strong> Client pushes auth request via PAR back-channel &rarr;
+          <strong>3.</strong> Gateway issues a DPoP-bound access token &rarr;
+          <strong>4.</strong> Every API call carries both the token and a fresh DPoP proof &rarr;
+          <strong>5.</strong> Gateway validates proof + token binding on each request &rarr; stolen tokens are useless without the private key.
         </div>
       </div>
     </div>
@@ -2373,7 +2421,19 @@
         providerVertex: 'Vertex AI',
         providerAnthropic: 'Anthropic',
         providerOllama: 'Ollama',
-        policyStatusNotLoaded: 'Not loaded'
+        policyStatusNotLoaded: 'Not loaded',
+        settingsEnv: {
+          oauth2Title: 'OAuth2 PAR + DPoP \u2014 Next-Gen Token Security',
+          oauth2Planned: 'Planned',
+          oauth2Desc: 'This section will replace the current static Bearer token flow (shown in the Gateway Connection Wizard above) with enterprise-grade OAuth2 security. Instead of long-lived tokens that can be stolen and reused, every client request will carry a cryptographic proof that binds the token to the requesting device.',
+          oauth2DescSub: 'Currently, MCP Gateway issues static tokens via the Connection Wizard. PAR + DPoP upgrades this to a two-layer defense: server-side authorization storage (PAR) and client-bound proof-of-possession (DPoP).',
+          oauth2ParTitle: 'PAR \u2014 Pushed Authorization Requests (RFC 9126)',
+          oauth2Par: 'Clients send authorization parameters directly to the Gateway\u2019s token endpoint via a back-channel POST \u2014 not through URL query strings. The Gateway stores the request server-side and returns a short-lived <code style="font-size:11px;background:#f3f4f6;padding:1px 4px;border-radius:3px;">request_uri</code>. This eliminates token leakage through browser history, referrer headers, and proxy logs.',
+          oauth2DpopTitle: 'DPoP \u2014 Demonstration of Proof-of-Possession (RFC 9449)',
+          oauth2Dpop: 'Each API request includes a signed JWT proof (<code style="font-size:11px;background:#f3f4f6;padding:1px 4px;border-radius:3px;">DPoP</code> header) generated with the client\u2019s private key. The Gateway verifies the signature, binding the token to the originating device. Even if a token is intercepted, it cannot be replayed from a different machine.',
+          oauth2CombinedTitle: 'Combined Flow: PAR + DPoP',
+          oauth2CombinedDesc: '<strong>1.</strong> Client generates an ephemeral key pair (per device) \u2192 <strong>2.</strong> Client pushes auth request via PAR back-channel \u2192 <strong>3.</strong> Gateway issues a DPoP-bound access token \u2192 <strong>4.</strong> Every API call carries both the token and a fresh DPoP proof \u2192 <strong>5.</strong> Gateway validates proof + token binding on each request \u2192 stolen tokens are useless without the private key.'
+        }
       },
       ja: {
         pageTitle: '環境設定',
@@ -2721,7 +2781,19 @@
         providerVertex: 'Vertex AI',
         providerAnthropic: 'Anthropic',
         providerOllama: 'Ollama',
-        policyStatusNotLoaded: '未ロード'
+        policyStatusNotLoaded: '未ロード',
+        settingsEnv: {
+          oauth2Title: 'OAuth2 PAR + DPoP \u2014 次世代トークンセキュリティ',
+          oauth2Planned: '計画中',
+          oauth2Desc: 'このセクションは、上記の Gateway Connection Wizard で発行している静的 Bearer トークンフローを、エンタープライズグレードの OAuth2 セキュリティに置き換えます。長期間有効で盗用・再利用可能なトークンに代わり、すべてのクライアントリクエストにデバイスとトークンを紐付ける暗号学的証明を付与します。',
+          oauth2DescSub: '現在、MCP Gateway は Connection Wizard で静的トークンを発行しています。PAR + DPoP はこれを二重防御にアップグレードします: サーバー側認可リクエスト保管 (PAR) と、クライアントバウンドの所有証明 (DPoP) です。',
+          oauth2ParTitle: 'PAR \u2014 Pushed Authorization Requests (RFC 9126)',
+          oauth2Par: 'クライアントは認可パラメータを URL クエリ文字列ではなく、バックチャネル POST で Gateway のトークンエンドポイントに直接送信します。Gateway はリクエストをサーバー側に保存し、短命の <code style="font-size:11px;background:#f3f4f6;padding:1px 4px;border-radius:3px;">request_uri</code> を返します。これにより、ブラウザ履歴・Referrer ヘッダー・プロキシログを経由したトークン漏洩を防止します。',
+          oauth2DpopTitle: 'DPoP \u2014 Demonstration of Proof-of-Possession (RFC 9449)',
+          oauth2Dpop: '各 API リクエストにはクライアントの秘密鍵で生成された署名付き JWT 証明 (<code style="font-size:11px;background:#f3f4f6;padding:1px 4px;border-radius:3px;">DPoP</code> ヘッダー) が含まれます。Gateway は署名を検証し、トークンを発信デバイスに紐付けます。トークンが傍受されても、秘密鍵がなければ別のマシンから再利用できません。',
+          oauth2CombinedTitle: '統合フロー: PAR + DPoP',
+          oauth2CombinedDesc: '<strong>1.</strong> クライアントがデバイスごとに一時鍵ペアを生成 \u2192 <strong>2.</strong> PAR バックチャネルで認可リクエストを送信 \u2192 <strong>3.</strong> Gateway が DPoP バウンドのアクセストークンを発行 \u2192 <strong>4.</strong> 各 API 呼び出しにトークンと新しい DPoP 証明を付与 \u2192 <strong>5.</strong> Gateway がリクエストごとに証明 + トークン紐付けを検証 \u2192 盗まれたトークンは秘密鍵なしでは無効。'
+        }
       }
     };
 
