@@ -232,7 +232,7 @@
     <!-- Gemini API Key (shared across all features) -->
     <div class="section-card" style="margin-bottom: 24px; padding: 16px 20px;">
       <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-        <span style="font-size: 16px; font-weight: 700;">Gemini API Key</span>
+        <span style="font-size: 16px; font-weight: 700;" id="dashGeminiTitle">Gemini API Key</span>
         <span id="dashGeminiStatus" style="font-size: 11px; padding: 2px 10px; border-radius: 10px; font-weight: 600; background: var(--danger); color: #fff;">Not configured</span>
       </div>
       <p class="muted" style="margin-bottom: 10px; font-size: 13px;" id="dashGeminiDesc">Enter your Google AI Studio API key to enable Gemini-powered analysis across all features (Council, Scanner, RedTeam, Web Sandbox).</p>
@@ -512,9 +512,23 @@
         threatGap: 'Gap: No Semantic Defense',
         threatCtaText: '<strong>MCP Gateway</strong> closes this gap. Gemini 3 reasons about tool intent, detects semantic manipulation, and catches threats that pattern matching misses \u2014 covering all 6 attack categories above.',
         threatCtaBtn: 'Try Web Sandbox \u2192',
+        demoBannerTitle: 'Interactive Demo',
+        demoBannerText: ' \u2014 Showcasing Gemini 3 security analysis with pre-configured attack scenarios. <b>All 6 Gemini 3 API integrations are fully operational when GOOGLE_API_KEY is set.</b>',
+        attackTitle: 'Attack Detection',
+        attackSub: 'Signature Cloaking, Bait-and-Switch, and Tool Shadowing detection',
+        attackCount: ' threats',
+        attackEmpty: 'No attack patterns detected. Advanced detectors are monitoring for signature cloaking, bait-and-switch, and tool shadowing.',
+        attackCodeCloaking: 'Signature Cloaking', attackCodeBaitSwitch: 'Bait & Switch', attackCodeShadowing: 'Tool Shadowing',
+        attackBlocked: 'BLOCKED', attackFlagged: 'FLAGGED',
+        sevCritical: 'Critical', sevHigh: 'High', sevMedium: 'Medium', sevLow: 'Low',
+        geminiTitle: 'Gemini API Key',
+        geminiNotConfigured: 'Not configured', geminiConfigured: '\u2713 Configured',
+        geminiDesc: 'Enter your Google AI Studio API key to enable Gemini-powered analysis across all features (Council, Scanner, RedTeam, Web Sandbox).',
+        geminiDescActive: 'Gemini API key is active. All AI-powered features are enabled.',
+        geminiSetKey: 'Set Key', geminiUpdateKey: 'Update Key',
       },
       ja: {
-        pageTitle: 'AI ゲートウェイ ダッシュボード',
+        pageTitle: 'AI Gateway Dashboard',
         pageSubtitle: 'シナリオベースの判定・証跡・ポリシー適用',
         kpiTotal: '総リクエスト', kpiTotalSub: '検査済み MCP ツール呼び出し',
         kpiAllow: '許可', kpiAllowSub: 'ポリシーチェック通過',
@@ -546,6 +560,20 @@
         threatGap: 'ギャップ: セマンティック防御なし',
         threatCtaText: '<strong>MCP Gateway</strong> がこのギャップを埋めます。Gemini 3 がツールの意図を推論し、セマンティック操作を検出。パターンマッチングでは見逃す脅威を上記6カテゴリすべてでカバーします。',
         threatCtaBtn: 'Web Sandbox を試す \u2192',
+        demoBannerTitle: 'インタラクティブデモ',
+        demoBannerText: ' \u2014 Gemini 3 によるセキュリティ分析を事前設定された攻撃シナリオでデモンストレーション。<b>GOOGLE_API_KEY を設定すると、6つの Gemini 3 API 統合がすべて稼働します。</b>',
+        attackTitle: '攻撃検出',
+        attackSub: 'Signature Cloaking・Bait-and-Switch・Tool Shadowing の検出',
+        attackCount: ' 件の脅威',
+        attackEmpty: '攻撃パターンは検出されていません。高度な検出器が Signature Cloaking・Bait-and-Switch・Tool Shadowing を監視中です。',
+        attackCodeCloaking: '署名偽装', attackCodeBaitSwitch: 'おとり切替', attackCodeShadowing: 'ツール偽装',
+        attackBlocked: 'ブロック済', attackFlagged: 'フラグ付',
+        sevCritical: '致命的', sevHigh: '高', sevMedium: '中', sevLow: '低',
+        geminiTitle: 'Gemini API キー',
+        geminiNotConfigured: '未設定', geminiConfigured: '\u2713 設定済',
+        geminiDesc: 'Google AI Studio の API キーを入力して全機能（Council・Scanner・RedTeam・Web Sandbox）の Gemini 分析を有効化。',
+        geminiDescActive: 'Gemini API キーが有効です。全 AI 分析機能が利用可能です。',
+        geminiSetKey: 'キー設定', geminiUpdateKey: 'キー更新',
       }
     };
 
@@ -600,6 +628,19 @@
       if (el('threatCtaBtn') && d.threatCtaBtn) el('threatCtaBtn').textContent = d.threatCtaBtn;
       if (el('agentsPanelTitle')) el('agentsPanelTitle').textContent = d.agentsTitle || 'Connected Agents';
       if (el('agentsPanelHint') && _connectedAgents.length === 0) el('agentsPanelHint').textContent = d.agentsHint || 'Run pipeline to connect agents';
+      // Demo banner
+      if (el('demoBannerTitle') && d.demoBannerTitle) el('demoBannerTitle').textContent = d.demoBannerTitle;
+      if (el('demoBannerText') && d.demoBannerText) el('demoBannerText').innerHTML = d.demoBannerText;
+      // Attack detection
+      if (el('attackTitle') && d.attackTitle) el('attackTitle').textContent = d.attackTitle;
+      if (el('attackSub') && d.attackSub) el('attackSub').textContent = d.attackSub;
+      if (el('attackEmpty') && d.attackEmpty) el('attackEmpty').textContent = d.attackEmpty;
+      // Severity labels
+      var sevLabels = document.querySelectorAll('.sev-label');
+      var sevKeys = [d.sevCritical, d.sevHigh, d.sevMedium, d.sevLow];
+      sevLabels.forEach(function(lbl, i) { if (sevKeys[i]) lbl.textContent = sevKeys[i]; });
+      // Gemini API key section
+      if (el('dashGeminiTitle') && d.geminiTitle) el('dashGeminiTitle').textContent = d.geminiTitle;
       // lang buttons
       var ja = el('langJa'), en = el('langEn');
       if (ja) ja.classList.toggle('active', lang === 'ja');
@@ -718,17 +759,17 @@
       var attackTimeline = document.getElementById('attackTimeline');
       var attackEmpty = document.getElementById('attackEmpty');
       var attackBadge = document.getElementById('attackCountBadge');
-      if (attackBadge) attackBadge.textContent = attacks.length + ' threats';
+      if (attackBadge) attackBadge.textContent = attacks.length + (d.attackCount || ' threats');
       if (attackBadge) attackBadge.style.color = attacks.length > 0 ? 'var(--danger)' : 'var(--success)';
       if (attacks.length > 0 && attackTimeline) {
-        var codeLabels = { signature_cloaking: 'Signature Cloaking', bait_and_switch: 'Bait & Switch', tool_shadowing: 'Tool Shadowing' };
+        var codeLabels = { signature_cloaking: d.attackCodeCloaking || 'Signature Cloaking', bait_and_switch: d.attackCodeBaitSwitch || 'Bait & Switch', tool_shadowing: d.attackCodeShadowing || 'Tool Shadowing' };
         var codeColors = { signature_cloaking: '#dc2626', bait_and_switch: '#ea580c', tool_shadowing: '#7c3aed' };
         attackTimeline.innerHTML = attacks.map(function(a) {
           var color = codeColors[a.code] || '#ef4444';
           var label = codeLabels[a.code] || a.code;
           var statusPill = a.status === 'blocked'
-            ? '<span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">BLOCKED</span>'
-            : '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">FLAGGED</span>';
+            ? '<span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">' + escapeHtml(d.attackBlocked || 'BLOCKED') + '</span>'
+            : '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">' + escapeHtml(d.attackFlagged || 'FLAGGED') + '</span>';
           // Enhanced message rendering with visual diffs
           var msgHtml = '';
           if (a.code === 'tool_shadowing' && a.message) {
@@ -1348,18 +1389,19 @@
       }
 
       function updateStatus(configured) {
+        var dl = I18N[getLang()] || I18N.en;
         if (configured) {
-          geminiStatus.textContent = '\u2713 Configured';
+          geminiStatus.textContent = dl.geminiConfigured || '\u2713 Configured';
           geminiStatus.style.background = 'var(--success)';
           geminiInput.placeholder = '\u2022\u2022\u2022\u2022 (configured)';
-          geminiBtn.textContent = 'Update Key';
-          geminiDesc.textContent = 'Gemini API key is active. All AI-powered features are enabled.';
+          geminiBtn.textContent = dl.geminiUpdateKey || 'Update Key';
+          geminiDesc.textContent = dl.geminiDescActive || 'Gemini API key is active. All AI-powered features are enabled.';
         } else {
-          geminiStatus.textContent = 'Not configured';
+          geminiStatus.textContent = dl.geminiNotConfigured || 'Not configured';
           geminiStatus.style.background = 'var(--danger)';
           geminiInput.placeholder = 'AIza...';
-          geminiBtn.textContent = 'Set Key';
-          geminiDesc.textContent = 'Enter your Google AI Studio API key to enable Gemini-powered analysis across all features (Council, Scanner, RedTeam, Web Sandbox).';
+          geminiBtn.textContent = dl.geminiSetKey || 'Set Key';
+          geminiDesc.textContent = dl.geminiDesc || 'Enter your Google AI Studio API key to enable Gemini-powered analysis across all features (Council, Scanner, RedTeam, Web Sandbox).';
         }
       }
 
