@@ -93,6 +93,12 @@
     .threat-stat-divider { width: 1px; height: 40px; background: #e5e7eb; flex-shrink: 0; }
     .threat-cat-tag { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; }
     @media (max-width: 640px) { .threat-stats-row { flex-wrap: wrap; gap: 12px; } .threat-stat-divider { display: none; } .threat-stat { min-width: 45%; } }
+    .threat-cta { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 12px 16px; background: linear-gradient(135deg, #eff6ff, #f0fdf4); border: 1px solid #93c5fd; border-radius: 8px; }
+    .threat-cta-icon { flex-shrink: 0; width: 32px; height: 32px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+    .threat-cta-text { flex: 1; font-size: 13px; line-height: 1.4; }
+    .threat-cta-text strong { color: var(--primary); }
+    .threat-cta-btn { flex-shrink: 0; padding: 8px 20px; background: var(--primary); color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; transition: background 0.15s; }
+    .threat-cta-btn:hover { background: var(--primary-dark, #0052cc); }
     .agents-panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; box-shadow: var(--shadow-sm); margin-bottom: 16px; }
     .agents-panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
     .agents-panel-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
@@ -273,7 +279,17 @@
         <span class="threat-cat-tag" id="threatCat3">Signature Cloaking</span>
         <span class="threat-cat-tag" id="threatCat4">DGA Detection</span>
         <span class="threat-cat-tag" id="threatCat5">Brand Impersonation</span>
-        <span class="threat-cat-tag" id="threatCat6">MCP Zero-Day</span>
+        <span class="threat-cat-tag" id="threatCat6">MCP Protocol Injection</span>
+      </div>
+      <!-- CTA: Problem → Solution bridge -->
+      <div class="threat-cta" id="threatCta">
+        <div class="threat-cta-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="threat-cta-text">
+          <span id="threatCtaText"><strong>MCP Gateway</strong> closes this gap. Gemini 3 reasons about tool intent, detects semantic manipulation, and catches threats that pattern matching misses &mdash; covering all 6 attack categories above.</span>
+        </div>
+        <a class="threat-cta-btn" href="web_sandbox.html" id="threatCtaBtn">Try Web Sandbox &rarr;</a>
       </div>
     </div>
 
@@ -493,6 +509,8 @@
         threatAttackRate: 'Attack Success Rate',
         threatDetection: 'Detected by Existing Scanners',
         threatGap: 'Gap: No Semantic Defense',
+        threatCtaText: '<strong>MCP Gateway</strong> closes this gap. Gemini 3 reasons about tool intent, detects semantic manipulation, and catches threats that pattern matching misses \u2014 covering all 6 attack categories above.',
+        threatCtaBtn: 'Try Web Sandbox \u2192',
       },
       ja: {
         pageTitle: 'AI ゲートウェイ ダッシュボード',
@@ -525,6 +543,8 @@
         threatAttackRate: '攻撃成功率',
         threatDetection: '既存スキャナの検出率',
         threatGap: 'ギャップ: セマンティック防御なし',
+        threatCtaText: '<strong>MCP Gateway</strong> がこのギャップを埋めます。Gemini 3 がツールの意図を推論し、セマンティック操作を検出。パターンマッチングでは見逃す脅威を上記6カテゴリすべてでカバーします。',
+        threatCtaBtn: 'Web Sandbox を試す \u2192',
       }
     };
 
@@ -575,6 +595,8 @@
       if (el('threatAttackRateLabel')) el('threatAttackRateLabel').textContent = d.threatAttackRate || '';
       if (el('threatDetectionLabel')) el('threatDetectionLabel').textContent = d.threatDetection || '';
       if (el('threatGapLabel')) el('threatGapLabel').textContent = d.threatGap || '';
+      if (el('threatCtaText') && d.threatCtaText) el('threatCtaText').innerHTML = d.threatCtaText;
+      if (el('threatCtaBtn') && d.threatCtaBtn) el('threatCtaBtn').textContent = d.threatCtaBtn;
       if (el('agentsPanelTitle')) el('agentsPanelTitle').textContent = d.agentsTitle || 'Connected Agents';
       if (el('agentsPanelHint') && _connectedAgents.length === 0) el('agentsPanelHint').textContent = d.agentsHint || 'Run pipeline to connect agents';
       // lang buttons

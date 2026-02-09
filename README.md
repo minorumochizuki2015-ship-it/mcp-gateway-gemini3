@@ -210,7 +210,7 @@ Three novel detectors targeting MCP supply-chain threats:
 | **Tool Shadowing** | Names mimicking trusted tools | Character-level similarity vs 20 well-known MCP tools |
 | **DGA Detection** | Algorithmically generated domains | Shannon entropy + consonant ratio + cluster analysis |
 | **Brand Impersonation** | Domain mimicking known brands | 500+ brand database, compound TLD support |
-| **MCP Zero-Day** | JSON-RPC injection in web content | 7 MCP-specific threat patterns in DOM/scripts |
+| **MCP Protocol Injection** | JSON-RPC injection in web content | 7 MCP-specific threat patterns in DOM/scripts |
 
 ## Causal Web Sandbox
 

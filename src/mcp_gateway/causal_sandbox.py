@@ -204,7 +204,7 @@ IMPERSONATED_BRANDS = {
     "sagawa", "yamato", "kuroneko", "jppost", "fedex", "ups", "dhl",
 }
 
-# MCP / JSON-RPC zero-day injection patterns in web content
+# MCP / JSON-RPC protocol injection patterns in web content
 MCP_THREAT_PATTERNS = [
     re.compile(r'"jsonrpc"\s*:\s*"2\.0"', re.IGNORECASE),
     re.compile(r'"method"\s*:\s*"tools/', re.IGNORECASE),
@@ -887,7 +887,7 @@ def analyze_dom_security(html: str, url: str) -> list[DOMSecurityNode]:
                 )
                 break
 
-    # MCP / JSON-RPC injection patterns (zero-day vector detection)
+    # MCP / JSON-RPC protocol injection patterns
     # Patterns already use re.IGNORECASE, so no need for html.lower() copy.
     scan_html = html if len(html) < MAX_HTML_BYTES else html[:MAX_HTML_BYTES]
     for pattern in MCP_THREAT_PATTERNS:

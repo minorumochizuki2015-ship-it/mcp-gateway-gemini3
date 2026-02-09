@@ -4083,6 +4083,18 @@ async def web_sandbox_scan(request: Request, body: WebSandboxScanRequest) -> JSO
         s.model_dump() for s in result.verdict.causal_chain
     ]
 
+    # Include rule-based-only verdict for comparison panel
+    try:
+        rule_v = causal_sandbox.fast_scan(body.url)
+        rule_dict = rule_v.model_dump()
+        rule_dict["classification"] = rule_v.classification.value
+        rule_dict["causal_chain"] = [
+            s.model_dump() for s in rule_v.causal_chain
+        ]
+        result_dict["rule_based_verdict"] = rule_dict
+    except Exception:
+        result_dict["rule_based_verdict"] = None
+
     # LRU eviction: remove oldest entry when at capacity
     if len(_WEB_SANDBOX_ARTIFACTS) >= _WEB_SANDBOX_MAX_ARTIFACTS:
         oldest_key = next(iter(_WEB_SANDBOX_ARTIFACTS))

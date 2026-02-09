@@ -319,12 +319,11 @@
           <div class="compare-col traditional">
             <div class="compare-col-header">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-              <span class="compare-col-title" id="compareTraditionalTitle">Traditional (Hash-based)</span>
+              <span class="compare-col-title" id="compareTraditionalTitle">Rule-based Only</span>
             </div>
             <div class="compare-verdict safe" id="compareTraditionalVerdict">NO THREATS DETECTED</div>
             <div class="compare-detail" id="compareTraditionalDetail">
-              Hash-based scanning checks file signatures against known malware databases.
-              Effective for known threats, but cannot detect semantic attacks, prompt injection, or novel phishing.
+              Pattern matching: DGA detection, suspicious TLD, brand impersonation checks. No semantic understanding of page intent.
             </div>
             <div style="margin-top: 10px;">
               <span class="compare-badge none" id="compareTraditionalBadge">0 matches</span>
@@ -333,12 +332,12 @@
           <div class="compare-col semantic">
             <div class="compare-col-header">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 2v10l6.93 4"/><circle cx="12" cy="12" r="3"/></svg>
-              <span class="compare-col-title" id="compareSemanticTitle">Gemini 3 Semantic Analysis</span>
+              <span class="compare-col-title" id="compareSemanticTitle">With Gemini 3 Agent</span>
             </div>
             <div class="compare-verdict threat" id="compareSemanticVerdict">-</div>
             <div class="compare-detail" id="compareSemanticDetail">
-              Gemini 3 reasons about page intent, analyzes DOM structure, checks brand impersonation,
-              and detects prompt injection patterns invisible to hash-based scanning.
+              Gemini 3 reasons about page intent, analyzes DOM structure for deceptive patterns,
+              and detects prompt injection invisible to rule-based scanning.
             </div>
             <div style="margin-top: 10px;">
               <span class="compare-badge detected" id="compareSemanticBadge">-</span>
@@ -592,17 +591,37 @@
         { label: d.bundleId, val: b.bundle_id ? b.bundle_id.slice(0, 8) + '...' : '-' },
       ].map(i => `<div class="item"><div class="label">${escapeHtml(i.label)}</div><div class="val">${escapeHtml(i.val)}</div></div>`).join('');
 
-      // Hash vs Semantic comparison panel
+      // Detection comparison panel (real data from both rule-based + Gemini)
       var comparePanel = document.getElementById('comparePanel');
       if (comparePanel) {
         comparePanel.style.display = 'block';
         var cls = v.classification || 'benign';
-        var conf = v.confidence || 0;
-        // Traditional side: always "no threats" (hash-based can't detect semantic attacks)
-        document.getElementById('compareTraditionalVerdict').textContent = d.compareNoThreats || 'NO THREATS DETECTED';
-        document.getElementById('compareTraditionalBadge').textContent = d.compare0Matches || '0 matches in signature DB';
-        // Semantic side: show actual Gemini result
-        var sevText = cls.toUpperCase() + ' DETECTED';
+
+        // Rule-based side: use real fast_scan results from backend
+        var rv = data.rule_based_verdict;
+        if (rv) {
+          var rCls = rv.classification || 'benign';
+          var rConf = rv.confidence || 0;
+          var rIndicators = (rv.risk_indicators || []).length;
+          document.getElementById('compareTraditionalVerdict').textContent = rCls.toUpperCase() + (rCls === 'benign' ? '' : ' DETECTED');
+          document.getElementById('compareTraditionalVerdict').className = 'compare-verdict ' + (rCls === 'benign' ? 'safe' : 'threat');
+          document.getElementById('compareTraditionalBadge').textContent = rIndicators > 0
+            ? rIndicators + (d.compareIndicators || ' risk indicators found')
+            : (d.compare0Matches || '0 pattern matches');
+          document.getElementById('compareTraditionalBadge').className = 'compare-badge ' + (rCls === 'benign' ? 'none' : 'detected');
+          // Show rule-based detail with action
+          var rDetail = document.getElementById('compareTraditionalDetail');
+          if (rDetail) {
+            rDetail.textContent = rv.summary || d.compareRuleDetail || 'Rule-based pattern matching: DGA detection, suspicious TLD, brand impersonation. No semantic understanding.';
+          }
+        } else {
+          document.getElementById('compareTraditionalVerdict').textContent = d.compareNoData || 'N/A';
+          document.getElementById('compareTraditionalBadge').textContent = d.compareNoRuleData || 'Rule-based scan unavailable';
+          document.getElementById('compareTraditionalBadge').className = 'compare-badge none';
+        }
+
+        // Gemini side: show actual scan result
+        var sevText = cls.toUpperCase() + (cls === 'benign' ? '' : ' DETECTED');
         document.getElementById('compareSemanticVerdict').textContent = sevText;
         document.getElementById('compareSemanticVerdict').className = 'compare-verdict ' + (cls === 'benign' ? 'safe' : 'threat');
         var indicatorCount = (v.risk_indicators || []).length;
@@ -612,6 +631,21 @@
         if (d.compareTraditionalTitle) document.getElementById('compareTraditionalTitle').textContent = d.compareTraditionalTitle;
         if (d.compareSemanticTitle) document.getElementById('compareSemanticTitle').textContent = d.compareSemanticTitle;
         if (d.compareTitle) document.getElementById('compareTitle').textContent = d.compareTitle;
+
+        // Highlight differential: if rule-based missed but Gemini caught
+        if (rv && rv.classification === 'benign' && cls !== 'benign') {
+          document.getElementById('compareBadge').textContent = d.compareGeminiCaught || 'Gemini 3 caught what rules missed';
+          document.getElementById('compareBadge').style.background = '#fee2e2';
+          document.getElementById('compareBadge').style.color = '#991b1b';
+        } else if (rv && rv.classification !== 'benign' && cls !== 'benign') {
+          document.getElementById('compareBadge').textContent = d.compareBothDetected || 'Both detected threats';
+          document.getElementById('compareBadge').style.background = '#fef3c7';
+          document.getElementById('compareBadge').style.color = '#92400e';
+        } else {
+          document.getElementById('compareBadge').textContent = d.compareWhyGemini || 'Why Gemini 3?';
+          document.getElementById('compareBadge').style.background = '#dbeafe';
+          document.getElementById('compareBadge').style.color = '#1d4ed8';
+        }
       }
 
       // Risk indicators
@@ -851,11 +885,17 @@
         detailSummary: 'Summary', detailRiskIndicators: 'Risk Indicators', detailEvidence: 'Evidence',
         // Compare panel
         compareTitle: 'Detection Comparison',
-        compareTraditionalTitle: 'Traditional (Hash-based)',
-        compareSemanticTitle: 'Gemini 3 Semantic Analysis',
+        compareTraditionalTitle: 'Rule-based Only',
+        compareSemanticTitle: 'With Gemini 3 Agent',
         compareNoThreats: 'NO THREATS DETECTED',
-        compare0Matches: '0 matches in signature DB',
+        compare0Matches: '0 pattern matches',
         compareIndicators: ' risk indicators found',
+        compareNoData: 'N/A',
+        compareNoRuleData: 'Rule-based scan unavailable',
+        compareRuleDetail: 'Pattern matching: DGA detection, suspicious TLD, brand impersonation checks. No semantic understanding of page intent.',
+        compareGeminiCaught: 'Gemini 3 caught what rules missed!',
+        compareBothDetected: 'Both detected threats',
+        compareWhyGemini: 'Why Gemini 3?',
       },
       ja: {
         pageTitle: 'Causal Web Sandbox',
@@ -908,11 +948,17 @@
         detailSummary: '概要', detailRiskIndicators: 'リスク指標', detailEvidence: '証拠',
         // Compare panel
         compareTitle: '検出方式の比較',
-        compareTraditionalTitle: '従来型（ハッシュベース）',
-        compareSemanticTitle: 'Gemini 3 セマンティック分析',
+        compareTraditionalTitle: 'ルールベースのみ',
+        compareSemanticTitle: 'Gemini 3 エージェント付き',
         compareNoThreats: '脅威検出なし',
-        compare0Matches: 'シグネチャDB 一致 0件',
+        compare0Matches: 'パターン一致 0件',
         compareIndicators: ' 件のリスク指標を検出',
+        compareNoData: 'N/A',
+        compareNoRuleData: 'ルールベーススキャン不可',
+        compareRuleDetail: 'パターンマッチング: DGA検出、不審TLD、ブランド偽装チェック。ページの意図に対するセマンティック理解なし。',
+        compareGeminiCaught: 'ルールが見逃した脅威をGemini 3が検出！',
+        compareBothDetected: '両方式で脅威を検出',
+        compareWhyGemini: 'なぜGemini 3？',
       }
     };
     const LANG_KEY = 'suite_language';
