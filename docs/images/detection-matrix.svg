@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480" font-family="Inter, system-ui, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480" font-family="Inter, system-ui, sans-serif" role="img" aria-labelledby="dm-title dm-desc">
+  <title id="dm-title">Detection Matrix: 13 of 13 Patterns Verified</title>
+  <desc id="dm-desc">Table showing 13 threat detection patterns (DGA, Freenom phishing, IDN homograph, subdomain impersonation, leet-speak, suspicious tokens, MCP injection, elevated ccTLD, hyphenated brand, and 3 clean baselines) all passing with explicit test cases.</desc>
   <defs>
     <filter id="sh"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.1"/></filter>
   </defs>

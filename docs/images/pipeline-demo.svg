@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" font-family="Inter, system-ui, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" font-family="Inter, system-ui, sans-serif" role="img" aria-labelledby="pd-title pd-desc">
+  <title id="pd-title">MCP Gateway Live Security Pipeline Demo</title>
+  <desc id="pd-desc">Animated demonstration of the security pipeline scanning login-apple-verify.tk: 6 layers activate sequentially, detection cards (DGA, Brand Impersonation, Suspicious Tokens, Gemini 3 Verdict) appear progressively, followed by evidence trail, attack narrative, MCP-specific threats, and final BLOCKED verdict.</desc>
   <defs>
     <linearGradient id="gBlue" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#4285f4"/><stop offset="100%" stop-color="#1a73e8"/>

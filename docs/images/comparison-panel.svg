@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" font-family="Inter, system-ui, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" font-family="Inter, system-ui, sans-serif" role="img" aria-labelledby="cp-title cp-desc">
+  <title id="cp-title">Detection Comparison: Rule-based vs Gemini 3</title>
+  <desc id="cp-desc">Side-by-side comparison showing rule-based detection finding 4 risk indicators versus Gemini 3 agent finding 9 indicators including credential phishing analysis, MCP-specific threats, and attack narrative.</desc>
   <defs>
     <filter id="sh"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.12"/></filter>
     <linearGradient id="gbad" x1="0%" y1="0%" x2="100%" y2="0%">

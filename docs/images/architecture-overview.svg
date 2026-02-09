@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520" font-family="Inter, system-ui, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520" font-family="Inter, system-ui, sans-serif" role="img" aria-labelledby="arch-title arch-desc">
+  <title id="arch-title">MCP Gateway 6-Layer Security Pipeline</title>
+  <desc id="arch-desc">Architecture diagram showing AI Client connecting through MCP Gateway's 6-layer pipeline (Policy, Static, Semantic, Council, Sanitize, Sandbox) to MCP Servers, with 6 Gemini 3 integration points and evidence trail.</desc>
   <defs>
     <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#4285f4"/>
