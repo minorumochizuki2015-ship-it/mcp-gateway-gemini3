@@ -755,9 +755,10 @@
       document.getElementById('sevLowBar').style.width = ((sev.low || 0) / sevTotal * 100) + '%';
 
       // Attack Detection Timeline: merge audit_log block events + demo attack_detections
+      var audit = (auditRes && auditRes.ok && Array.isArray(auditRes.data)) ? auditRes.data : [];
       var attacks = [];
       // 1) Extract real block/quarantine events from audit log as attack signals
-      if (audit && audit.length > 0) {
+      if (audit.length > 0) {
         audit.forEach(function(ev) {
           if (ev.detail && (ev.detail.decision === 'deny' || ev.detail.decision === 'block' || ev.detail.decision === 'quarantine')) {
             attacks.push({
@@ -776,7 +777,7 @@
       // 2) Supplement with demo data if no live attacks found
       if (attacks.length === 0 && window.suiteScanData && Array.isArray(window.suiteScanData.attack_detections)) {
         attacks = window.suiteScanData.attack_detections;
-        showMockBadge();
+        if (typeof showMockBadge === 'function') showMockBadge();
       }
       var attackTimeline = document.getElementById('attackTimeline');
       var attackEmpty = document.getElementById('attackEmpty');
