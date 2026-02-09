@@ -1582,6 +1582,17 @@ window.escapeHtml = function escapeHtml(str) {
 	    updateAdminSessionBanner();
 	  }
 
+  // Consistent date formatting across all pages (locale-aware)
+  function suiteFormatDate(value, opts) {
+    if (!value) return '-';
+    var d = new Date(value);
+    if (isNaN(d.getTime())) return '-';
+    var lang = getLanguage();
+    var locale = lang === 'ja' ? 'ja-JP' : 'en-US';
+    var defaults = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+    return d.toLocaleString(locale, Object.assign(defaults, opts || {}));
+  }
+
   window.CommonI18N = CommonI18N;
   window.getLanguage = getLanguage;
   window.setLanguage = setLanguage;
@@ -1589,6 +1600,7 @@ window.escapeHtml = function escapeHtml(str) {
   window.applyCommonI18n = applyCommonI18n;
   window.getSetupCompletion = getSetupCompletion;
   window.applyNavOrder = applyNavOrder;
+  window.suiteFormatDate = suiteFormatDate;
 
 	  // Demo mode auto-detection: skip auth when MCP_GATEWAY_DEMO_MODE=true
 	  async function detectDemoMode() {

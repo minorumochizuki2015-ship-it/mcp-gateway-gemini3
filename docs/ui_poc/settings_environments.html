@@ -1845,7 +1845,8 @@
 
             <div class="form-group">
               <label class="form-label" for="gatewayExpiry" id="gatewayExpiryLabel">Token Expiry (UTC)</label>
-              <input type="datetime-local" id="gatewayExpiry" class="form-input" data-testid="gateway-expiry" lang="en" />
+              <input type="text" id="gatewayExpiry" class="form-input" data-testid="gateway-expiry"
+                placeholder="YYYY-MM-DD HH:MM" pattern="\d{4}-\d{2}-\d{2} \d{2}:\d{2}" autocomplete="off" />
               <p class="form-hint" id="gatewayExpiryHint">Recommended: short-lived tokens for clients.</p>
             </div>
 
@@ -4195,7 +4196,9 @@
         const date = new Date(trimmed);
         return Number.isNaN(date.getTime()) ? "" : date.toISOString();
       }
-      const [datePart, timePart] = trimmed.split("T");
+      // Support both "YYYY-MM-DD HH:MM" (text input) and "YYYY-MM-DDTHH:MM" (datetime-local)
+      const normalized = trimmed.replace(/\s+/, "T");
+      const [datePart, timePart] = normalized.split("T");
       if (!datePart || !timePart) return "";
       const [year, month, day] = datePart.split("-").map((item) => Number(item));
       const [hour, minute] = timePart.split(":").map((item) => Number(item));
@@ -4213,7 +4216,7 @@
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return "";
       const pad = (num) => String(num).padStart(2, "0");
-      return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}T${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
+      return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
     }
 
     function setAdminToken(value) {
@@ -5278,7 +5281,7 @@
       renderGatewayHistory();
     });
 
-    gatewayExpiry.addEventListener("change", () => {
+    gatewayExpiry.addEventListener("input", () => {
       const expiryIso = toUtcIsoString(gatewayExpiry.value);
       window.SUITE_SETTINGS_GATEWAY = {
         ...(window.SUITE_SETTINGS_GATEWAY || {}),
@@ -5949,8 +5952,8 @@
 	                const authToken = (typeof getAdminToken === 'function') ? getAdminToken() : (window.SUITE_ADMIN_TOKEN || '');
 	                const hdrs = { 'Content-Type': 'application/json' };
 	                if (authToken) hdrs['Authorization'] = 'Bearer ' + authToken;
-	                fetch('/api/config/gemini-key', { method: 'POST', headers: hdrs, body: JSON.stringify({ api_key: apiKey }) });
-	              } catch (_) { /* best-effort */ }
+	                fetch('/api/config/gemini-key', { method: 'POST', headers: hdrs, body: JSON.stringify({ api_key: apiKey }) }).catch(function() { /* best-effort: Gemini key sync may fail if gateway unreachable */ });
+	              } catch (_) { /* fetch setup error */ }
 	            }
 	          }
 	          return true;

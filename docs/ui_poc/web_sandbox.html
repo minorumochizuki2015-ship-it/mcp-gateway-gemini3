@@ -803,6 +803,25 @@
       document.getElementById('domEmpty').textContent = d.noDomThreats;
       document.getElementById('netEmpty').textContent = d.noNetTraces;
       document.getElementById('a11yEmpty').textContent = d.noA11y;
+
+      // Share verdict to dashboard via sessionStorage for cross-page freshness
+      try {
+        var stored = JSON.parse(sessionStorage.getItem('mcp_latest_verdicts') || '[]');
+        if (!Array.isArray(stored)) stored = [];
+        stored.push({
+          run_id: (data.bundle || {}).bundle_id || ('ws-' + Date.now()),
+          url: data.url || '',
+          classification: v.classification,
+          confidence: v.confidence,
+          recommended_action: v.recommended_action,
+          summary: v.summary || '',
+          timestamp: new Date().toISOString(),
+          eval_method: data.eval_method || 'unknown'
+        });
+        // Keep last 20 verdicts
+        if (stored.length > 20) stored = stored.slice(-20);
+        sessionStorage.setItem('mcp_latest_verdicts', JSON.stringify(stored));
+      } catch (_) { /* sessionStorage unavailable */ }
     }
 
     var CLS_MAP = {

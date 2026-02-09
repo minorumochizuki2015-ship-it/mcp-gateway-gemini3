@@ -754,9 +754,27 @@
       document.getElementById('sevMediumBar').style.width = ((sev.medium || 0) / sevTotal * 100) + '%';
       document.getElementById('sevLowBar').style.width = ((sev.low || 0) / sevTotal * 100) + '%';
 
-      // Attack Detection Timeline (no live API yet - always use demo data)
+      // Attack Detection Timeline: merge audit_log block events + demo attack_detections
       var attacks = [];
-      if (window.suiteScanData && Array.isArray(window.suiteScanData.attack_detections)) {
+      // 1) Extract real block/quarantine events from audit log as attack signals
+      if (audit && audit.length > 0) {
+        audit.forEach(function(ev) {
+          if (ev.detail && (ev.detail.decision === 'deny' || ev.detail.decision === 'block' || ev.detail.decision === 'quarantine')) {
+            attacks.push({
+              ts: ev.ts,
+              code: ev.type === 'source_sink_check' ? 'tool_shadowing' : ev.type === 'openai_proxy_block' ? 'bait_and_switch' : 'signature_cloaking',
+              severity: 'critical',
+              tool_name: (ev.detail && ev.detail.tool_name) || ev.summary || '',
+              server: (ev.detail && ev.detail.server_id) || '',
+              message: ev.summary || '',
+              confidence: (ev.detail && typeof ev.detail.confidence === 'number') ? ev.detail.confidence : 0.80,
+              status: 'blocked'
+            });
+          }
+        });
+      }
+      // 2) Supplement with demo data if no live attacks found
+      if (attacks.length === 0 && window.suiteScanData && Array.isArray(window.suiteScanData.attack_detections)) {
         attacks = window.suiteScanData.attack_detections;
         showMockBadge();
       }
@@ -852,8 +870,17 @@
           });
         });
       }
-      // From web sandbox verdicts
+      // From web sandbox verdicts (API + sessionStorage for cross-page freshness)
       var wv = (webVerdicts && webVerdicts.verdicts) || [];
+      try {
+        var ssVerdicts = JSON.parse(sessionStorage.getItem('mcp_latest_verdicts') || '[]');
+        if (Array.isArray(ssVerdicts)) {
+          var existingIds = wv.map(function(v) { return v.run_id; });
+          ssVerdicts.forEach(function(sv) {
+            if (sv.run_id && existingIds.indexOf(sv.run_id) === -1) wv.push(sv);
+          });
+        }
+      } catch (_) { /* sessionStorage unavailable */ }
       wv.slice().reverse().slice(0, 5).forEach(function(v) {
         decisions.push({
           ts: v.timestamp,
@@ -1217,7 +1244,9 @@
 
         var base = (window.apiClient && window.apiClient._base) || '';
         var sseUrl = base + '/api/demo/run-live';
-        // EventSource cannot set Authorization header — pass token via query param
+        // SECURITY NOTE: EventSource API limitation — cannot set Authorization header.
+        // Token is passed via query param. Mitigations: short-lived token, Referrer-Policy: no-referrer,
+        // withCredentials for cookie-based auth fallback. Prefer cookie auth when available.
         var adminToken = (window.apiClient && window.apiClient.getAdminToken) ? window.apiClient.getAdminToken() : '';
         if (adminToken) sseUrl += '?token=' + encodeURIComponent(adminToken);
         var es = new EventSource(sseUrl, { withCredentials: true });
@@ -1457,6 +1486,7 @@
           geminiError.style.display = '';
         } finally {
           geminiBtn.disabled = false;
+          geminiBtn.textContent = updateStatus._lastBtnLabel || 'Set Key';
         }
       });
 
