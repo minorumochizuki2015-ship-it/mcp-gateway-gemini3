@@ -384,9 +384,59 @@
       return isNaN(d.getTime()) ? '-' : d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
     }
 
+    function renderPackList(packs) {
+      const CLASSIFICATION_CLASSES = {'benign': 'info', 'phishing': 'danger', 'malware': 'danger', 'clickjacking': 'warn', 'scam': 'danger', 'deceptive_ui': 'warn'};
+      const ACTION_CLASSES = {'allow': 'info', 'warn': 'warn', 'block': 'danger'};
+      if (!packs || packs.length === 0) {
+        content.innerHTML = '<div class="empty">No evidence packs yet. Scan a URL in Web Sandbox to generate evidence.</div>';
+        return;
+      }
+      let html = '<div style="display:grid;gap:16px;">';
+      packs.forEach(p => {
+        const classCls = CLASSIFICATION_CLASSES[p.classification] || 'info';
+        const actionCls = ACTION_CLASSES[p.recommended_action] || 'warn';
+        const steps = (p.pipeline_trace || []).length;
+        html += `
+          <a href="evidence_pack.html?run_id=${encodeURIComponent(p.run_id)}" style="text-decoration:none;color:inherit;">
+            <div class="card" style="cursor:pointer;transition:all 0.15s;border-left:4px solid var(--${classCls === 'danger' ? 'danger' : classCls === 'warn' ? 'warn' : 'success'});" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)';this.style.transform='translateY(-1px)'" onmouseout="this.style.boxShadow='';this.style.transform=''">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <span class="pill ${classCls}" style="font-size:13px;">${escapeHtml((p.classification || '').toUpperCase())}</span>
+                  <code style="font-size:13px;color:var(--muted);">${escapeHtml(p.run_id)}</code>
+                </div>
+                <div style="display:flex;align-items:center;gap:16px;font-size:13px;color:var(--muted);">
+                  <span>${(p.confidence * 100).toFixed(0)}% confidence</span>
+                  <span class="pill ${actionCls}" style="font-size:12px;">${escapeHtml(p.recommended_action)}</span>
+                  <span>${steps} pipeline steps</span>
+                  <span>${formatTimestamp(p.timestamp)}</span>
+                  <span style="color:var(--primary);font-weight:600;">View &rarr;</span>
+                </div>
+              </div>
+              <div style="margin-top:8px;font-size:13px;color:var(--muted);">
+                <code style="font-size:12px;">${escapeHtml(p.eval_method || 'N/A')}</code>
+                ${p.deterministic_config ? ' &middot; temp=' + p.deterministic_config.temperature + ', seed=' + p.deterministic_config.seed : ''}
+              </div>
+            </div>
+          </a>`;
+      });
+      html += '</div>';
+      content.innerHTML = html;
+    }
+
     async function renderPack() {
       if (!runId) {
-        content.innerHTML = '<div class="empty">No run_id specified. Please provide ?run_id=xxx in the URL.</div>';
+        // Show list of all available evidence packs
+        let packs = [];
+        if (apiClient.fetchEvidencePacks) {
+          try {
+            const res = await apiClient.fetchEvidencePacks();
+            if (res && res.ok && res.data) packs = res.data;
+          } catch (_) {}
+        }
+        if (packs.length === 0 && window.suiteScanData && window.suiteScanData._DEMO_EVIDENCE_PACKS) {
+          packs = window.suiteScanData._DEMO_EVIDENCE_PACKS;
+        }
+        renderPackList(packs);
         return;
       }
 
