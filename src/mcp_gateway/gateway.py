@@ -25,6 +25,9 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlsplit, urlunsplit
 import httpx
 import sqlite_utils  # type: ignore[import-not-found]
 import yaml
+from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator
+
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -37,12 +40,25 @@ logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 APPROVALS_RULES_PATH = BASE_DIR / "rules" / "APPROVALS.yaml"
 
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Lifespan handler: pre-seed demo verdicts on startup."""
+    try:
+        _preseed_demo_verdicts()
+    except Exception:
+        pass  # Best-effort: don't crash server if preseed fails
+    yield
+
+
 # Create FastAPI app
 app = FastAPI(
     title="MCP Gateway",
     description="Safe MCP aggregation and evaluation gateway",
     version="0.1.0",
+    lifespan=_lifespan,
 )
+
 
 # Default database path
 DEFAULT_DB_PATH = Path("data/mcp_gateway.db")
@@ -4023,6 +4039,43 @@ _WEB_SANDBOX_MAX_ARTIFACTS = 100
 _WEB_SANDBOX_ARTIFACTS: dict[str, dict[str, Any]] = {}
 
 
+def _preseed_demo_verdicts() -> None:
+    """Pre-seed the verdict history with demo page scans on startup.
+
+    This ensures the dashboard shows results immediately without requiring
+    the user to manually trigger scans first.
+    """
+    from . import causal_sandbox
+
+    for page_key, demo in _DEMO_SCAN_PAGES.items():
+        demo_url = demo["url"]
+        html = demo["html"]
+        run_id = f"preseed-{page_key}-{uuid.uuid4().hex[:8]}"
+
+        dom_threats = causal_sandbox.analyze_dom_security(html, demo_url)
+        a11y_tree = causal_sandbox.extract_accessibility_tree(html)
+        network_traces = causal_sandbox.trace_network_requests(demo_url, html)
+        visible_text = causal_sandbox.extract_visible_text(html)
+
+        verdict = causal_sandbox._rule_based_verdict(
+            demo_url, dom_threats, a11y_tree, network_traces, visible_text,
+        )
+
+        _WEB_SANDBOX_VERDICTS.append({
+            "run_id": run_id,
+            "url": demo_url,
+            "classification": verdict.classification.value,
+            "confidence": verdict.confidence,
+            "recommended_action": verdict.recommended_action,
+            "summary": verdict.summary,
+            "risk_indicators": verdict.risk_indicators,
+            "evidence_refs": verdict.evidence_refs,
+            "eval_method": "demo_preset",
+            "label": demo["label"],
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+
+
 class WebSandboxScanRequest(BaseModel):
     """Request body for /api/web-sandbox/scan."""
 
@@ -5020,6 +5073,21 @@ async def web_sandbox_scan_demo(body: DemoScanRequest) -> JSONResponse:
         s.model_dump() for s in fast_verdict.causal_chain
     ]
     result["rule_based_verdict"] = fast_dict
+
+    # Append to verdict history so it appears in the dashboard
+    _WEB_SANDBOX_VERDICTS.append({
+        "run_id": run_id,
+        "url": demo_url,
+        "classification": rule_verdict.classification.value,
+        "confidence": rule_verdict.confidence,
+        "recommended_action": rule_verdict.recommended_action,
+        "summary": rule_verdict.summary,
+        "risk_indicators": rule_verdict.risk_indicators,
+        "evidence_refs": rule_verdict.evidence_refs,
+        "eval_method": "demo_preset",
+        "label": demo["label"],
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    })
 
     return JSONResponse(result)
 

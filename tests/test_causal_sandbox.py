@@ -49,9 +49,14 @@ from mcp_gateway.causal_sandbox import (
     validate_url_ssrf,
 )
 from mcp_gateway.causal_sandbox import (
+    FREENOM_TLDS,
+    SUSPICIOUS_URL_TOKENS,
     AgentScanResult,
     _AGENT_TOOL_DECLARATIONS,
     _execute_agent_tool,
+    _leet_normalize,
+    count_suspicious_url_tokens,
+    detect_brand_impersonation,
     run_agent_scan,
 )
 
@@ -1954,3 +1959,156 @@ class TestAgentScan:
         assert isinstance(result, AgentScanResult)
         # Should fall back to rule_based_fallback or rule_based
         assert "fallback" in result.eval_method or result.eval_method == "rule_based"
+
+
+# ---- Leet-speak Normalization ----
+
+
+class TestLeetSpeak:
+    """Leet-speak / typosquatting normalization tests."""
+
+    def test_leet_normalize_basic(self) -> None:
+        """Basic leet-speak digits are mapped to letters."""
+        assert _leet_normalize("g00gl3") == "google"
+        assert _leet_normalize("4ppl3") == "apple"
+        assert _leet_normalize("p4yp4l") == "paypal"
+
+    def test_leet_normalize_no_change(self) -> None:
+        """Normal text passes through unchanged."""
+        assert _leet_normalize("google") == "google"
+        assert _leet_normalize("example") == "example"
+
+    def test_detect_brand_leet_google(self) -> None:
+        """g00gle.tk is detected as google brand impersonation."""
+        found, brand, indicators = detect_brand_impersonation("g00gle.tk")
+        assert found is True
+        assert brand == "google"
+        assert any("leet" in ind.lower() for ind in indicators)
+
+    def test_detect_brand_leet_apple(self) -> None:
+        """4ppl3-login.gq is detected as apple brand impersonation."""
+        found, brand, indicators = detect_brand_impersonation("4ppl3-login.gq")
+        assert found is True
+        assert brand == "apple"
+
+    def test_detect_brand_leet_paypal(self) -> None:
+        """p4yp4l-secure.ml is detected as paypal brand impersonation."""
+        found, brand, indicators = detect_brand_impersonation("p4yp4l-secure.ml")
+        assert found is True
+        assert brand == "paypal"
+
+    def test_detect_brand_leet_no_false_positive(self) -> None:
+        """Legitimate domain with digits is not flagged."""
+        found, _, _ = detect_brand_impersonation("shop123.com")
+        assert found is False
+
+    def test_detect_brand_leet_hyphen_split(self) -> None:
+        """Leet-speak in hyphen-split token is detected."""
+        found, brand, indicators = detect_brand_impersonation(
+            "login-g00gle-verify.tk"
+        )
+        assert found is True
+        assert brand == "google"
+
+
+# ---- Suspicious URL Tokens ----
+
+
+class TestSuspiciousUrlTokens:
+    """Suspicious URL token detection tests."""
+
+    def test_count_login_verify(self) -> None:
+        """login and verify tokens are detected."""
+        count, indicators = count_suspicious_url_tokens(
+            "login-verify-secure.example.com"
+        )
+        assert count >= 2
+        assert any("login" in ind for ind in indicators)
+        assert any("verify" in ind for ind in indicators)
+
+    def test_no_suspicious_tokens(self) -> None:
+        """Clean domain has no suspicious tokens."""
+        count, indicators = count_suspicious_url_tokens("docs.example.com")
+        assert count == 0
+        assert indicators == []
+
+
+# ---- Detection Matrix (end-to-end verdict tests) ----
+
+
+class TestDetectionMatrix:
+    """Validate detection for the full threat matrix.
+
+    Each test exercises fast_scan() which runs:
+      DGA + TLD + brand impersonation + suspicious tokens → verdict
+    """
+
+    def test_dga_domain_on_suspicious_tld(self) -> None:
+        """Random-looking DGA domain on .xyz is flagged."""
+        v = fast_scan("https://xkjhwqe.xyz/login")
+        assert v.classification != ThreatClassification.benign
+        assert v.recommended_action in ("warn", "block")
+
+    def test_freenom_phishing(self) -> None:
+        """Brand + Freenom TLD → phishing/block."""
+        v = fast_scan("https://login-apple-verify.tk/secure")
+        assert v.classification == ThreatClassification.phishing
+        assert v.recommended_action == "block"
+
+    def test_idn_homograph_apple(self) -> None:
+        """Punycode-encoded Cyrillic apple homograph is detected."""
+        # xn--pple-43d.com = аpple.com (Cyrillic а)
+        v = fast_scan("https://xn--pple-43d.com/id")
+        assert v.classification != ThreatClassification.benign
+
+    def test_brand_subdomain_impersonation(self) -> None:
+        """Brand name as subdomain of suspicious domain."""
+        v = fast_scan("https://apple.evil-site.tk/login")
+        assert v.classification != ThreatClassification.benign
+
+    def test_leet_speak_google(self) -> None:
+        """Leet-speak google on Freenom TLD → phishing."""
+        v = fast_scan("https://g00gle.tk/login")
+        assert v.classification != ThreatClassification.benign
+        assert v.recommended_action in ("warn", "block")
+
+    def test_leet_speak_paypal(self) -> None:
+        """Leet-speak paypal on suspicious TLD."""
+        v = fast_scan("https://p4yp4l-verify.ml/account")
+        assert v.classification != ThreatClassification.benign
+
+    def test_suspicious_tld_with_tokens(self) -> None:
+        """Suspicious TLD + phishing tokens → warn or higher."""
+        v = fast_scan("https://secure-login-update.gq/verify")
+        assert v.recommended_action in ("warn", "block")
+
+    def test_mcp_injection_domain(self) -> None:
+        """Domain with MCP-related keywords should not be benign on suspicious TLD."""
+        v = fast_scan("https://mcp-server-tools.tk/jsonrpc")
+        assert v.recommended_action in ("warn", "block")
+
+    def test_clean_documentation_site(self) -> None:
+        """Legitimate documentation site is benign."""
+        v = fast_scan("https://docs.example.com/api/reference")
+        assert v.classification == ThreatClassification.benign
+        assert v.recommended_action == "allow"
+
+    def test_clean_github_site(self) -> None:
+        """GitHub URL is benign."""
+        v = fast_scan("https://github.com/user/repo")
+        assert v.classification == ThreatClassification.benign
+
+    def test_elevated_cc_tld_with_dga(self) -> None:
+        """Elevated ccTLD with DGA-like domain."""
+        v = fast_scan("https://xkjhwqe.ru/payload")
+        assert v.recommended_action in ("warn", "block")
+
+    def test_hyphenated_brand_on_freenom(self) -> None:
+        """Hyphenated brand name on Freenom TLD → phishing."""
+        v = fast_scan("https://microsoft-support.cf/help")
+        assert v.classification != ThreatClassification.benign
+
+    def test_brand_on_legit_tld_not_flagged(self) -> None:
+        """Brand on legitimate TLD as SLD is allowed (e.g. apple.com)."""
+        v = fast_scan("https://apple.com/store")
+        assert v.classification == ThreatClassification.benign

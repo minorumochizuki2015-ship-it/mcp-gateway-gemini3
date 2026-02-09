@@ -216,6 +216,17 @@ SUSPICIOUS_URL_TOKENS = frozenset({
 # Freenom TLDs (almost universally abused, higher score than general suspicious)
 FREENOM_TLDS = frozenset({"tk", "ml", "ga", "gq", "cf"})
 
+# Leet-speak / typosquatting character mapping (ASCII digit → letter)
+_LEET_MAP: dict[str, str] = {
+    "0": "o", "1": "l", "3": "e", "4": "a",
+    "5": "s", "7": "t", "8": "b", "9": "g",
+}
+
+
+def _leet_normalize(text: str) -> str:
+    """Normalize leet-speak substitutions (e.g. g00gle → google)."""
+    return "".join(_LEET_MAP.get(ch, ch) for ch in text)
+
 # Unicode confusable character mapping (IDN homograph attack defense)
 # Maps visually similar non-Latin characters to their Latin equivalents
 _CONFUSABLE_MAP: dict[int, str] = {
@@ -530,6 +541,32 @@ def detect_brand_impersonation(
                     f"Brand: substring_impersonation ({token} in {label_lower})"
                 )
                 return True, token, indicators
+
+        # --- Step 4: Leet-speak normalization ---
+        leet_label = _leet_normalize(label_lower)
+        if leet_label != label_lower:
+            # Check full label match after leet normalization
+            if leet_label in IMPERSONATED_BRANDS:
+                if leet_label == _sld and tld in _legit_tlds:
+                    continue
+                indicators.append(
+                    f"Brand: leet_speak ({label_lower} → {leet_label})"
+                )
+                return True, leet_label, indicators
+            # Also check hyphen-split tokens after leet normalization
+            leet_tokens = re.split(r"[-_.]", leet_label)
+            for lt in leet_tokens:
+                if len(lt) < 3:
+                    continue
+                if lt in IMPERSONATED_BRANDS:
+                    if lt == _sld and tld in _legit_tlds:
+                        continue
+                    if tld in _legit_tlds and label_lower == _sld:
+                        continue
+                    indicators.append(
+                        f"Brand: leet_speak ({label_lower} → {lt})"
+                    )
+                    return True, lt, indicators
 
     return False, "", indicators
 
