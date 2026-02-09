@@ -408,8 +408,13 @@
         return;
       }
 
-      const classificationPill = `<span class="pill ${pack.classification}">${escapeHtml(pack.classification)}</span>`;
-      const actionPill = `<span class="pill ${pack.recommended_action}">${escapeHtml(pack.recommended_action)}</span>`;
+      // CX-002: Allowlist class mapping to prevent attribute injection
+      const CLASSIFICATION_CLASSES = {'benign': 'info', 'phishing': 'danger', 'malware': 'danger', 'clickjacking': 'warn', 'scam': 'danger', 'deceptive_ui': 'warn'};
+      const ACTION_CLASSES = {'allow': 'info', 'warn': 'warn', 'block': 'danger'};
+      const classCls = CLASSIFICATION_CLASSES[pack.classification] || 'info';
+      const actionCls = ACTION_CLASSES[pack.recommended_action] || 'warn';
+      const classificationPill = `<span class="pill ${classCls}">${escapeHtml(pack.classification)}</span>`;
+      const actionPill = `<span class="pill ${actionCls}">${escapeHtml(pack.recommended_action)}</span>`;
 
       let html = `
         <div class="card">
