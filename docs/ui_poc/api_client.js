@@ -1114,7 +1114,7 @@ window.escapeHtml = function escapeHtml(str) {
         noEntries: "AllowList エントリはありません"
       },
       scans: {
-        title: "セキュリティスキャン",
+        title: "Security Scans",
         subtitle: "MCP Gateway のセキュリティスキャン結果を表示・分析します",
         statTotal: "総スキャン数",
         statPassed: "合格",
@@ -1168,7 +1168,7 @@ window.escapeHtml = function escapeHtml(str) {
         errorLoad: "課金データの読み込みに失敗しました"
       },
 	      auditLog: {
-	        title: "監査ログ",
+	        title: "Audit Log",
 	        subtitle: "操作と判定の監査ログ（読み取り専用）",
         typeLabel: "タイプ",
         typeTitle: "イベントタイプ: 上流設定、トークン発行・失効、環境、Proxy/MCP ブロック",
@@ -1570,28 +1570,7 @@ window.escapeHtml = function escapeHtml(str) {
       for (const k of keys) { val = val && val[k]; }
       if (val !== undefined && val !== null) el.setAttribute('title', val);
     });
-    // Translate nav links
-    var navMap = {
-      'settings_environments.html': dict.common && dict.common.navEnvironments,
-      'dashboard.html': dict.common && dict.common.navDashboard,
-      'scans.html': dict.common && dict.common.navScans,
-      'allowlist.html': dict.common && dict.common.navAllowList,
-      'web_sandbox.html': dict.common && dict.common.navWebSandbox,
-      'audit_log.html': dict.common && dict.common.navAuditLog,
-      'evidence_pack.html': dict.common && dict.common.navEvidencePack
-    };
-    document.querySelectorAll('.nav-link').forEach(function(el) {
-      var href = el.getAttribute('href');
-      if (href && navMap[href]) el.textContent = navMap[href];
-    });
-    // Translate "Demo Mode" status
-    var navStatusEl = document.querySelector('.nav-status');
-    if (navStatusEl && dict.common && dict.common.navDemoMode) {
-      var dot = navStatusEl.querySelector('.status-dot');
-      navStatusEl.textContent = '';
-      if (dot) navStatusEl.appendChild(dot);
-      navStatusEl.appendChild(document.createTextNode(' ' + dict.common.navDemoMode));
-    }
+    // Nav links and "Demo Mode" status stay in English always (user preference)
 	    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
 	      const key = el.getAttribute('data-i18n-placeholder');
 	      const keys = key.split('.');

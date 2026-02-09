@@ -708,8 +708,12 @@
       document.getElementById('kpiBlock').textContent = blockRate + '%';
       document.getElementById('kpiCouncil').textContent = council.total || 0;
 
-      // Policy status
-      var policyStatus = getPolicyStatus(summary && summary.shadow_audit, allowlistStatus);
+      // Policy status (fallback to mock shadow_audit when live data missing)
+      var shadowAudit = (summary && summary.shadow_audit) || null;
+      if (!shadowAudit && window.suiteScanData && window.suiteScanData.dashboard_summary) {
+        shadowAudit = window.suiteScanData.dashboard_summary.shadow_audit;
+      }
+      var policyStatus = getPolicyStatus(shadowAudit, allowlistStatus);
       var policyEl = document.getElementById('kpiPolicy');
       policyEl.textContent = policyStatus.text;
       if (policyStatus.cls) policyEl.className = 'kpi-value ' + policyStatus.cls;
@@ -720,8 +724,8 @@
       document.getElementById('flowBlocked').textContent = (allow.deny || 0) + ' ' + d.flowBlocked;
       document.getElementById('flowQuarantined').textContent = (allow.quarantine || 0) + ' ' + d.flowQuarantined;
 
-      // SSOT / Shadow Audit Status
-      var shadow = (summary && summary.shadow_audit) || {};
+      // SSOT / Shadow Audit Status (reuse shadowAudit with mock fallback)
+      var shadow = shadowAudit || {};
       var aStatus = allowlistStatus || {};
       function ssotDot(ok, elId) {
         var dot = document.getElementById(elId);
@@ -750,9 +754,9 @@
       document.getElementById('sevMediumBar').style.width = ((sev.medium || 0) / sevTotal * 100) + '%';
       document.getElementById('sevLowBar').style.width = ((sev.low || 0) / sevTotal * 100) + '%';
 
-      // Attack Detection Timeline
+      // Attack Detection Timeline (no live API yet - always use demo data)
       var attacks = [];
-      if (window.suiteScanData && Array.isArray(window.suiteScanData.attack_detections) && !window.SUITE_DISABLE_MOCK) {
+      if (window.suiteScanData && Array.isArray(window.suiteScanData.attack_detections)) {
         attacks = window.suiteScanData.attack_detections;
         showMockBadge();
       }
