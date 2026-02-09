@@ -5799,8 +5799,8 @@ async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
             },
             {
                 "id": f"ses-{uuid.uuid4().hex[:8]}",
-                "agent": "Gemini 3 Nano (Data Analyst)",
-                "model": "gemini-3-nano-preview",
+                "agent": "Gemini 3 Flash (Data Analyst)",
+                "model": "gemini-3-flash-preview",
                 "color": "#ea4335",
             },
         ]
@@ -5821,7 +5821,7 @@ async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
 
         s_pro = _demo_sessions[0]["id"]
         s_flash = _demo_sessions[1]["id"]
-        s_nano = _demo_sessions[2]["id"]
+        s_flash2 = _demo_sessions[2]["id"]
 
         # Interleaved tool calls from different Gemini sessions
         _intercept_calls = [
@@ -5849,17 +5849,17 @@ async def demo_run_live(request: Request, token: str = "") -> StreamingResponse:
                 "result": "BLOCKED",
                 "reason": "Signature cloaking detected \u2014 description mismatch from manifest",
             },
-            # Nano reads file → ALLOWED
+            # Flash reads file → ALLOWED
             {
-                "session_id": s_nano, "agent": "Gemini Nano",
+                "session_id": s_flash2, "agent": "Gemini Flash",
                 "color": _demo_sessions[2]["color"],
                 "server": "code-assistant-mcp", "tool": "read_file",
                 "result": "ALLOWED",
                 "reason": "AllowList status=active, source=trusted",
             },
-            # Nano read_file response triggers DLP
+            # Flash read_file response triggers DLP
             {
-                "session_id": s_nano, "agent": "Gemini Nano",
+                "session_id": s_flash2, "agent": "Gemini Flash",
                 "color": _demo_sessions[2]["color"],
                 "action": "dlp_scan",
                 "server": "code-assistant-mcp", "tool": "read_file",

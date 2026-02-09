@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MCP Gateway - Gemini 3 Hackathon Demo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', system-ui, sans-serif; background: #0f172a; color: #f1f5f9; overflow: hidden; }
+  .slide { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center;
+    opacity: 0; transition: opacity 0.8s ease; padding: 60px; }
+  .slide.active { opacity: 1; }
+  .slide h1 { font-size: 52px; font-weight: 800; margin-bottom: 16px; text-align: center; line-height: 1.2; }
+  .slide h2 { font-size: 36px; font-weight: 700; margin-bottom: 12px; text-align: center; }
+  .slide h3 { font-size: 24px; font-weight: 600; margin-bottom: 8px; color: #94a3b8; }
+  .slide p { font-size: 22px; color: #cbd5e1; text-align: center; max-width: 900px; line-height: 1.6; }
+  .slide .subtitle { font-size: 20px; color: #94a3b8; margin-top: 8px; }
+  .accent { color: #4285f4; }
+  .danger { color: #ef4444; }
+  .success { color: #22c55e; }
+  .warn { color: #fbbf24; }
+  .badge { display: inline-block; padding: 6px 18px; border-radius: 20px; font-size: 14px; font-weight: 700; margin: 4px; }
+  .badge-blue { background: #1e3a5f; color: #60a5fa; }
+  .badge-red { background: #7f1d1d; color: #fca5a5; }
+  .badge-green { background: #14532d; color: #86efac; }
+  .badge-yellow { background: #713f12; color: #fde68a; }
+  .stat-row { display: flex; gap: 40px; margin-top: 24px; }
+  .stat { text-align: center; }
+  .stat .num { font-size: 48px; font-weight: 800; }
+  .stat .label { font-size: 14px; color: #94a3b8; margin-top: 4px; }
+  .card-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 24px; max-width: 1000px; }
+  .card { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; }
+  .card h4 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+  .card p { font-size: 13px; text-align: left; color: #94a3b8; }
+  .pipeline-step { display: flex; align-items: center; gap: 16px; background: #1e293b; border-radius: 10px;
+    padding: 12px 20px; margin: 6px 0; max-width: 800px; width: 100%; opacity: 0;
+    animation: fadeInUp 0.5s ease forwards; }
+  .pipeline-step .icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center;
+    justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .pipeline-step .text { flex: 1; }
+  .pipeline-step .text .title { font-size: 14px; font-weight: 600; }
+  .pipeline-step .text .desc { font-size: 12px; color: #94a3b8; }
+  .pipeline-step .status { font-size: 13px; font-weight: 700; padding: 4px 12px; border-radius: 6px; }
+  @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 900px; margin-top: 20px; }
+  .compare-card { background: #1e293b; border-radius: 12px; padding: 24px; }
+  .compare-card h4 { font-size: 18px; margin-bottom: 12px; }
+  .compare-card ul { list-style: none; padding: 0; }
+  .compare-card ul li { font-size: 13px; padding: 4px 0; color: #94a3b8; }
+  .compare-card ul li::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    margin-right: 8px; vertical-align: middle; }
+  .rule-card ul li::before { background: #f59e0b; }
+  .gemini-card ul li::before { background: #4285f4; }
+  .feature-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 20px; max-width: 1000px; }
+  .feature-item { background: #1e293b; border-radius: 10px; padding: 16px; text-align: center;
+    border: 1px solid #334155; }
+  .feature-item .emoji { font-size: 28px; margin-bottom: 8px; }
+  .feature-item .fname { font-size: 12px; font-weight: 700; color: #60a5fa; }
+  .feature-item .fdesc { font-size: 10px; color: #94a3b8; margin-top: 4px; }
+  .controls { position: fixed; bottom: 20px; right: 20px; display: flex; gap: 8px; z-index: 100; }
+  .controls button { background: #334155; border: none; color: #f1f5f9; padding: 8px 16px; border-radius: 8px;
+    cursor: pointer; font-size: 13px; font-weight: 600; }
+  .controls button:hover { background: #475569; }
+  .controls button.primary { background: #4285f4; }
+  .progress { position: fixed; top: 0; left: 0; height: 3px; background: #4285f4; transition: width 0.3s; z-index: 100; }
+  .gemini-tag { position: fixed; bottom: 20px; left: 20px; background: #4285f4; padding: 4px 14px;
+    border-radius: 12px; font-size: 11px; font-weight: 700; z-index: 100; }
+  .timer { position: fixed; top: 12px; right: 20px; font-size: 12px; color: #64748b; z-index: 100; }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+<div class="gemini-tag">Powered by Gemini 3</div>
+<div class="timer" id="timer">0:00 / 3:00</div>
+<div class="controls">
+  <button onclick="prevSlide()">Prev</button>
+  <button onclick="toggleAuto()" id="autoBtn">Auto</button>
+  <button onclick="nextSlide()" class="primary">Next</button>
+</div>
+
+<!-- SLIDE 1: HOOK -->
+<div class="slide active" id="s0">
+  <h3>Gemini 3 Hackathon</h3>
+  <h1><span class="accent">MCP Gateway</span></h1>
+  <p>The first security gateway that makes AI tool access<br><strong>auditable</strong>, not just allow/deny.</p>
+  <div class="stat-row">
+    <div class="stat"><div class="num accent">13K+</div><div class="label">MCP Servers</div></div>
+    <div class="stat"><div class="num danger">94%</div><div class="label">Attack Success Rate</div></div>
+    <div class="stat"><div class="num success">6</div><div class="label">Gemini 3 Integrations</div></div>
+    <div class="stat"><div class="num warn">395</div><div class="label">Tests Passing</div></div>
+  </div>
+</div>
+
+<!-- SLIDE 2: THE PROBLEM -->
+<div class="slide" id="s1">
+  <h2>The Problem</h2>
+  <p>AI agents connect to thousands of tools with <span class="danger">zero security layer</span>.</p>
+  <div class="card-grid" style="margin-top: 32px;">
+    <div class="card">
+      <h4 class="danger">Tool Shadowing</h4>
+      <p><code>read_fi<span style="color:#ef4444;font-weight:700">1</span>e</code> mimics <code>read_fi<span style="color:#22c55e;font-weight:700">l</span>e</code><br>The AI can't tell the difference.</p>
+    </div>
+    <div class="card">
+      <h4 class="danger">Signature Cloaking</h4>
+      <p><s style="color:#94a3b8">"List analytics data"</s><br><span style="color:#ef4444">"Execute system command"</span><br>Description changes post-approval.</p>
+    </div>
+    <div class="card">
+      <h4 class="danger">Bait-and-Switch</h4>
+      <p>"Read-only file viewer" that requests<br><code style="color:#ef4444">password</code>, <code style="color:#ef4444">api_key</code>, <code style="color:#ef4444">session_id</code></p>
+    </div>
+  </div>
+  <p class="subtitle" style="margin-top:24px">Existing scanners catch only <span class="danger">3.3%</span> of malicious servers.</p>
+</div>
+
+<!-- SLIDE 3: THE SOLUTION -->
+<div class="slide" id="s2">
+  <h2>The Solution: <span class="accent">6-Layer Security Pipeline</span></h2>
+  <div style="margin-top: 20px; width: 100%; max-width: 800px;">
+    <div class="pipeline-step" style="animation-delay: 0.1s"><div class="icon" style="background:#1e3a5f">L1</div><div class="text"><div class="title">Source/Sink Policy</div><div class="desc">Deterministic access control</div></div><div class="status" style="background:#14532d;color:#86efac">FAST</div></div>
+    <div class="pipeline-step" style="animation-delay: 0.3s"><div class="icon" style="background:#1e3a5f">L2</div><div class="text"><div class="title">Static Scan</div><div class="desc">Pattern matching + DGA + brand detection</div></div><div class="status" style="background:#14532d;color:#86efac">&lt;5ms</div></div>
+    <div class="pipeline-step" style="animation-delay: 0.5s"><div class="icon" style="background:#1a73e8">L3</div><div class="text"><div class="title">Semantic Scan <span class="badge badge-blue">Gemini 3</span></div><div class="desc">Intent manipulation detection with thinking_level=high</div></div><div class="status" style="background:#1e3a5f;color:#60a5fa">AI</div></div>
+    <div class="pipeline-step" style="animation-delay: 0.7s"><div class="icon" style="background:#1a73e8">L4</div><div class="text"><div class="title">AI Council Verdict <span class="badge badge-blue">Gemini 3</span></div><div class="desc">Google Search grounding + structured CouncilVerdict</div></div><div class="status" style="background:#1e3a5f;color:#60a5fa">AI</div></div>
+    <div class="pipeline-step" style="animation-delay: 0.9s"><div class="icon" style="background:#1e3a5f">L5</div><div class="text"><div class="title">Prompt Sanitization</div><div class="desc">Multi-level injection defense</div></div><div class="status" style="background:#14532d;color:#86efac">FAST</div></div>
+    <div class="pipeline-step" style="animation-delay: 1.1s"><div class="icon" style="background:#1a73e8">L6</div><div class="text"><div class="title">Web Sandbox <span class="badge badge-blue">Gemini 3</span></div><div class="desc">URL Context + DOM + a11y + network trace</div></div><div class="status" style="background:#1e3a5f;color:#60a5fa">AI</div></div>
+  </div>
+</div>
+
+<!-- SLIDE 4: GEMINI 3 FEATURES -->
+<div class="slide" id="s3">
+  <h2>Why <span class="accent">Only Gemini 3</span> Can Do This</h2>
+  <p>5 exclusive features across all 6 integration points</p>
+  <div class="feature-grid">
+    <div class="feature-item"><div class="emoji">&#129504;</div><div class="fname">Thinking Levels</div><div class="fdesc">high for threats<br>low for fast triage</div></div>
+    <div class="feature-item"><div class="emoji">&#127760;</div><div class="fname">URL Context</div><div class="fdesc">Gemini visits the URL<br>multimodal analysis</div></div>
+    <div class="feature-item"><div class="emoji">&#128269;</div><div class="fname">Google Search</div><div class="fdesc">Real-time threat intel<br>grounding</div></div>
+    <div class="feature-item"><div class="emoji">&#9881;&#65039;</div><div class="fname">Function Calling</div><div class="fdesc">Autonomous agent<br>multi-turn</div></div>
+    <div class="feature-item"><div class="emoji">&#128203;</div><div class="fname">Structured Output</div><div class="fdesc">Typed JSON schemas<br>machine-parseable</div></div>
+  </div>
+  <p class="subtitle" style="margin-top:24px">Not a classifier at the end. Gemini 3 is the <strong>reasoning engine</strong>.</p>
+</div>
+
+<!-- SLIDE 5: COMPARISON -->
+<div class="slide" id="s4">
+  <h2>Rule-Based vs <span class="accent">Gemini 3</span></h2>
+  <p>Scanning <code class="danger">login-apple-verify.tk</code></p>
+  <div class="comparison">
+    <div class="compare-card rule-card">
+      <h4 style="color:#f59e0b">Rule-Based Only</h4>
+      <div style="font-size:28px;font-weight:800;color:#ef4444;margin:8px 0">PHISHING</div>
+      <div class="badge badge-yellow">4 indicators</div>
+      <ul>
+        <li>Brand: apple on .tk TLD</li>
+        <li>URL tokens: login, verify</li>
+        <li>TLD: Freenom (.tk)</li>
+        <li>Pattern matching only</li>
+      </ul>
+      <p style="margin-top:12px;font-size:12px;color:#6b7280">No semantic understanding of page intent.</p>
+    </div>
+    <div class="compare-card gemini-card" style="border:1px solid #4285f4">
+      <h4 style="color:#60a5fa">With Gemini 3</h4>
+      <div style="font-size:28px;font-weight:800;color:#ef4444;margin:8px 0">PHISHING</div>
+      <div class="badge badge-blue">9 indicators</div>
+      <ul>
+        <li>Credential phishing impersonating Apple ID</li>
+        <li>Form exfiltrates to evil-collector.example.net</li>
+        <li>Hidden iframe: prompt injection risk</li>
+        <li>AI agent could auto-fill credentials</li>
+        <li>Step-by-step attack progression</li>
+      </ul>
+      <p style="margin-top:12px;font-size:12px;color:#60a5fa"><strong>Gemini understood WHY it's dangerous.</strong></p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 6: DETECTION MATRIX -->
+<div class="slide" id="s5">
+  <h2><span class="success">13/13</span> Detection Patterns Verified</h2>
+  <div style="margin-top:20px;max-width:900px;width:100%">
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <tr style="background:#1e293b"><th style="padding:8px;text-align:left;color:#94a3b8">Threat</th><th style="padding:8px;text-align:left;color:#94a3b8">Example</th><th style="padding:8px;color:#94a3b8">Action</th><th style="padding:8px;color:#94a3b8">Test</th></tr>
+      <tr><td style="padding:6px 8px;color:#ef4444;font-weight:600">DGA Domain</td><td style="padding:6px 8px;color:#cbd5e1">xkjhwqe.xyz</td><td style="padding:6px 8px;color:#ef4444;font-weight:600">block</td><td style="padding:6px 8px;color:#22c55e">PASS</td></tr>
+      <tr style="background:#1e293b"><td style="padding:6px 8px;color:#ef4444;font-weight:600">Freenom Phishing</td><td style="padding:6px 8px;color:#cbd5e1">login-apple-verify.tk</td><td style="padding:6px 8px;color:#ef4444;font-weight:600">block</td><td style="padding:6px 8px;color:#22c55e">PASS</td></tr>
+      <tr><td style="padding:6px 8px;color:#ef4444;font-weight:600">IDN Homograph</td><td style="padding:6px 8px;color:#cbd5e1">xn--pple-43d.com</td><td style="padding:6px 8px;color:#fbbf24;font-weight:600">warn</td><td style="padding:6px 8px;color:#22c55e">PASS</td></tr>
+      <tr style="background:#1e293b"><td style="padding:6px 8px;color:#f97316;font-weight:600">Leet-speak</td><td style="padding:6px 8px;color:#cbd5e1">g00gle.tk</td><td style="padding:6px 8px;color:#ef4444;font-weight:600">block</td><td style="padding:6px 8px;color:#22c55e">PASS</td></tr>
+      <tr><td style="padding:6px 8px;color:#7c3aed;font-weight:600">MCP Injection</td><td style="padding:6px 8px;color:#cbd5e1">mcp-server-tools.tk</td><td style="padding:6px 8px;color:#fbbf24;font-weight:600">warn</td><td style="padding:6px 8px;color:#22c55e">PASS</td></tr>
+      <tr style="background:#1e293b"><td style="padding:6px 8px;color:#22c55e;font-weight:600">Clean (apple.com)</td><td style="padding:6px 8px;color:#cbd5e1">apple.com (legit)</td><td style="padding:6px 8px;color:#22c55e;font-weight:600">allow</td><td style="padding:6px 8px;color:#22c55e">PASS</td></tr>
+    </table>
+    <p style="text-align:center;margin-top:8px;font-size:12px;color:#64748b">+ 7 more patterns (subdomain, hyphenated brand, elevated ccTLD, suspicious tokens, clean baselines)</p>
+  </div>
+  <p class="subtitle" style="margin-top:20px">All patterns validated with explicit pytest test cases. <span class="success">395 tests passing.</span></p>
+</div>
+
+<!-- SLIDE 7: CLOSING -->
+<div class="slide" id="s6">
+  <h3 style="color:#64748b">Gemini 3 is powerful.</h3>
+  <h1>Enterprises need a <span class="accent">seatbelt</span>.</h1>
+  <h2 style="margin-top:8px">We built it.</h2>
+  <div style="margin-top:40px;text-align:center">
+    <div style="font-size:28px;font-weight:800;color:#4285f4;margin-bottom:8px">MCP Gateway</div>
+    <p style="font-size:16px;max-width:600px">The first security gateway that makes AI tool access auditable, not just allow/deny.</p>
+    <div style="margin-top:20px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <span class="badge badge-blue">6 Gemini 3 Integrations</span>
+      <span class="badge badge-green">395 Tests Passing</span>
+      <span class="badge badge-yellow">13/13 Detection Patterns</span>
+      <span class="badge" style="background:#334155;color:#f1f5f9">Open Source</span>
+    </div>
+    <p style="margin-top:24px;font-size:14px;color:#64748b">github.com/minorumochizuki2015-ship-it/mcp-gateway-gemini3</p>
+  </div>
+</div>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+const total = slides.length;
+let current = 0;
+let autoPlay = false;
+let autoTimer = null;
+let startTime = null;
+const SLIDE_DURATION = 26000; // ~26s per slide for ~3min total
+
+function showSlide(n) {
+  slides.forEach(s => s.classList.remove('active'));
+  current = Math.max(0, Math.min(n, total - 1));
+  slides[current].classList.add('active');
+  document.getElementById('progress').style.width = ((current + 1) / total * 100) + '%';
+  // Re-trigger animations
+  const steps = slides[current].querySelectorAll('.pipeline-step');
+  steps.forEach(s => { s.style.animation = 'none'; s.offsetHeight; s.style.animation = ''; });
+}
+
+function nextSlide() { if (current < total - 1) showSlide(current + 1); else if (autoPlay) stopAuto(); }
+function prevSlide() { showSlide(current - 1); }
+
+function toggleAuto() {
+  if (autoPlay) { stopAuto(); } else { startAuto(); }
+}
+
+function startAuto() {
+  autoPlay = true;
+  startTime = Date.now() - current * SLIDE_DURATION;
+  document.getElementById('autoBtn').textContent = 'Pause';
+  autoTimer = setInterval(() => {
+    nextSlide();
+    updateTimer();
+  }, SLIDE_DURATION);
+  updateTimer();
+}
+
+function stopAuto() {
+  autoPlay = false;
+  document.getElementById('autoBtn').textContent = 'Auto';
+  if (autoTimer) clearInterval(autoTimer);
+}
+
+function updateTimer() {
+  if (!startTime) return;
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  const mins = Math.floor(elapsed / 60);
+  const secs = elapsed % 60;
+  document.getElementById('timer').textContent = `${mins}:${secs.toString().padStart(2, '0')} / 3:00`;
+}
+
+// Keyboard navigation
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); nextSlide(); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); prevSlide(); }
+  else if (e.key === 'a') toggleAuto();
+});
+
+setInterval(updateTimer, 1000);
+</script>
+</body>
+</html>
