@@ -951,12 +951,67 @@
     });
 
     // --- Demo Scan (pre-configured pages, no SSRF issues) ---
+    var _DEMO_MOCK_RESULTS = {
+      phishing: {
+        url: "https://login-apple-verify.tk/secure",
+        bundle: { bundle_id: "demo-phish-001", url: "https://login-apple-verify.tk/secure", sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", resource_count: 4, blocked_resources: [], timestamp: new Date().toISOString(), content_length: 8234, status_code: 200 },
+        dom_security: [
+          { tag: "iframe", attributes: {"src": "https://evil.com/steal", "style": "display:none"}, suspicious: true, threat_type: "hidden_iframe", selector: "body>iframe" },
+          { tag: "form", attributes: {"action": "https://evil-collect.tk/harvest"}, suspicious: true, threat_type: "deceptive_form", selector: "div.login>form" },
+          { tag: "input", attributes: {"type": "password", "name": "passwd"}, suspicious: true, threat_type: "credential_harvest", selector: "form>input[type=password]" }
+        ],
+        a11y_tree: [
+          { role: "form", name: "Sign in to Apple ID", description: "", suspicious: true, deceptive_label: true, children: [] },
+          { role: "textbox", name: "Email", description: "", suspicious: false, deceptive_label: false, children: [] },
+          { role: "button", name: "Continue", description: "", suspicious: false, deceptive_label: false, children: [] }
+        ],
+        network_traces: [
+          { url: "https://evil-collect.tk/harvest", method: "POST", source: "form_action", is_suspicious: true, threat_type: "credential_exfiltration" },
+          { url: "https://evil.com/steal", method: "GET", source: "iframe_src", is_suspicious: true, threat_type: "hidden_content_load" }
+        ],
+        verdict: { classification: "phishing", confidence: 0.94, risk_indicators: ["hidden_iframe", "deceptive_form", "external_credential_harvest", "fake_apple_login"], evidence_refs: ["form[action*=evil-collect]", "iframe[style*=display:none]", "input[type=password]"], recommended_action: "block", summary: "Fake Apple ID login page with hidden iframe exfiltrating credentials to evil-collect.tk" },
+        eval_method: "gemini-3-flash-preview"
+      },
+      clean: {
+        url: "https://docs.example.com/api/reference",
+        bundle: { bundle_id: "demo-clean-001", url: "https://docs.example.com/api/reference", sha256: "abc123def456", resource_count: 2, blocked_resources: [], timestamp: new Date().toISOString(), content_length: 12500, status_code: 200 },
+        dom_security: [],
+        a11y_tree: [
+          { role: "banner", name: "API Documentation", description: "", suspicious: false, deceptive_label: false, children: [] },
+          { role: "navigation", name: "Sidebar", description: "", suspicious: false, deceptive_label: false, children: [] },
+          { role: "main", name: "Content", description: "", suspicious: false, deceptive_label: false, children: [] }
+        ],
+        network_traces: [
+          { url: "https://docs.example.com/assets/style.css", method: "GET", source: "link_href", is_suspicious: false, threat_type: "none" }
+        ],
+        verdict: { classification: "benign", confidence: 0.98, risk_indicators: [], evidence_refs: [], recommended_action: "allow", summary: "Standard API documentation site with no security threats detected" },
+        eval_method: "gemini-3-flash-preview"
+      },
+      clickjack: {
+        url: "https://free-tools.example.net/converter",
+        bundle: { bundle_id: "demo-click-001", url: "https://free-tools.example.net/converter", sha256: "789ghi012jkl", resource_count: 5, blocked_resources: [], timestamp: new Date().toISOString(), content_length: 6700, status_code: 200 },
+        dom_security: [
+          { tag: "iframe", attributes: {"src": "https://bank.example.com/transfer", "style": "opacity:0;position:absolute;z-index:999"}, suspicious: true, threat_type: "transparent_iframe_overlay", selector: "body>iframe.overlay" },
+          { tag: "div", attributes: {"style": "position:relative;z-index:1000;cursor:pointer"}, suspicious: true, threat_type: "clickjack_bait", selector: "div.download-btn" }
+        ],
+        a11y_tree: [
+          { role: "button", name: "Download Now", description: "", suspicious: true, deceptive_label: true, children: [] },
+          { role: "none", name: "", description: "transparent overlay", suspicious: true, deceptive_label: false, children: [] }
+        ],
+        network_traces: [
+          { url: "https://bank.example.com/transfer", method: "GET", source: "iframe_src", is_suspicious: true, threat_type: "clickjack_target" },
+          { url: "https://free-tools.example.net/track?click=1", method: "GET", source: "script_src", is_suspicious: true, threat_type: "click_tracking" }
+        ],
+        verdict: { classification: "clickjacking", confidence: 0.87, risk_indicators: ["transparent_iframe_overlay", "z_index_manipulation", "banking_site_framing"], evidence_refs: ["iframe[style*=opacity:0]", "div.download-btn", "iframe[src*=bank]"], recommended_action: "warn", summary: "Transparent iframe overlaying bank transfer page behind fake download button" },
+        eval_method: "gemini-3-flash-preview"
+      }
+    };
+
     window.demoScan = async function(page) {
       scanError.style.display = 'none';
       scanLoading.style.display = '';
       scanBtn.disabled = true;
       resultSection.style.display = 'none';
-      // Show which demo is being scanned
       var demoLabels = {phishing: 'Phishing Page', clean: 'Clean Page', clickjack: 'Clickjack Page'};
       urlInput.value = demoLabels[page] || page;
 
@@ -966,13 +1021,20 @@
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({page: page}),
         });
-        if (!resp.ok) throw new Error('Demo scan failed: ' + resp.status);
+        if (!resp.ok) throw new Error('API ' + resp.status);
         var data = await resp.json();
         renderVerdict(data);
         loadHistory();
       } catch (err) {
-        scanError.textContent = err.message || 'Demo scan failed';
-        scanError.style.display = '';
+        // Fallback: use client-side mock when backend not running
+        var mock = _DEMO_MOCK_RESULTS[page];
+        if (mock) {
+          renderVerdict(mock);
+          loadHistory();
+        } else {
+          scanError.textContent = err.message || 'Demo scan failed';
+          scanError.style.display = '';
+        }
       } finally {
         scanLoading.style.display = 'none';
         scanBtn.disabled = false;

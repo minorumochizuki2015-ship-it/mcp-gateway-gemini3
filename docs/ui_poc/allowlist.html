@@ -438,6 +438,7 @@
             <th>Name</th>
             <th>Base URL</th>
             <th>Status</th>
+            <th>Reason</th>
             <th>Registered</th>
             <th>Last Scan</th>
           </tr>
@@ -484,7 +485,10 @@
     }
 
     function statusBadge(status) {
-      const cls = status === "active" ? "active" : status === "proposed" ? "proposed" : "revoked";
+      var s = String(status || '').toLowerCase();
+      var cls = 'revoked';
+      if (s === 'active' || s === 'allow') cls = 'active';
+      else if (s === 'proposed' || s === 'quarantine') cls = 'proposed';
       return `<span class="status ${cls}">${escapeHtml(status || "-")}</span>`;
     }
 
@@ -494,7 +498,7 @@
         const msg = lang === "ja"
           ? "許可リストにエントリがありません。<br>Settings から環境を登録すると自動的に追加されます。"
           : "No allowlist entries yet.<br>Register an environment in Settings to get started.";
-        rows.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:48px 24px;color:var(--muted);">
+        rows.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:48px 24px;color:var(--muted);">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;margin-bottom:12px;opacity:0.4;display:block;margin-left:auto;margin-right:auto;"><path d="M9 12l2 2 4-4"/><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/></svg>
           ${msg}
         </td></tr>`;
@@ -505,6 +509,7 @@
           <td><strong>${escapeHtml(item.name || "-")}</strong></td>
           <td><span class="endpoint">${escapeHtml(item.base_url || "-")}</span></td>
           <td>${statusBadge(item.status)}</td>
+          <td style="max-width:260px;font-size:12px;color:var(--gray-700);">${escapeHtml(item.reason || "-")}</td>
           <td>${escapeHtml(item.registered_at || "-")}</td>
           <td>${escapeHtml(item.last_scan_ts || "-")}</td>
         </tr>`)
@@ -624,7 +629,7 @@
         const data = await window.apiClient.fetchAllowlist();
         render(data);
       } catch (e) {
-        rows.innerHTML = `<tr><td colspan="5" class="empty">Failed to load allowlist</td></tr>`;
+        rows.innerHTML = `<tr><td colspan="6" class="empty">Failed to load allowlist</td></tr>`;
       }
       await loadStatus();
     }

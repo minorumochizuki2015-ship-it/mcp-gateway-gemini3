@@ -220,19 +220,23 @@ window.suiteScanData = {
     ]
   },
   allowlist_entries: [
-    { name: "code-assistant-mcp", base_url: "npx @anthropic/mcp-code-assistant", status: "allow", registered_at: "2026-02-07T14:00:00Z", last_scan_ts: "2026-02-08T08:00:00Z" },
-    { name: "filesystem-mcp", base_url: "npx @anthropic/mcp-filesystem", status: "deny", registered_at: "2026-02-07T14:05:00Z", last_scan_ts: "2026-02-08T14:22:00Z" },
-    { name: "web-search-mcp", base_url: "npx @anthropic/mcp-web-search", status: "allow", registered_at: "2026-02-07T14:10:00Z", last_scan_ts: "2026-02-08T13:50:00Z" },
-    { name: "data-scraper-mcp", base_url: "npx @custom/data-scraper", status: "quarantine", registered_at: "2026-02-07T14:15:00Z", last_scan_ts: "2026-02-08T13:40:00Z" },
-    { name: "github-mcp", base_url: "npx @anthropic/mcp-github", status: "allow", registered_at: "2026-02-07T14:20:00Z", last_scan_ts: "2026-02-08T12:00:00Z" },
-    { name: "unknown-mcp", base_url: "npx @untrusted/unknown-mcp", status: "deny", registered_at: "2026-02-08T14:00:00Z", last_scan_ts: "2026-02-08T14:18:00Z" },
-    { name: "slack-mcp", base_url: "npx @anthropic/mcp-slack", status: "allow", registered_at: "2026-02-07T14:25:00Z", last_scan_ts: null },
-    { name: "external-api-mcp", base_url: "npx @custom/external-api", status: "deny", registered_at: "2026-02-08T13:50:00Z", last_scan_ts: "2026-02-08T13:55:00Z" }
+    { name: "code-assistant-mcp", base_url: "npx @anthropic/mcp-code-assistant", status: "allow", reason: "AI Council 3/3 allow — read-only code analysis, no network/file_write capabilities", registered_at: "2026-02-07T14:00:00Z", last_scan_ts: "2026-02-08T08:00:00Z", council_session: "ev-cd-001", capabilities: ["code_read"], risk_score: "low" },
+    { name: "filesystem-mcp", base_url: "npx @anthropic/mcp-filesystem", status: "deny", reason: "Source-Sink violation: untrusted server writing to /etc/passwd via network_write sink", registered_at: "2026-02-07T14:05:00Z", last_scan_ts: "2026-02-08T14:22:00Z", council_session: "ev-ss-001", capabilities: ["file_read", "file_write"], risk_score: "critical" },
+    { name: "web-search-mcp", base_url: "npx @anthropic/mcp-web-search", status: "allow", reason: "AI Council 3/3 allow — search-only, no file or credential access detected", registered_at: "2026-02-07T14:10:00Z", last_scan_ts: "2026-02-08T13:50:00Z", council_session: "ev-cd-003", capabilities: ["network_read"], risk_score: "low" },
+    { name: "data-scraper-mcp", base_url: "npx @custom/data-scraper", status: "quarantine", reason: "AI Council 2/3 quarantine — excessive network_write + file_write capabilities flagged", registered_at: "2026-02-07T14:15:00Z", last_scan_ts: "2026-02-08T13:40:00Z", council_session: "ev-cd-002", capabilities: ["network_read", "network_write", "file_write"], risk_score: "medium" },
+    { name: "github-mcp", base_url: "npx @anthropic/mcp-github", status: "allow", reason: "AI Council 3/3 allow — verified @anthropic publisher, scoped to repo operations", registered_at: "2026-02-07T14:20:00Z", last_scan_ts: "2026-02-08T12:00:00Z", council_session: "ev-cd-004", capabilities: ["code_read", "code_write"], risk_score: "low" },
+    { name: "unknown-mcp", base_url: "npx @untrusted/unknown-mcp", status: "deny", reason: "Source-Sink violation: unknown publisher accessing clipboard (untrusted trust level)", registered_at: "2026-02-08T14:00:00Z", last_scan_ts: "2026-02-08T14:18:00Z", council_session: "ev-ss-002", capabilities: ["clipboard_read", "clipboard_write"], risk_score: "high" },
+    { name: "slack-mcp", base_url: "npx @anthropic/mcp-slack", status: "allow", reason: "AI Council 3/3 allow — verified publisher, messaging-only capabilities", registered_at: "2026-02-07T14:25:00Z", last_scan_ts: null, council_session: "ev-cd-005", capabilities: ["message_send"], risk_score: "low" },
+    { name: "external-api-mcp", base_url: "npx @custom/external-api", status: "deny", reason: "Prompt injection detected in tool output (system_prompt_override pattern)", registered_at: "2026-02-08T13:50:00Z", last_scan_ts: "2026-02-08T13:55:00Z", council_session: "ev-pb-001", capabilities: ["network_read", "network_write"], risk_score: "high" }
   ],
   allowlist_status: {
+    total: 8, allow: 5, deny: 2, quarantine: 1,
+    shadow_audit_chain_ok: true,
     policy_bundle_present_ok: true,
     policy_bundle_signature_status: "verified_ok",
-    last_snapshot_ts: "2026-02-08T10:00:00Z"
+    last_snapshot_ts: "2026-02-08T10:00:00Z",
+    last_scan_ts: "2026-02-08T14:22:00Z",
+    last_decision_ts: "2026-02-08T14:22:00Z"
   },
   attack_detections: [
     {

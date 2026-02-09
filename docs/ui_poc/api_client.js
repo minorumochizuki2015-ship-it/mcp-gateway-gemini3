@@ -364,7 +364,15 @@ window.escapeHtml = function escapeHtml(str) {
 
   async function fetchAllowlistStatus() {
     const data = await fetchJson(`${BASE}/allowlist/status`);
-    if (data && typeof data === "object") return data;
+    if (data && typeof data === "object") {
+      // Enrich with mock counts when live data has no registered servers
+      if (!DISABLE_MOCK && (data.total || 0) === 0 && window.suiteScanData && window.suiteScanData.allowlist_status) {
+        var mock = window.suiteScanData.allowlist_status;
+        showMockBadge();
+        return Object.assign({}, mock, data, { total: mock.total, allow: mock.allow, deny: mock.deny, quarantine: mock.quarantine });
+      }
+      return data;
+    }
     if (DISABLE_MOCK) return null;
     return (window.suiteScanData && window.suiteScanData.allowlist_status) || null;
   }
