@@ -11,7 +11,7 @@ window.suiteScanData = {
       { severity: "Medium", category: "権限", summary: "Tool exposure missing owner tag", resource: "/registry/tools_exposed", owasp_llm_code: "LLM04", owasp_llm_title: "Excessive agency", evidence_source: "ci_evidence" }
     ],
     "scan-002": [
-      { severity: "Critical", category: "ログ", summary: "Unmasked secret in gateway response", resource: "/gateway/run", owasp_llm_code: "LLM05", owasp_llm_title: "Sensitive information disclosure", evidence_source: "acl_proxy_evidence" },
+      { severity: "Critical", category: "ログ", summary: "Unmasked secret in gateway response", resource: "/gateway/run", owasp_llm_code: "LLM05", owasp_llm_title: "Sensitive information disclosure", evidence_source: "gateway_evidence" },
       { severity: "High", category: "データ", summary: "AllowList missing sampling guard", resource: "/allowlist/tools_exposed", owasp_llm_code: "LLM02", owasp_llm_title: "Insecure output handling", evidence_source: "ci_evidence" }
     ],
     "scan-003": [

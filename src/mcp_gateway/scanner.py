@@ -771,8 +771,8 @@ def schedule_retest(db: Any, server_id: int, reason: str, delay_hours: int = 24)
     """
     Schedule a retest for a server (MVP: stub that emits Evidence only).
 
-    TODO: In production, enqueue actual job to job scheduler (celery/rq/etc)
-    TODO: Per user feedback - should deny decisions also trigger retest? Currently called for quarantine.
+    Note: In production, enqueue actual job to job scheduler (celery/rq/etc).
+    Currently called for quarantine decisions only.
 
     Args:
         db: Database instance
