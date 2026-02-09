@@ -330,7 +330,7 @@ gcloud run services describe mcp-gateway --format='value(status.url)'
 ## Test Suite
 
 ```bash
-# 395 tests
+# 401 tests
 python -m pytest tests/ -v
 
 # Gemini integration tests only
@@ -352,7 +352,7 @@ GOOGLE_API_KEY=xxx python scripts/benchmark.py --gemini
 
 | Method | Precision | Recall | F1 | Avg Latency |
 |--------|-----------|--------|----|-------------|
-| Rule-based | 0.846 | 0.846 | 0.846 | ~15ms |
+| Rule-based | 0.917 | 0.846 | 0.880 | <1ms |
 | Gemini 3 Agent | 1.000 | 1.000 | 1.000 | ~2500ms |
 
 26-case fixed corpus: 13 benign + 13 malicious (DGA, brand impersonation, suspicious TLD, MCP injection, leet speak, homograph).

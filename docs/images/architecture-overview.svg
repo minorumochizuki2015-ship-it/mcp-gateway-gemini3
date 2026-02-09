@@ -125,5 +125,5 @@
 
   <!-- Test badge -->
   <rect x="770" y="480" width="120" height="24" rx="12" fill="#34a853"/>
-  <text x="830" y="496" text-anchor="middle" font-size="10" font-weight="600" fill="#fff">395 Tests Passing</text>
+  <text x="830" y="496" text-anchor="middle" font-size="10" font-weight="600" fill="#fff">401 Tests Passing</text>
 </svg>

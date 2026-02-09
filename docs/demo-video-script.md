@@ -113,7 +113,7 @@
 > "13 detection patterns. 13 passing. DGA domains, IDN homographs, leet-speak typosquatting, MCP protocol injection - all verified with explicit test cases."
 
 **[VISUAL]**: Evidence Trail JSONL scrolling
-> "Every verdict produces structured evidence. Auditable. Explainable. 395 tests passing."
+> "Every verdict produces structured evidence. Auditable. Explainable. 401 tests passing."
 
 ---
 
@@ -127,7 +127,7 @@
 
 **[VISUAL]**: Logo + tagline
 > **MCP Gateway** - The first security gateway that makes AI tool access auditable, not just allow/deny.
-> Powered by Gemini 3 | 395 Tests | 6 Integration Points | Open Source
+> Powered by Gemini 3 | 401 Tests | 6 Integration Points | Open Source
 
 ---
 

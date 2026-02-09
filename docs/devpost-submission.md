@@ -16,4 +16,4 @@
 
 5. **Function Calling** (multi-turn): The Agent Scan component operates as an autonomous security agent, deciding which tools to invoke based on the threat surface - not a fixed pipeline.
 
-**Key differentiator**: Not just allow/deny. Every decision produces structured evidence - the *why* behind every verdict. 395 tests passing. Open source.
+**Key differentiator**: Not just allow/deny. Every decision produces structured evidence - the *why* behind every verdict. 401 tests passing. Open source.
